@@ -38,7 +38,7 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 基线全量：后端 **818 passed、0 skipped，81.85 秒**（Python 3.13.15、隔离 PostgreSQL）；前端 **99 passed、0 skipped**；lint 成功，原有 3 条 UI Fast Refresh 警告；Web 和 Android Vite/类型构建成功。新代码的本项必要验收为上述 26 项及真实原生部署检查；最终版本仍须完整回归。无 Android 原生或界面改动，本项不重复 APK 安装；远程 CI 仍须执行所有四个非生产 job。
 
-提交 `fd2c1e4f6822cc498f30a9f5f82f5e5a01966285` 已推送，`git ls-remote` 确认远程分支精确包含该 SHA。[对应 CI 41098845307](https://github.com/shenyankm/BreathOn/actions/runs/41098845307) 的 frontend、backend、android 已成功，deployment 仍运行中；其完成前不关闭本项。完整状态在本机 `auth-ci.json`，不拿其他提交的绿色检查替代。
+提交 `fd2c1e4f6822cc498f30a9f5f82f5e5a01966285` 已推送，`git ls-remote` 确认远程分支精确包含该 SHA。[对应 CI 41098845307](https://github.com/shenyankm/BreathOn/actions/runs/41098845307) 的 frontend、backend、android、deployment **全部成功**，production 按分支规则 skipped。逐条检查 `auth-checks.json` 中的 `head_sha`、GitHub Actions app 与四项结论，不拿其他提交的绿色检查替代；本项验收完成。
 
 ## 2. 管理员历史列表避免加载全部正文（验收前标准）
 
@@ -76,7 +76,7 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 行为验收：相关测试 **54 passed、0 skipped，11.69 秒**；完整后端含隔离真实 PG **821 passed、0 skipped，80.72 秒**。默认个人列表仍不返回 `owner_id`，历史无归属记录为 null，管理员列表/详情审计与角色拒绝访问通过。浏览器在独立 `127.0.0.1:5178` / `8006` 上实际执行三条合成记录列表、按代表搜索、打开详情原文、关闭与刷新；截图为 `admin-browser.jpg`。测试完成已关闭临时页面和两个服务；原有 8000/5173 及 AVD 未修改。
 
-只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交 `fba107995f2e82f22b852f0fc5b0ff944fde9d6f` 已推送，`git ls-remote` 确认远程精确包含该 SHA。[对应 CI 41100857013](https://github.com/shenyankm/BreathOn/actions/runs/41100857013) 已排队，四项远程 CI 完成前仍不关闭本项。
+只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交 `fba107995f2e82f22b852f0fc5b0ff944fde9d6f` 已推送，`git ls-remote` 确认远程精确包含该 SHA。[对应 CI 41100857013](https://github.com/shenyankm/BreathOn/actions/runs/41100857013) 的 frontend、backend、android 已成功，deployment 仍运行中（`admin-checks.json`）；四项远程 CI 完成前仍不关闭本项。
 
 ## 3. 转写后台事务移出事件循环（改动前标准）
 
@@ -108,11 +108,23 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 ## 当前真实服务与设备边界
 
+第 3 项已提交为 `e01bb8f1113ae4da02932900f8ab4465d072df0f` 并推送到 `sheny/optimize-transcription-io-20261031`，远程 ref 精确匹配，包含前两项保留改动。[对应 CI 41102447430](https://github.com/shenyankm/BreathOn/actions/runs/41102447430) 排队中，尚待验证（`visits-checks.json`）。
+
 手动执行现有 `check_services` **一次**：四类配置完整的提供商探针各一次、每类 20 秒上限；3.188 秒完成，ASR、TTS、analysis、practice、combat 五个状态均正常（`live-services-once.json`）。practice/combat 为组合状态，实际探针为 SeedASR、TTS、DeepSeek、Seeduplex 四类。使用仓库内的合成音频和简短状态文本，可能产生服务用量；未重复收费压测，不把单次状态检测当延迟分布、医学输出质量或麦克风/扬声器验收。
 
 当前仅检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。已询问可用的隔离真机环境；尚未完成真实麦克风、扬声器与真机端到端验收，goal 仍 active。
 
 ## 待核实/处理候选
+
+### 4. 原生部署就绪探针重试截断状态行（改动前标准）
+
+`check-native.py::wait_ready` 在四处启动/重启等待中复用。当前只捕获 OSError/URLError，`BadStatusLine` 属于 `http.client.HTTPException`，初次响应被截断时会跳过现有 90 秒重试期限而直接失败。`check-stack.py` 已有相同类别处理；只补齐原生探针这一处，不改变后续业务断言。
+
+改动前先验证：`uv run --directory backend pytest -q tests/test_native_smoke.py -k readiness_`。预定标准：真实本机 HTTP 首次截断、随后 200 时恰好两次请求并成功；持续截断时在短测试期限后抛出既有 SmokeError，不吞永久故障；进程已退出时在访问 HTTP 前失败。保持既有连接、总等待和退出策略。再运行原生/部署相关测试和完整隔离原生部署检查，审查 diff，通过后单独提交/推送并等待当前 SHA CI。回退 `git revert <本项 SHA>`，无业务数据变化。
+
+改动前 **2 failed、1 passed**：两种截断情况均抛出 BadStatusLine，退出进程的原检查通过。仅增加标准库异常导入与就绪等待中的捕获。修改后相关套件 **64 passed、16 skipped，9.82 秒**（该次未设置测试 DB）；随后完整后端使用隔离 PG **829 passed、0 skipped，77.71 秒**，补齐全部 PG 检查。没有把 skipped 写成通过。
+
+新建独立 PG 数据库的原生部署验收再次通过：实际 Caddy 路由、Uvicorn 重启、PG 停机与恢复、Cookie/权限/账号隔离（`native-ready-integration.log`）；临时数据库、进程和目录均清理，保留公共的一次性测试容器供后续工作。diff 审查和 `git diff --check` 通过；无前端或 Android 原生改动，沿用第三项同一前端树的 99 项、lint、Web 和 Android 页面构建结果。远程仍须验证本项提交的四个 job，不复用旧 SHA 的绿色状态。
 
 - 原生部署 `wait_ready` 在收到截断状态行后抛出 `BadStatusLine`，没有继续等待就绪。真实本机 HTTP 服务器第一次发送 `HTTP/1.1 20`，第二次应返回 200；当前只请求一次就失败（`native-probe-before.json`）。需独立修复并验证有限重试与进程退出行为。
 - 日记转写任务在协程内直接调用同步数据库事务。真实隔离 PG 占满 4 个连接后运行现有 `visit_run_job`，20 ms 事件循环心跳实际延迟 **5006.999 ms**，直到连接池超时才恢复（`visit-pool-before.json`）。没有调用上游服务；这是实际 PG 加进程内心跳测量，尚不是网络 HTTP 时延验收。需独立修复数据库阻塞与取消收尾，并检查任务在数据库恢复后的状态。
