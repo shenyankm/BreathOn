@@ -17,6 +17,7 @@ import pytest
 from conftest import LocalClient
 from medvisit.api.app import create_app
 from medvisit.api.middleware import ApiMiddleware
+from medvisit.platform.api import platform_router
 from medvisit.storage.records import FileRecords
 from medvisit.visits.api import visits_router
 from medvisit.voice.protocol import BridgeError
@@ -328,26 +329,160 @@ async def test_readiness_timeouts_share_one_storage_probe_and_recover(tmp_path):
         release.set()
 
 
+@pytest.mark.parametrize('phase', ['mkdir', 'records_open', 'platform_open', 'initialize', 'visit_cleanup'])
+@pytest.mark.parametrize('worker_fails', [False, True])
+@pytest.mark.parametrize('cancel_startup', [False, True])
+async def test_startup_waits_for_storage_workers_before_closing(tmp_path, database_url, phase, worker_fails, cancel_startup):
+    started, release, finished = Event(), Event(), Event()
+    order, errors = [], []
+    def hold(function):
+        def held(*args, **kwargs):
+            started.set()
+            try:
+                assert release.wait(5), 'Test did not release startup worker'
+                result = function(*args, **kwargs)
+                if worker_fails:
+                    raise OSError('synthetic startup failure')
+                return result
+            except Exception as exc:
+                errors.append(type(exc).__name__)
+                raise
+            finally:
+                order.append('work_finished')
+                finished.set()
+        return held
+    def platform(*args):
+        router, initialize, current_user, operations = platform_router(*args)
+        return router, hold(initialize) if phase == 'initialize' else initialize, current_user, operations
+    def visits(*args):
+        router = visits_router(*args)
+        if phase == 'visit_cleanup':
+            router.visit_cleanup = hold(router.visit_cleanup)
+        return router
+    with patch('medvisit.api.app.platform_router', platform), patch('medvisit.api.app.visits_router', visits):
+        app = create_app(settings(tmp_path / 'sessions', database_url=database_url))
+    close = app.state.records.close
+    def close_store():
+        close()
+        order.append('storage_closed')
+    mkdir = Path.mkdir
+    def held_mkdir(path, *args, **kwargs):
+        function = hold(mkdir) if path == tmp_path / 'sessions' else mkdir
+        return function(path, *args, **kwargs)
+    lifecycle = app.router.lifespan_context(app)
+    with ExitStack() as patches:
+        patches.enter_context(patch.object(app.state.records, 'close', close_store))
+        if phase == 'mkdir':
+            patches.enter_context(patch.object(Path, 'mkdir', held_mkdir))
+        elif phase == 'records_open':
+            patches.enter_context(patch.object(app.state.records, 'open', hold(app.state.records.open)))
+        elif phase == 'platform_open':
+            patches.enter_context(patch.object(app.state.platform, 'open', hold(app.state.platform.open)))
+        startup = asyncio.create_task(lifecycle.__aenter__())
+        try:
+            assert await asyncio.to_thread(started.wait, 2)
+            if cancel_startup:
+                for _ in range(2):
+                    startup.cancel()
+                    await asyncio.sleep(0)
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(startup), .05)
+            assert not app.state.ready and 'storage_closed' not in order
+        finally:
+            release.set()
+            result = (await asyncio.wait_for(asyncio.gather(startup, return_exceptions=True), 2))[0]
+            assert await asyncio.to_thread(finished.wait, 2)
+            became_ready = app.state.ready
+            if not startup.cancelled() and startup.exception() is None:
+                await lifecycle.__aexit__(None, None, None)
+            pool_closed = app.state.records.pool.closed
+            # A failing baseline must not leak its pool into the next test.
+            if not pool_closed:
+                close()
+    if worker_fails:
+        assert isinstance(result, OSError) and str(result) == 'synthetic startup failure'
+    else:
+        assert startup.cancelled() is cancel_startup
+    assert errors == (['OSError'] if worker_fails else [])
+    assert order == ['work_finished', 'storage_closed']
+    assert became_ready is (not worker_fails and not cancel_startup)
+    assert not app.state.ready and pool_closed
+    with connect(database_url, autocommit=True) as connection:
+        deadline = asyncio.get_running_loop().time() + 2
+        while connection.execute("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()", ()).fetchone()[0]:
+            assert asyncio.get_running_loop().time() < deadline, 'Startup left a database connection open'
+            await asyncio.sleep(.01)
+
+
+@pytest.mark.parametrize('worker_fails', [False, True])
+async def test_shutdown_waits_for_storage_close_under_repeated_cancellation(tmp_path, database_url, worker_fails):
+    app = create_app(settings(tmp_path / 'sessions', database_url=database_url))
+    started, release, finished = Event(), Event(), Event()
+    close = app.state.records.close
+    def close_store():
+        started.set()
+        try:
+            assert release.wait(5), 'Test did not release storage close'
+            close()
+            if worker_fails:
+                raise OSError('synthetic close failure')
+        finally:
+            finished.set()
+    lifecycle = app.router.lifespan_context(app)
+    with patch.object(app.state.records, 'close', close_store):
+        await lifecycle.__aenter__()
+        shutdown = asyncio.create_task(lifecycle.__aexit__(None, None, None))
+        try:
+            assert await asyncio.to_thread(started.wait, 2)
+            for _ in range(2):
+                shutdown.cancel()
+                await asyncio.sleep(0)
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(shutdown), .05)
+            assert not app.state.records.pool.closed and not app.state.ready
+        finally:
+            release.set()
+            result = (await asyncio.wait_for(asyncio.gather(shutdown, return_exceptions=True), 2))[0]
+            assert await asyncio.to_thread(finished.wait, 2)
+    if worker_fails:
+        assert isinstance(result, OSError) and str(result) == 'synthetic close failure'
+    else:
+        assert shutdown.cancelled()
+    assert app.state.records.pool.closed
+    with connect(database_url, autocommit=True) as connection:
+        deadline = asyncio.get_running_loop().time() + 2
+        while connection.execute("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()", ()).fetchone()[0]:
+            assert asyncio.get_running_loop().time() < deadline, 'Shutdown left a database connection open'
+            await asyncio.sleep(.01)
+
+
 @pytest.mark.parametrize('probe_fails', [False, True])
-async def test_shutdown_drains_detached_readiness_probe_before_closing_storage(tmp_path, probe_fails):
-    app = create_app(settings(tmp_path))
+@pytest.mark.parametrize('cancel_shutdown', [False, True])
+async def test_shutdown_drains_detached_readiness_probe_before_closing_storage(tmp_path, database_url, probe_fails, cancel_shutdown):
+    app = create_app(settings(tmp_path, database_url=database_url))
     endpoint = next(route.endpoint for route in app.routes if getattr(route, 'path', None) == '/api/ready')
     started, release, finished = Event(), Event(), Event()
     order = []
 
+    check_storage = app.state.records.check
     def check():
         started.set()
         try:
-            assert release.wait(2)
+            assert release.wait(5)
+            check_storage()
             order.append('checked')
             if probe_fails:
                 raise OSError('test storage failure')
         finally:
             finished.set()
 
+    close = app.state.records.close
+    def close_store():
+        close()
+        order.append('closed')
     lifecycle = app.router.lifespan_context(app)
     with patch.object(app.state.records, 'check', side_effect=check), \
-            patch.object(app.state.records, 'close', side_effect=lambda: order.append('closed')):
+            patch.object(app.state.records, 'close', side_effect=close_store):
         await lifecycle.__aenter__()
         request = asyncio.create_task(endpoint())
         shutdown = None
@@ -361,14 +496,27 @@ async def test_shutdown_drains_detached_readiness_probe_before_closing_storage(t
                 await asyncio.wait_for(asyncio.shield(shutdown), .05)
             assert not app.state.ready and 'closed' not in order
             assert (await endpoint()).status_code == 503
+            if cancel_shutdown:
+                for _ in range(2):
+                    shutdown.cancel()
+                    await asyncio.sleep(0)
+                with pytest.raises(TimeoutError):
+                    await asyncio.wait_for(asyncio.shield(shutdown), .05)
+                assert not app.state.records.pool.closed and 'closed' not in order
         finally:
             release.set()
             if shutdown is None:
                 await lifecycle.__aexit__(None, None, None)
             else:
-                await asyncio.wait_for(shutdown, 2)
+                await asyncio.wait_for(asyncio.gather(shutdown, return_exceptions=True), 2)
             assert await asyncio.to_thread(finished.wait, 1)
     assert order == ['checked', 'closed']
+    assert shutdown.cancelled() is cancel_shutdown and app.state.records.pool.closed
+    with connect(database_url, autocommit=True) as connection:
+        deadline = asyncio.get_running_loop().time() + 2
+        while connection.execute("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()", ()).fetchone()[0]:
+            assert asyncio.get_running_loop().time() < deadline, 'Readiness left a database connection open'
+            await asyncio.sleep(.01)
 
 
 def test_final_review_holds_voice_capacity_until_the_record_is_saved(tmp_path):

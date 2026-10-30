@@ -283,3 +283,19 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 补充资源检查（不是已验收优化或最终无新增轮次）：在 8995709 的实际 Uvicorn/PG 中，用两个隔离账号各创建 25 条合成日记，三轮串行 100 次加 8 并发 100 次，共 600 次 HTTP 读取、约 123 秒、12 次快照；每轮后 FD=15、PG=4，退出后连接归零，末次 RSS 156048 KiB。只有单进程短时、无音频负载，不能据此排除长期内存增长。首轮探针错误要求 Uvicorn SIGTERM 退出码为 0，核对当前安装源码确认其正常关闭后重发 SIGTERM，修正为精确 -15 并重跑全部相同流程，原日志保留（`idle-resource-inspection.json`）。未改连接池或内存配置。
 
 另用 SpeechEvidence 组件加速输入 10×600 秒 PCM 状态，三次保留 Python traced 分配约 27.4–27.5 MiB（`speech-memory-baseline.json`），不是进程 RSS 或真实麦克风验收。当前只作候选发现，尚无净收益证明或实现。正式尝试前须用实际客户端“静音时发送零 PCM”的相同输入重建前后基线，保留每帧数值、控制标记、完整 describe 输出和 PCM 校验；优先评估相同静音统计 tuple 的不可变值复用，避免直接引入改动内部访问的紧凑格式。三轮最终无新增有效优化复查仍为零，goal 未完成。
+
+
+第十一项最终提交 `bd957b9df7fa319ebe90b1ce3d2ecb84b186bb71` 已通过分支 [41129837316](https://github.com/shenyankm/BreathOn/actions/runs/41129837316) 四项和 main [41131341467](https://github.com/shenyankm/BreathOn/actions/runs/41131341467) 五项 CI。已核对生产步骤成功及日志同一 release SHA，随后对外 live/ready 均 200 且为精确 ok JSON。主分支已同步，本项源分支本地/远程已删除，只剩 main，原 stash 未动；最终原始证据在 `cleanup-shutdown-comparison.json`、`cleanup-shutdown-main-production-job.json` 和 health/inventory 记录。
+
+## 12. 排空应用生命周期内的存储线程（改动前标准）
+
+在 bd957b9 上，`lifespan_storage_probe.py` 用实际应用 lifespan、文件系统与新建隔离 PostgreSQL 数据库证明：初始化线程暂停时取消启动，或就绪检查请求取消后连续取消关停两次，均提前关闭池；释放线程后发生 PoolClosed。两个场景各三次，六次顺序均 storage close → worker end，`lifespan-storage-before.json` 保存结果。就绪请求的 shield 能保护普通 HTTP 取消，却不能保护关停 gather 被取消时直接取消它拥有的 to_thread 任务。
+
+预设标准写入 `lifespan-storage-acceptance.json` 后再改代码：覆盖五个直接启动步骤（mkdir、记录存储 open、平台 open、initialize、初次附件清理），每步实际工作成功/失败与正常/连续取消启动共二十种组合；线程释放前 owner 未结束、ready=false、存储未关闭；释放后先完成工作再关闭，只有完整成功启动才可 ready。原工作错误仍优先传播，不能吞异常或把取消当成功。关闭存储本身在连续取消下也必须等实际 close 返回，覆盖完成后抛错，不得提前报告池已关闭。就绪探针以真实 PG 覆盖成功/失败和正常/重复取消关停，先完成探针再关闭池；保留现有三秒超时、并发共享一次探测、请求取消、错误脱敏和恢复语义。完成后 PG 后台连接在两秒内归零，不声称可复用 OS 线程被销毁。
+
+范围限定 app.py 直接拥有的启动/就绪/close 工作、必要回归和本记录，复用现有 visits.visit_work，不引入新 helper、依赖、配置或重试。ResearchService 内部线程仍由该服务拥有，留作随后独立生命周期审查，不声称本项修复其所有后台任务。原探针六次同环境复测、相关运行时/日记/研究回归、全量零跳过后端和随后顺序执行的真实 Caddy/Uvicorn/PG 重启及故障恢复必须通过。前端和原生树未改，沿用相同树的验收并由每个新 SHA 远程 CI 重跑。审查后独立提交推送，四项分支 CI 通过后快进 main、验收五项及实际生产 release/live/ready、删除合并分支。回退 git revert 本项 SHA，无迁移；无真机，麦克风/扬声器仍待验收。
+
+
+原始回归先暴露两个夹具问题：close mock 安装晚于回调捕获；失败基线遗留的本测试池会影响后续连接归零对照。已纠正捕获时机，并在记录真实关闭状态后才做失败夹具兜底清理，不放宽断言。保留初次失败日志，随后以原 bd957b9 app 字节重跑同一套修正后的测试：**14 failed、12 passed、3.50 秒**，失败恰为十个取消启动、两个取消 close、两个重复取消就绪关停。最终改动只有 app.py 七处线程派发复用现有排空逻辑。相关命令 `TEST_DATABASE_URL=<隔离 PG 管理 URL> uv run --directory backend --locked pytest -q tests/test_runtime.py tests/test_visits.py tests/test_research_performance.py` 得 **103 passed、11.05 秒**。完整 `npm run test:api -- -q` 带同一隔离管理入口得 **894 passed、0 skipped、87.66 秒**。
+
+相同原探针六次真实 PG 复测全部变为 worker end → storage close，无工作异常，关闭后 ready=false、池已关闭，取消正确传播（`lifespan-storage-after.json`）。全量结束后才单独执行 `deploy/check-native.py`，实际 Caddy/Uvicorn、重启、PG 停机恢复、Cookie/角色/账号隔离全部通过；本次新建库已移除，未影响用户服务或原数据库。完整命令、源码 SHA256、初始夹具失败、正式前后和各自结果复用 `lifespan-storage-acceptance.json`；没有把以上进程内故障注入或部署 smoke 当作真机语音验收。

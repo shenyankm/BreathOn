@@ -65,12 +65,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @contextlib.asynccontextmanager
     async def lifespan(app):
         async with contextlib.AsyncExitStack() as cleanup:
-            cleanup.push_async_callback(asyncio.to_thread, store.close)
-            await asyncio.to_thread(settings.records.mkdir, mode=0o700, parents=True, exist_ok=True)
-            await asyncio.to_thread(store.open)
-            await asyncio.to_thread(platform.open)
-            await asyncio.to_thread(initialize)
-            await asyncio.to_thread(visits.visit_cleanup, current_user()['workspace'])
+            cleanup.push_async_callback(visits.visit_work, store.close)
+            await visits.visit_work(lambda: settings.records.mkdir(mode=0o700, parents=True, exist_ok=True))
+            await visits.visit_work(store.open)
+            await visits.visit_work(platform.open)
+            await visits.visit_work(initialize)
+            await visits.visit_work(visits.visit_cleanup, current_user()['workspace'])
             visits.visit_recover(current_user()['workspace'])
             cleanup.push_async_callback(visits.visit_close)
             async def cleanup_visits():
@@ -186,7 +186,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not app.state.ready:
             return JSONResponse({'status':'not_ready'}, status_code=503)
         if readiness_task is None or readiness_task.done():
-            readiness_task = asyncio.create_task(asyncio.to_thread(check_storage))
+            readiness_task = asyncio.create_task(visits.visit_work(check_storage))
             readiness_task.add_done_callback(lambda task: task.exception() if not task.cancelled() else None)
         try:
             # A timed-out request cannot stop filesystem/database work in its thread.
