@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import json
+import logging
 import hashlib
 import secrets
 import httpx
@@ -24,6 +25,7 @@ from ..platform.models import content_usable
 from ..agents.web_search import public_url
 
 MAX_AUDIO = 100_000_000
+logger = logging.getLogger('medvisit')
 MEDIA_TYPES = {'audio/webm': ('matroska', 'webm'), 'audio/mpeg': ('mp3',), 'audio/mp4': ('mov', 'mp4', 'm4a'), 'audio/x-m4a': ('mov', 'mp4', 'm4a'), 'audio/wav': ('wav',), 'audio/x-wav': ('wav',)}
 
 
@@ -184,6 +186,24 @@ def visits_router(store, settings, current_user):
         if re.fullmatch(r'[a-f0-9]{32}\.transcript', name or ''):
             (audio_dir / name).unlink(missing_ok=True)
 
+    def discard_private(name, workspace):
+        if not re.fullmatch(r'[a-f0-9]{32}(?:\.transcript)?', name or ''):
+            return
+        try:
+            # Wait out an uncertain commit before taking a fresh reference snapshot.
+            with store.transaction(workspace):
+                pass
+            with store.transaction(workspace, write=False) as tx:
+                rows = tx.execute("SELECT document FROM platform_entities WHERE tenant_id=? AND kind='visit' AND document LIKE ?",
+                    (workspace, '%' + name + '%'))
+                for row in rows:
+                    item = json.loads(row[0])
+                    if name in (item.get('audio_path'), item.get('transcript_file')):
+                        return
+                (audio_dir / name).unlink(missing_ok=True)
+        except Exception as exc:
+            logger.error('visit_file_cleanup_failed error_type=%s', type(exc).__name__)
+
     def public(item):
         result = {k: v for k, v in item.items() if k not in ('audio_path', 'provider_token_hash', 'transcript_file')}
         if has_private_text(item):
@@ -216,7 +236,7 @@ def visits_router(store, settings, current_user):
                     'audio_uploaded_at':None, 'confirmed_at':None, 'review':None})
                 tx.audit(user['workspace'], user['id'], 'visit.create', 'visit', item['id'])
         except BaseException:
-            private_delete(transcript_file)
+            discard_private(transcript_file, user['workspace'])
             raise
         return public(item)
 
@@ -250,7 +270,7 @@ def visits_router(store, settings, current_user):
                 updated = tx.update(user['workspace'], 'visit', item_id, {**item, **data, 'status':'draft', 'review':None}, body.version)
                 tx.audit(user['workspace'], user['id'], 'visit.edit', 'visit', item_id)
         except BaseException:
-            private_delete(replacement)
+            discard_private(replacement, user['workspace'])
             raise
         private_delete(old_file)
         return public(updated)
@@ -341,9 +361,9 @@ def visits_router(store, settings, current_user):
         name = uuid4().hex
         path = audio_dir / name
         size = 0
-        committed = False
+        committed = persisting = False
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         try:
-            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             with os.fdopen(fd, 'wb') as output:
                 async for chunk in request.stream():
                     size += len(chunk)
@@ -367,10 +387,17 @@ def visits_router(store, settings, current_user):
                     tx.audit(user['workspace'], user['id'], 'visit.audio_upload', 'visit', item_id)
                 committed = True
                 return public(updated)
+            persisting = True
             result = await work(persist)
         except BaseException:
             if not committed:
-                path.unlink(missing_ok=True)
+                if persisting:
+                    try:
+                        await work(discard_private, name, user['workspace'])
+                    except asyncio.CancelledError:
+                        pass  # Keep the original failure after cleanup has drained.
+                else:
+                    path.unlink(missing_ok=True)
             raise
         return result
 
@@ -470,7 +497,7 @@ def visits_router(store, settings, current_user):
                                         tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribed',
                                             'transcript_file':replacement, 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
                             except BaseException:
-                                private_delete(replacement)
+                                discard_private(replacement, workspace)
                                 raise
                             private_delete(old_file)
                             if replacement:

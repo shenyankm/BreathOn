@@ -1,13 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import asyncio
 import threading
+from uuid import uuid4
 
 import pytest
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from psycopg import IsolationLevel, OperationalError, connect
 
 from medvisit.core.identity import current_role
 from medvisit.platform.store import PlatformStore
@@ -153,20 +155,25 @@ async def test_transcription_cancellation_drains_commit_before_releasing_slot(tm
     started, release, settled = asyncio.Event(), threading.Event(), threading.Event()
     loop = asyncio.get_running_loop()
     loop_thread = threading.get_ident()
+    blocked = False
     @contextmanager
     def delayed_commit(*args, **kwargs):
+        nonlocal blocked
         assert threading.get_ident() != loop_thread, 'Transcription storage blocked the event loop'
         write = kwargs.get('write', True)
+        inject = write and not blocked
+        if inject:
+            blocked = True
         try:
             with transaction(*args, **kwargs) as tx:
                 yield tx
-                if write:
+                if inject:
                     loop.call_soon_threadsafe(started.set)
                     assert release.wait(5), 'Commit was not released'
                     if commit_fails:
                         raise RuntimeError('synthetic commit failure')
         finally:
-            if write:
+            if inject:
                 settled.set()
 
     with monkeypatch.context() as storage_check:
@@ -693,28 +700,100 @@ async def test_transcription_cleanup_failure_preserves_committed_result(tmp_path
 
 
 @pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('applied', [False, True])
+async def test_transcription_failed_commit_preserves_only_committed_result(tmp_path, monkeypatch, request, storage, applied):
+    import httpx
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    item = client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'original synthetic text'}).json()
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    with store.transaction('local') as tx:
+        row = tx.get('local', 'visit', item['id'])
+        tx.update('local', 'visit', item['id'], {**row, 'audio_status':'transcribing', 'transcription_job_id':'synthetic-job'}, row['version'])
+    with store.transaction('local', write=False) as tx:
+        before = tx.get('local', 'visit', item['id'])
+    directory = tmp_path / 'visit-audio'
+    before_files = {path.name:path.read_bytes() for path in directory.iterdir()}
+    queries = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            assert url.endswith('/query')
+            queries.append(url)
+            return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'synthetic provider result', 'utterances':[]}})
+    transaction = store.transaction
+    armed = True
+    @contextmanager
+    def fail(*args, **kwargs):
+        nonlocal armed
+        inject = armed and kwargs.get('write', True)
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+            if inject and not applied:
+                armed = False
+                raise OperationalError('synthetic transcription commit failure')
+        if inject:
+            armed = False
+            raise OperationalError('synthetic transcription commit failure')
+    monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
+    with monkeypatch.context() as fault:
+        fault.setattr(store, 'transaction', fail)
+        with pytest.raises(OperationalError, match='synthetic transcription commit failure'):
+            await router.visit_run_job('local', item['id'])
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    if applied:
+        assert saved['audio_status'] == 'transcribed' and saved['version'] == before['version'] + 1
+        assert (directory / saved['transcript_file']).is_file(), 'Cleanup deleted a committed transcription'
+        detail = client.get('/api/visits/' + item['id'])
+        assert detail.status_code == 200
+        assert detail.json()['text'] == 'original synthetic text'
+        assert detail.json()['transcription_text'] == 'synthetic provider result'
+        router.visit_cleanup('local')
+        assert (directory / saved['transcript_file']).is_file()
+    else:
+        assert saved == before and {path.name:path.read_bytes() for path in directory.iterdir()} == before_files
+    assert len(queries) == 1 and not armed
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
 @pytest.mark.parametrize('operation', ['create', 'edit', 'upload'])
-def test_failed_visit_commit_cleans_only_uncommitted_files(tmp_path, monkeypatch, request, storage, operation):
+@pytest.mark.parametrize('applied', [False, True])
+@pytest.mark.parametrize('failure', [RuntimeError, OperationalError])
+def test_failed_visit_commit_cleans_only_uncommitted_files(tmp_path, monkeypatch, request, storage, operation, applied, failure):
     pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
     app, router, store = make_app(tmp_path, pool=pool)
     client = TestClient(app)
     body = {'source':'recording', 'visited_at':'2026-10-31', 'text':'private synthetic text'}
+    other = client.post('/api/visits', json=body, headers={'x-user':'bob'}).json()
     item = client.post('/api/visits', json=body).json() if operation != 'create' else None
     directory = tmp_path / 'visit-audio'
     before_files = {path.name:path.read_bytes() for path in directory.glob('*')} if directory.exists() else {}
     with store.transaction('local', write=False) as tx:
         before = tx.list('local', 'visit')
     transaction = store.transaction
+    armed = True
     @contextmanager
     def fail_commit(*args, **kwargs):
+        nonlocal armed
+        inject = armed and kwargs.get('write', True)
         with transaction(*args, **kwargs) as tx:
             yield tx
-            if kwargs.get('write', True):
-                raise RuntimeError('synthetic commit failure')
+            if inject and not applied:
+                armed = False
+                raise failure('synthetic commit failure')
+        if inject:
+            armed = False
+            raise failure('synthetic commit failure')
     monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
     with monkeypatch.context() as fault:
         fault.setattr(store, 'transaction', fail_commit)
-        with pytest.raises(RuntimeError, match='synthetic commit failure'):
+        with pytest.raises(failure, match='synthetic commit failure'):
             if operation == 'create':
                 client.post('/api/visits', json=body)
             elif operation == 'edit':
@@ -723,8 +802,269 @@ def test_failed_visit_commit_cleans_only_uncommitted_files(tmp_path, monkeypatch
                 client.post('/api/visits/' + item['id'] + '/audio', content=b'synthetic audio',
                     headers={'content-type':'audio/wav', 'x-recording-authorized':'true'})
     with store.transaction('local', write=False) as tx:
-        assert tx.list('local', 'visit') == before
-    assert {path.name:path.read_bytes() for path in directory.glob('*')} == before_files
+        after = tx.list('local', 'visit')
+    assert not armed
+    if not applied:
+        assert after == before
+        assert {path.name:path.read_bytes() for path in directory.glob('*')} == before_files
+    else:
+        originals = {row['id']:row for row in before}
+        changed = [row for row in after if row != originals.get(row['id'])]
+        assert len(changed) == 1
+        saved = changed[0]
+        assert saved['owner_id'] == 'alice'
+        assert len(after) == len(before) + (operation == 'create')
+        assert all(row == originals[row['id']] for row in after if row['id'] != saved['id'])
+        name = saved['audio_path' if operation == 'upload' else 'transcript_file']
+        assert name and (directory / name).is_file(), 'Cleanup deleted a committed private file'
+        assert (directory / name).stat().st_mode & 0o777 == 0o600
+        if operation == 'upload':
+            audio = client.get('/api/visits/' + saved['id'] + '/audio')
+            assert audio.status_code == 200 and audio.content == b'synthetic audio'
+            assert audio.headers['cache-control'] == 'no-store' and audio.headers['x-content-type-options'] == 'nosniff'
+        else:
+            detail = client.get('/api/visits/' + saved['id'])
+            assert detail.status_code == 200
+            assert detail.json()['text'] == ('replacement' if operation == 'edit' else body['text'])
+        router.visit_cleanup('local')
+        assert (directory / name).is_file()
+    assert client.get('/api/visits/' + other['id']).status_code == 404
+    assert client.get('/api/visits/' + other['id'], headers={'x-user':'bob'}).json()['text'] == body['text']
+
+
+@pytest.mark.parametrize('settle_commit', [False, True])
+@pytest.mark.parametrize('repeatable_read', [False, True])
+@pytest.mark.parametrize('cancel_cleanup', [False, True])
+async def test_upload_discard_waits_for_uncertain_transaction_to_settle(tmp_path, monkeypatch, postgres_store, settle_commit, repeatable_read, cancel_cleanup):
+    pool = postgres_store.pool
+    with ExitStack() as connections:
+        for _ in range(pool.max_size):
+            connection = connections.enter_context(pool.connection())
+            connection.isolation_level = IsolationLevel.REPEATABLE_READ if repeatable_read else IsolationLevel.READ_COMMITTED
+    app, router, store = make_app(tmp_path, pool=pool)
+    item = TestClient(app).post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/audio' and 'POST' in route.methods)
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    transaction = store.transaction
+    reported = OperationalError('synthetic uncertain transaction result')
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    settlers, errors = [], []
+    armed = True
+    @contextmanager
+    def pending(*args, **kwargs):
+        nonlocal armed
+        if not armed or not kwargs.get('write', True):
+            with transaction(*args, **kwargs) as tx:
+                yield tx
+            return
+        context = transaction(*args, **kwargs)
+        tx = context.__enter__()
+        try:
+            yield tx
+        except BaseException as exc:
+            context.__exit__(type(exc), exc, exc.__traceback__)
+            raise
+        armed = False
+        def settle():
+            try:
+                assert release.wait(5), 'Test did not release original transaction'
+                if settle_commit:
+                    context.__exit__(None, None, None)
+                else:
+                    error = OperationalError('synthetic delayed rollback')
+                    context.__exit__(type(error), error, None)
+            except BaseException as exc:
+                errors.append(type(exc).__name__)
+            finally:
+                finished.set()
+        thread = threading.Thread(target=settle)
+        settlers.append(thread)
+        thread.start()
+        started.set()
+        raise reported
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    with monkeypatch.context() as fault:
+        fault.setattr(store, 'transaction', pending)
+        stamp = asyncio.get_running_loop().time()
+        task = asyncio.create_task(endpoint(item['id'], audio_request(), user=user))
+        try:
+            assert await asyncio.to_thread(started.wait, 2)
+            assert asyncio.get_running_loop().time() - stamp < .5, 'Discard blocked the event loop'
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(task), .05)
+            files = list((tmp_path / 'visit-audio').iterdir())
+            assert len(files) == 1 and files[0].read_bytes() == b'synthetic audio'
+            with connect(postgres_store.pool.conninfo, autocommit=True) as observer:
+                waiting = observer.execute("SELECT count(*) FROM pg_locks WHERE locktype='advisory' AND NOT granted AND database=(SELECT oid FROM pg_database WHERE datname=current_database())").fetchone()[0]
+                assert waiting >= 1, 'Discard did not wait for the existing workspace lock'
+            if cancel_cleanup:
+                for _ in range(2):
+                    task.cancel()
+                    await asyncio.sleep(0)
+                assert not task.done() and files[0].is_file()
+        finally:
+            release.set()
+            result = (await asyncio.wait_for(asyncio.gather(task, return_exceptions=True), 3))[0]
+            for thread in settlers:
+                await asyncio.to_thread(thread.join, 2)
+            assert await asyncio.to_thread(finished.wait, 2)
+    assert result is reported and not task.cancelled() and not errors
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    if settle_commit:
+        assert saved['audio_status'] == 'transcription_unavailable'
+        assert (tmp_path / 'visit-audio' / saved['audio_path']).read_bytes() == b'synthetic audio'
+    else:
+        assert saved['audio_status'] == 'none' and saved['audio_path'] == ''
+        assert list((tmp_path / 'visit-audio').iterdir()) == []
+    stats = pool.get_stats()
+    assert stats['pool_available'] == stats['pool_size'] and stats['requests_waiting'] == 0
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('operation', ['create', 'edit', 'upload'])
+@pytest.mark.parametrize('applied', [False, True])
+def test_failed_private_file_check_defers_cleanup_and_preserves_original_error(tmp_path, monkeypatch, request, caplog, storage, operation, applied):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    body = {'source':'recording', 'visited_at':'2026-10-31', 'text':'synthetic original private text'}
+    other = client.post('/api/visits', json=body, headers={'x-user':'bob'}).json()
+    item = client.post('/api/visits', json=body).json() if operation != 'create' else None
+    directory = tmp_path / 'visit-audio'
+    before_files = {path.name:path.read_bytes() for path in directory.iterdir()}
+    with store.transaction('local', write=False) as tx:
+        before = tx.list('local', 'visit')
+    transaction = store.transaction
+    primary = OperationalError('synthetic primary write failure')
+    armed = True
+    @contextmanager
+    def unavailable(*args, **kwargs):
+        nonlocal armed
+        if not armed:
+            raise OSError('synthetic-private-path-and-payload')
+        inject = kwargs.get('write', True)
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+            if inject and not applied:
+                armed = False
+                raise primary
+        if inject:
+            armed = False
+            raise primary
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    caplog.set_level('ERROR', logger='medvisit')
+    with monkeypatch.context() as fault:
+        fault.setattr(store, 'transaction', unavailable)
+        with pytest.raises(OperationalError, match='synthetic primary write failure') as failed:
+            if operation == 'create':
+                client.post('/api/visits', json=body)
+            elif operation == 'edit':
+                client.put('/api/visits/' + item['id'], json={'visited_at':'2026-10-31', 'text':'replacement', 'version':item['version']})
+            else:
+                client.post('/api/visits/' + item['id'] + '/audio', content=b'synthetic audio',
+                    headers={'content-type':'audio/wav', 'x-recording-authorized':'true'})
+    assert failed.value is primary and not armed
+    after_files = {path.name:path.read_bytes() for path in directory.iterdir()}
+    created = set(after_files) - set(before_files)
+    assert len(created) == 1, 'An unverifiable file must remain available for reconciliation'
+    assert all(after_files[name] == content for name, content in before_files.items())
+    assert [record.getMessage() for record in caplog.records if record.name == 'medvisit'] == ['visit_file_cleanup_failed error_type=OSError']
+    assert 'synthetic-private-path-and-payload' not in caplog.text
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits' and 'POST' in route.methods)
+    discard = next(cell.cell_contents for cell in endpoint.__closure__ if getattr(cell.cell_contents, '__name__', '') == 'discard_private')
+    name = created.pop()
+    discard(name, 'local')
+    if applied:
+        assert (directory / name).is_file()
+        router.visit_cleanup('local')
+        assert (directory / name).is_file()
+    else:
+        with store.transaction('local', write=False) as tx:
+            assert tx.list('local', 'visit') == before
+        assert {path.name:path.read_bytes() for path in directory.iterdir()} == before_files
+    assert client.get('/api/visits/' + other['id'], headers={'x-user':'bob'}).json()['text'] == body['text']
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+def test_upload_exclusive_create_failure_preserves_existing_file(tmp_path, monkeypatch, request, storage):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    item = client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    directory = tmp_path / 'visit-audio'
+    directory.mkdir(mode=0o700)
+    existing = directory / uuid4().hex
+    existing.write_bytes(b'synthetic file owned by another upload')
+    existing.chmod(0o600)
+    monkeypatch.setattr('medvisit.visits.api.uuid4', lambda: SimpleNamespace(hex=existing.name))
+    with pytest.raises(FileExistsError):
+        client.post('/api/visits/' + item['id'] + '/audio', content=b'new synthetic audio',
+            headers={'content-type':'audio/wav', 'x-recording-authorized':'true'})
+    assert existing.read_bytes() == b'synthetic file owned by another upload'
+    assert existing.stat().st_mode & 0o777 == 0o600 and list(directory.iterdir()) == [existing]
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    assert saved['audio_path'] == '' and saved['audio_status'] == 'none'
+
+
+async def test_upload_discard_pool_exhaustion_preserves_file_and_event_loop(tmp_path, monkeypatch, postgres_store, caplog):
+    app, router, store = make_app(tmp_path, pool=postgres_store.pool)
+    item = TestClient(app).post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/audio' and 'POST' in route.methods)
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    transaction = store.transaction
+    exhausted = threading.Event()
+    primary = OperationalError('synthetic applied commit acknowledgement failure')
+    armed = True
+    with ExitStack() as held:
+        @contextmanager
+        def fail_after_commit(*args, **kwargs):
+            nonlocal armed
+            inject = armed and kwargs.get('write', True)
+            with transaction(*args, **kwargs) as tx:
+                yield tx
+            if inject:
+                armed = False
+                for _ in range(postgres_store.pool.max_size):
+                    held.enter_context(postgres_store.pool.connection())
+                exhausted.set()
+                raise primary
+        caplog.set_level('ERROR', logger='medvisit')
+        with monkeypatch.context() as fault:
+            fault.setattr(store, 'transaction', fail_after_commit)
+            loop = asyncio.get_running_loop()
+            start = loop.time()
+            task = asyncio.create_task(endpoint(item['id'], audio_request(), user={'id':'alice', 'workspace':'local', 'team':''}))
+            gaps = []
+            try:
+                assert await asyncio.to_thread(exhausted.wait, 2)
+                assert loop.time() - start < .5, 'Discard blocked the event loop'
+                while not task.done():
+                    stamp = loop.time()
+                    await asyncio.sleep(.02)
+                    gaps.append(loop.time() - stamp)
+                    assert loop.time() - start < 17, 'Discard did not respect bounded pool timeout'
+                elapsed = loop.time() - start
+            finally:
+                held.close()
+                result = (await asyncio.wait_for(asyncio.gather(task, return_exceptions=True), 3))[0]
+    assert result is primary and 4 <= elapsed < 17
+    assert len(gaps) >= 20 and max(gaps) < .5
+    assert [record.getMessage() for record in caplog.records if record.name == 'medvisit'] == ['visit_file_cleanup_failed error_type=PoolTimeout']
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    assert saved['audio_status'] == 'transcription_unavailable'
+    path = tmp_path / 'visit-audio' / saved['audio_path']
+    assert path.read_bytes() == b'synthetic audio'
+    create = next(route.endpoint for route in router.routes if route.path == '/api/visits' and 'POST' in route.methods)
+    discard = next(cell.cell_contents for cell in create.__closure__ if getattr(cell.cell_contents, '__name__', '') == 'discard_private')
+    await asyncio.to_thread(discard, saved['audio_path'], 'local')
+    assert path.read_bytes() == b'synthetic audio'
+    stats = postgres_store.pool.get_stats()
+    assert stats['pool_available'] == stats['pool_size'] and stats['requests_waiting'] == 0
+    await router.visit_close()
 
 
 def audio_request(content=b'synthetic audio'):
@@ -820,7 +1160,7 @@ async def test_upload_cancellation_preserves_committed_audio(tmp_path, monkeypat
     def delayed(*args, **kwargs):
         with transaction(*args, **kwargs) as tx:
             yield tx
-            if kwargs.get('write', True):
+            if kwargs.get('write', True) and not entered.is_set():
                 entered.set()
                 assert release.wait(5)
                 if commit_fails:

@@ -299,3 +299,28 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 原始回归先暴露两个夹具问题：close mock 安装晚于回调捕获；失败基线遗留的本测试池会影响后续连接归零对照。已纠正捕获时机，并在记录真实关闭状态后才做失败夹具兜底清理，不放宽断言。保留初次失败日志，随后以原 bd957b9 app 字节重跑同一套修正后的测试：**14 failed、12 passed、3.50 秒**，失败恰为十个取消启动、两个取消 close、两个重复取消就绪关停。最终改动只有 app.py 七处线程派发复用现有排空逻辑。相关命令 `TEST_DATABASE_URL=<隔离 PG 管理 URL> uv run --directory backend --locked pytest -q tests/test_runtime.py tests/test_visits.py tests/test_research_performance.py` 得 **103 passed、11.05 秒**。完整 `npm run test:api -- -q` 带同一隔离管理入口得 **894 passed、0 skipped、87.66 秒**。
 
 相同原探针六次真实 PG 复测全部变为 worker end → storage close，无工作异常，关闭后 ready=false、池已关闭，取消正确传播（`lifespan-storage-after.json`）。全量结束后才单独执行 `deploy/check-native.py`，实际 Caddy/Uvicorn、重启、PG 停机恢复、Cookie/角色/账号隔离全部通过；本次新建库已移除，未影响用户服务或原数据库。完整命令、源码 SHA256、初始夹具失败、正式前后和各自结果复用 `lifespan-storage-acceptance.json`；没有把以上进程内故障注入或部署 smoke 当作真机语音验收。
+
+
+第十二项最终提交 `deffcf03d5633cb37d7c9bcd6b90914c7210aead` 已通过分支 [41134304300](https://github.com/shenyankm/BreathOn/actions/runs/41134304300) 四项和 main [41135523838](https://github.com/shenyankm/BreathOn/actions/runs/41135523838) 五项 CI。实际生产步骤成功，日志精确 release SHA 与提交一致；随后外部 live/ready 均 200、精确 ok JSON。源分支本地/远程已删除，只剩 main，原 stash 保留，工作区干净。最终完整证据复用 `lifespan-storage-acceptance.json`。
+
+## 13. 保护提交结果不明时的私有文件（改动前标准）
+
+在 deffcf0 上用真实隔离 PG、文件和独立新观察连接，分别在真实 COMMIT 后注入 OperationalError、在提交前强制实际回滚。创建/编辑/上传各 3+3 组（`private-commit-outcome-discovery.json`），转写落盘再 3+3 组（`transcription-commit-outcome-discovery.json`）。共十二次已提交错误都删除了数据库已引用的新文件，读取转写返回 409、读取录音返回 404；十二次确定回滚对照保留原数据且清理新文件。上传使用真实 ffprobe 校验的两秒 WAV；转写只模拟一次 query、不 submit，不冒充真实 ASR 或抓取到网络 ACK 丢失。
+
+标准在生产改动前保存于 `private-commit-outcome-acceptance.json`：四个写入点在 SQLite/实际 PG 的已提交错误、真实回滚、文件读取/权限和账号隔离均须正确；仍返回原始错误，不能把失败写成成功。另以真实 PG 持有原事务，在 API 已见错误后延迟 commit/rollback，清理必须等待原 workspace 事务结束，再在新事务里检查引用；覆盖 read committed 和 repeatable read，避免等待锁时建立旧快照。复用现有事务串行化，依据 [PostgreSQL 17 advisory lock](https://www.postgresql.org/docs/17/explicit-locking.html#ADVISORY-LOCKS) 与 [事务隔离](https://www.postgresql.org/docs/17/transaction-iso.html) 语义，仍以实际集成结果验收，不以文档代替测试。
+
+范围只含 visits 内失败文件清理、四处调用、上传异步排空、排他创建失败时的文件所有权，以及必要回归。原文件 UUID 冲突不得删除既有文件；重复取消须排空并保留原工作异常优先级。数据库无法核实引用时保留文件、日志仅记异常类型、原错误继续传播；恢复后同一清理逻辑须可正确核对和回收。取舍明确：只在失败路径增加现有 workspace 事务屏障与新快照查询，DB 故障响应可额外等待既有超时，故障测试上限 17 秒；不能安全确定提交结果时，最多保留现有 100 MB 上传上限的待核实文件。已有转写孤儿清理沿用，自动 raw 音频崩溃/延期孤儿回收另项立即继续审查，不将其写成本项已解决。
+
+正常上传以同一真实 ffprobe、5/51 MB WAV、文件/PG、每组合每进程 30 次及三轮进程对照；p50/p95 不得同时超过相对 15% 且绝对 5 ms 的退化，字节和下载策略完全一致。阻塞错误清理时其他事件循环/实际 live 请求仍须响应。完整零跳过 PG 后端、随后顺序真实 Caddy/Uvicorn/PG 部署恢复、diff 审查、独立提交推送、当前 SHA 分支四项 CI、main 五项与实际生产 SHA/健康均为必需。回退 git revert 本项 SHA，无数据结构、依赖或配置迁移；真机音频仍未验收，goal 未完成。
+
+
+修改前核心回归 **24 failed、14 passed、2.03 秒**，包含已提交错误、延迟提交/回滚、连续取消与排他文件冲突；增加“无法核实引用”及真实池耗尽后，原 deffcf0 visits 字节重放为 **37 failed、14 passed、2.56 秒**。复用一个失败文件清理函数：先等待现有 workspace 写事务屏障结束，再另开只读事务取新快照，仅查询含候选文件名的文档并核对两个引用字段；只在确定未引用时删除。数据库/文件核实失败仅记录异常类型，原失败仍传播。上传的核对在既有 work 中排空，排他创建失败不进入未拥有文件的回滚清理。
+
+核心修改后 **38 passed、2.32 秒**。首轮相关回归四项旧取消夹具对所有后续 write=True 屏障也抛错，导致本应表示“单次原提交回滚”的场景变为持续核实故障。保留所有原数据和资源断言，仅将故障限定到原事务一次；持续故障单独新增十二项及一次真实 PG 全池耗尽。重跑相关 **145 passed、17.99 秒**。同一正式源代码探针在隔离模块中分别加载提交前/候选代码，不再切换主工作树：四写入点合计十二次已提交错误由丢失十二份引用文件变为丢失零份，十二次真实回滚对照前后均通过；原异常继续返回，另有原文件所有权、账号、私有权限、恢复核对与连续取消边界。转写只 mock query、不 submit。
+
+正常上传初次固定前后测量每类各 90 次，文件 5 MB p50/p95 11.434/12.249 → 11.176/11.652 ms、51 MB 34.538/41.540 → 32.416/38.123 ms，PG 5 MB 13.279/15.109 → 13.050/14.665 ms；但 PG 51 MB p95 **42.797 → 84.900 ms，未通过**，原始最大值达到 583 ms，未将此轮写成通过。阶段诊断在原版也观测到约 972 ms 的 DB 阶段；诊断中间件及旧版额外未使用 app 的测量不作为验收。随后保留失败证据，用同一原始无插桩方法、单一 canonical 模块与 app，三组交替旧/新 PG 进程重测，每版本每类仍 90 次：5 MB p50/p95 13.175/14.802 → 13.214/16.900 ms，51 MB 34.198/46.978 → 33.650/38.827 ms，均通过原 15% 且 5 ms 的门槛。只据此检查正常路径无超门槛退化，不宣称加速，未删失败样本或降低标准；分布、各进程分位数、冷业务首个上传和诊断限制在 `private-commit-normal-comparison.json`、`private-commit-upload-paired.json`、`private-commit-paired-comparison.json` 中。
+
+真实 Uvicorn/HTTP/ffprobe/PG 故障对照：在真实 COMMIT 后注入确认错误、占满四个连接，每版三次相同 5.5 秒窗口，各 90 次 live 请求。修改前/后 live p50/p95 为 2.427/3.089 → 2.989/3.380 ms，故障期间仍响应；释放后 ready 恢复 200，录音读取从三次全 404 变为三次全 200 且字节精确一致。故障响应代价从约 23–26 ms 增为 5037–5039 ms，符合预先声明的核实等待取舍，仍为原 503，不能伪装成成功。实际网络服务、池耗尽和文件是真实的，但确认丢失仍是注入，不声称抓取到 wire ACK 丢失。上述 HTTP 探针的临时服务、线程及数据库已清理；CLI 和完整证据复用 `private-commit-outcome-acceptance.json`。
+
+
+本项完整后端 **939 passed、0 skipped、94.68 秒**，随后单独实际原生部署集成通过（`private-commit-full.log`、`private-commit-native.log`）：真实 Caddy/Uvicorn、进程重启、PG 停机恢复和 Cookie/角色/账号隔离，独立临时库已删除。未在全量 pytest/测量期间停止共享测试容器。生产代码 diff 33 行新增、6 行删除，变更只在失败路径增加核实，正常路径没有新增数据库请求；非平凡边界保留回归。前端/原生树未变，保留相同树已有验收并由本项每个新 SHA CI 重跑完整前端和 ARM64 APK 检查；不将模拟 ASR 或已有真机缺项写成通过。剩余 raw 崩溃/延期孤儿回收、研究服务自身启动线程及其他候选继续审查，最终无新增有效优化轮次仍为零。
