@@ -99,6 +99,22 @@ def visits_router(store, settings, current_user):
     audio_dir = Path(settings.records).parent / 'visit-audio'
     slots = asyncio.Semaphore(1)
     tasks = set()
+    lifecycle = asyncio.Lock()
+    closing = False
+
+    async def work(function, *args):
+        worker = asyncio.create_task(asyncio.to_thread(function, *args))
+        cancelled = False
+        # Keep lifecycle guards until the transaction and private-file cleanup finish.
+        while not worker.done():
+            try:
+                await asyncio.shield(worker)
+            except asyncio.CancelledError:
+                cancelled = True
+        result = worker.result()
+        if cancelled:
+            raise asyncio.CancelledError
+        return result
 
     def has_private_text(item):
         return item.get('source') == 'recording' or item.get('private_audio', False)
@@ -360,12 +376,24 @@ def visits_router(store, settings, current_user):
             return FileResponse(audio_dir / name, media_type=item['audio_type'], headers={'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'})
 
     async def run_job(workspace, item_id, token=None):
-        async with slots:
+        def read():
             with store.transaction(workspace, write=False) as tx:
-                item = tx.get(workspace, 'visit', item_id)
+                return tx.get(workspace, 'visit', item_id)
+
+        async with slots:
+            item = await work(read)
             if not item or item.get('audio_status') not in ('queued', 'transcribing'):
                 return
             job_id = item['transcription_job_id']
+
+            def finish(status):
+                with store.transaction(workspace) as tx:
+                    item = tx.get(workspace, 'visit', item_id)
+                    if item and item.get('audio_status') == 'transcribing' and item.get('transcription_job_id') == job_id:
+                        tx.update(workspace, 'visit', item_id, {**item, 'audio_status':status,
+                            'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
+                        remove_provider_files(item.get('audio_path', ''))
+
             headers = {'X-Api-Key': settings.asr_api_key, 'X-Api-Resource-Id': 'volc.seedasr.auc',
                        'X-Api-Request-Id': job_id, 'X-Api-Sequence': '-1'}
             async with httpx.AsyncClient(timeout=30, follow_redirects=False, trust_env=False) as client:
@@ -373,11 +401,15 @@ def visits_router(store, settings, current_user):
                     origins = [origin for origin in settings.origins if origin.startswith('https://')]
                     if not origins or not settings.asr_api_key:
                         return
-                    with store.transaction(workspace) as tx:
-                        item = tx.get(workspace, 'visit', item_id)
-                        if not item or item.get('audio_status') != 'queued':
-                            return
-                        item = tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribing', 'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, item['version'])
+                    def begin():
+                        with store.transaction(workspace) as tx:
+                            item = tx.get(workspace, 'visit', item_id)
+                            if not item or item.get('audio_status') != 'queued' or item.get('transcription_job_id') != job_id:
+                                return None
+                            return tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribing', 'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, item['version'])
+                    item = await work(begin)
+                    if item is None:
+                        return
                     body = {'user':{'uid':job_id}, 'audio':{'url':f'{origins[0]}/api/visits/{item_id}/provider-audio?token={token}',
                         'format':{'audio/webm':'ogg', 'audio/mpeg':'mp3', 'audio/mp4':'m4a', 'audio/x-m4a':'m4a', 'audio/wav':'wav', 'audio/x-wav':'wav'}[item['audio_type']]},
                         'request':{'model_name':'bigmodel', 'enable_speaker_info':True, 'show_utterances':True,
@@ -392,8 +424,7 @@ def visits_router(store, settings, current_user):
                     except (httpx.HTTPError, ValueError):
                         pass
                 for _ in range(720):
-                    with store.transaction(workspace, write=False) as tx:
-                        item = tx.get(workspace, 'visit', item_id)
+                    item = await work(read)
                     if not item or item.get('audio_status') != 'transcribing' or item.get('transcription_job_id') != job_id:
                         return
                     try:
@@ -403,12 +434,7 @@ def visits_router(store, settings, current_user):
                             await asyncio.sleep(15)
                             continue
                         if code and code not in ('20000000', '20000001', '20000002'):
-                            with store.transaction(workspace) as tx:
-                                item = tx.get(workspace, 'visit', item_id)
-                                if item and item.get('audio_status') == 'transcribing' and item.get('transcription_job_id') == job_id:
-                                    tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcription_failed',
-                                        'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
-                                    remove_provider_files(item.get('audio_path', ''))
+                            await work(finish, 'transcription_failed')
                             return
                         data = response.json() if code == '20000000' else None
                         result = data.get('result', {}) if isinstance(data, dict) else {}
@@ -423,31 +449,28 @@ def visits_router(store, settings, current_user):
                             extra = part.get('additions') if isinstance(part.get('additions'), dict) else {}
                             segments.append({'text':part['text'][:4000], 'start_time':part.get('start_time'),
                                              'end_time':part.get('end_time'), 'speaker_id':str(extra.get('speaker', 'unknown'))[:100]})
-                        replacement, old_file = '', ''
-                        try:
-                            with store.transaction(workspace) as tx:
-                                item = tx.get(workspace, 'visit', item_id)
-                                if item and item.get('audio_status') == 'transcribing' and item.get('transcription_job_id') == job_id:
-                                    raw = private_read(item)
-                                    old_file = item.get('transcript_file', '')
-                                    replacement = private_write({'text':raw.get('text') or text, 'transcription_text':text, 'segments':segments})
-                                    tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribed',
-                                        'transcript_file':replacement, 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
-                            private_delete(old_file)
-                            if replacement:
-                                remove_provider_files(item.get('audio_path', ''))
-                        except BaseException:
-                            private_delete(replacement)
-                            raise
+                        def persist():
+                            replacement, old_file = '', ''
+                            try:
+                                with store.transaction(workspace) as tx:
+                                    item = tx.get(workspace, 'visit', item_id)
+                                    if item and item.get('audio_status') == 'transcribing' and item.get('transcription_job_id') == job_id:
+                                        raw = private_read(item)
+                                        old_file = item.get('transcript_file', '')
+                                        replacement = private_write({'text':raw.get('text') or text, 'transcription_text':text, 'segments':segments})
+                                        tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribed',
+                                            'transcript_file':replacement, 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
+                                private_delete(old_file)
+                                if replacement:
+                                    remove_provider_files(item.get('audio_path', ''))
+                            except BaseException:
+                                private_delete(replacement)
+                                raise
+                        await work(persist)
                         return
                     except (httpx.HTTPError, ValueError, TypeError):
                         await asyncio.sleep(15)
-                with store.transaction(workspace) as tx:
-                    item = tx.get(workspace, 'visit', item_id)
-                    if item and item.get('audio_status') == 'transcribing' and item.get('transcription_job_id') == job_id:
-                        tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcription_interrupted',
-                            'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
-                        remove_provider_files(item.get('audio_path', ''))
+                await work(finish, 'transcription_interrupted')
 
     def launch(workspace, item_id, token=None):
         task = asyncio.create_task(run_job(workspace, item_id, token))
@@ -460,20 +483,44 @@ def visits_router(store, settings, current_user):
             raise HTTPException(503, '录音转写服务尚未配置可访问的 HTTPS 地址或凭据。')
         token = secrets.token_urlsafe(32)
         job_id = str(uuid4())
-        with store.transaction(user['workspace']) as tx:
-            item = get_item(tx, user, item_id)
-            if item['owner_id'] != user['id']:
-                raise HTTPException(403, '仅记录本人可发起转写。')
-            if item.get('audio_status') not in ('transcription_unavailable', 'transcription_interrupted', 'transcription_failed'):
-                raise HTTPException(409, '录音不存在或转写正在进行。')
-            if not item.get('audio_path') or retention_expired(item):
-                raise HTTPException(409, '录音已删除或已到保留期限。')
-            item = tx.update(user['workspace'], 'visit', item_id, {**item, 'audio_status':'queued',
-                'transcription_job_id':job_id, 'provider_token_hash':hashlib.sha256(token.encode()).hexdigest(),
-                'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, item['version'])
-            tx.audit(user['workspace'], user['id'], 'visit.transcription_start', 'visit', item_id)
-        launch(user['workspace'], item_id, token)
-        return public(item)
+        item = None
+
+        def enqueue():
+            nonlocal item
+            with store.transaction(user['workspace']) as tx:
+                current = get_item(tx, user, item_id)
+                if current['owner_id'] != user['id']:
+                    raise HTTPException(403, '仅记录本人可发起转写。')
+                if current.get('audio_status') not in ('transcription_unavailable', 'transcription_interrupted', 'transcription_failed'):
+                    raise HTTPException(409, '录音不存在或转写正在进行。')
+                if not current.get('audio_path') or retention_expired(current):
+                    raise HTTPException(409, '录音已删除或已到保留期限。')
+                updated = tx.update(user['workspace'], 'visit', item_id, {**current, 'audio_status':'queued',
+                    'transcription_job_id':job_id, 'provider_token_hash':hashlib.sha256(token.encode()).hexdigest(),
+                    'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, current['version'])
+                tx.audit(user['workspace'], user['id'], 'visit.transcription_start', 'visit', item_id)
+            item = updated
+            return item
+
+        def interrupt():
+            with store.transaction(user['workspace']) as tx:
+                current = tx.get(user['workspace'], 'visit', item_id)
+                if current and current.get('audio_status') == 'queued' and current.get('transcription_job_id') == job_id:
+                    tx.update(user['workspace'], 'visit', item_id, {**current, 'audio_status':'transcription_interrupted',
+                        'provider_token_hash':'', 'provider_token_expires':None}, current['version'])
+                    tx.audit(user['workspace'], user['id'], 'visit.transcription_cancel', 'visit', item_id)
+
+        async with lifecycle:
+            if closing:
+                raise HTTPException(503, '服务正在停止，请稍后重试。')
+            try:
+                await work(enqueue)
+            except asyncio.CancelledError:
+                if item is not None:
+                    await work(interrupt)
+                raise
+            launch(user['workspace'], item_id, token)
+            return public(item)
 
     @router.post('/{item_id}/transcription/cancel')
     def cancel_transcription(item_id: str, user=Depends(current_user)):
@@ -554,10 +601,13 @@ def visits_router(store, settings, current_user):
                     launch(workspace, item['id'])
 
     async def close():
-        for task in tasks.copy():
-            task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        nonlocal closing
+        async with lifecycle:
+            closing = True
+            for task in tasks.copy():
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     def cleanup(workspace):
         cutoff = datetime.now(timezone.utc)

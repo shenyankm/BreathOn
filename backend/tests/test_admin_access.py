@@ -11,6 +11,7 @@ from medvisit.api.auth import hash_password
 from medvisit.core.config import Settings
 from medvisit.storage.records import SessionRecord
 from medvisit.storage.checkpoints import SessionCheckpoint, read_checkpoint
+from test_storage import database_url
 
 
 def test_config_requires_known_admin_and_configures_capacity(monkeypatch):
@@ -25,11 +26,13 @@ def test_config_requires_known_admin_and_configures_capacity(monkeypatch):
         Settings()
 
 
-def test_admin_record_access_is_audited_and_representative_cannot_manage(tmp_path):
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+def test_admin_record_access_is_audited_and_representative_cannot_manage(tmp_path, request, storage):
     password = 'example secure password'
     encoded = hash_password(password)
     origin = 'https://example.test'
-    app = create_app(Settings(records=tmp_path, auth_required=True,
+    url = request.getfixturevalue('database_url') if storage == 'postgres' else ''
+    app = create_app(Settings(records=tmp_path, database_url=url, auth_required=True,
         login_users={'admin':encoded, 'rep':encoded}, origins=(origin,)))
     if not any(getattr(route, 'path', '') == '/api/admin/sessions' for route in app.routes):
         from medvisit.api.admin_records import admin_records_router
@@ -39,6 +42,9 @@ def test_admin_record_access_is_audited_and_representative_cannot_manage(tmp_pat
         record.data.update(workspace=app.state.local_user['workspace'], owner_id='rep', team='')
         app.state.records.save(record, 'completed')
         assert client.post('/api/auth/login', json={'username':'rep', 'password':password}).json()['role'] == 'representative'
+        personal = client.get('/api/sessions')
+        assert [row['id'] for row in personal.json()] == [record.data['id']]
+        assert 'owner_id' not in personal.text
         assert client.get('/api/admin/sessions').status_code == 403
         assert client.post('/api/catalog/doctor', json={}).status_code == 403
         assert client.get('/api/research').status_code == 403
@@ -46,11 +52,18 @@ def test_admin_record_access_is_audited_and_representative_cannot_manage(tmp_pat
         assert client.get('/api/sessions/' + record.data['id']).status_code == 200
         client.post('/api/auth/logout')
         assert client.post('/api/auth/login', json={'username':'admin', 'password':password}).json()['role'] == 'admin'
+        with patch.object(app.state.records, 'get_many', wraps=app.state.records.get_many) as bodies:
+            listing = client.get('/api/admin/sessions')
+            assert listing.status_code == 200
+            bodies.assert_not_called()
+        assert [(row['id'], row['owner_id']) for row in listing.json()] == [(record.data['id'], 'rep')]
+        assert 'owner_id' not in client.get('/api/sessions').text
         response = client.get('/api/admin/sessions/' + record.data['id'])
         assert response.status_code == 200 and response.json()['owner_id'] == 'rep'
         with app.state.platform.transaction(app.state.local_user['workspace'], write=False) as tx:
             assert any(row['action'] == 'session.read' and row['object_id'] == record.data['id']
                 for row in tx.list(app.state.local_user['workspace'], 'audit'))
+            assert any(row['action'] == 'session.list' for row in tx.list(app.state.local_user['workspace'], 'audit'))
 
 
 def test_checkpoint_keeps_only_confirmed_turns_and_recovers_with_owner_access(tmp_path):

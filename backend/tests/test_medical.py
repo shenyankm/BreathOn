@@ -3,7 +3,7 @@ from copy import deepcopy
 from io import BytesIO
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from zipfile import ZipFile
 
 import pytest
@@ -42,6 +42,33 @@ def corpus_fixture(root):
 def model_result(evidence):
     return {'statements':[{'id':'s0','status':'contradicted','reason':'Synthetic numeric mismatch',
         'correction':'测试值应为10%。','citations':[{'chunk_id':evidence[0]['id'],'quote':'测试药甲在测试人群中的指标为10%'}]}]}
+
+
+def test_approval_receipts_hash_each_document_once_and_refresh_on_change(tmp_path):
+    import hashlib
+
+    corpus = corpus_fixture(tmp_path)
+    document = corpus.approved_documents()[0]
+    pages = [{'number':page, 'text':f'Synthetic software fixture page {page}.'} for page in range(1, 4)]
+    document['pages'] = deepcopy(pages)
+    data = corpus.load()
+    data['sources'][0]['pages'] = deepcopy(pages)
+    expected = {'document_id':document['id'], 'document_version':1, 'version_label':'test-v1',
+        'document_sha256':hashlib.sha256(json.dumps(pages, ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
+    with patch('medvisit.knowledge.corpus.hashlib.sha256', wraps=hashlib.sha256) as digest:
+        before = corpus.approval_snapshot(data)
+        assert digest.call_count == 1
+    assert before == {(source, page):expected for source in ('test-source', 'platform-document-approved-content') for page in range(1, 4)}
+    document.update(version=2, version_label='test-v2')
+    document['pages'][0]['text'] = 'Changed synthetic fixture.'
+    after = corpus.approval_snapshot(data)
+    assert ('test-source', 1) not in after and ('test-source', 2) in after
+    receipt = after[('test-source', 2)]
+    assert receipt['document_version'] == 2 and receipt['version_label'] == 'test-v2'
+    assert receipt['document_sha256'] != expected['document_sha256']
+    assert all(value == expected for value in before.values())
+    document['status'] = 'retired'
+    assert corpus.approval_snapshot(data) == {}
 
 
 def test_quotes_are_bound_to_actual_retrieved_chunks_and_ocr_is_not_authoritative(tmp_path):

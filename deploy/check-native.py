@@ -1,6 +1,7 @@
 """Exercise native Uvicorn/Caddy against an explicitly disposable PostgreSQL container."""
 from contextlib import contextmanager
 from dataclasses import dataclass
+from http.client import HTTPException
 from ipaddress import ip_address
 import json
 import os
@@ -89,7 +90,7 @@ def wait_ready(origin, processes, timeout=90):
         try:
             if status(origin, '/api/ready') == 200:
                 return
-        except (OSError, URLError):
+        except (OSError, URLError, HTTPException):
             pass
         time.sleep(0.2)
     raise SmokeError('The native API did not become ready through Caddy')

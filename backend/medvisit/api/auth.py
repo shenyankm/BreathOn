@@ -84,8 +84,17 @@ class Authentication:
         users = self.settings.login_users
         salt, expected = password_parts(users.get(body.username, next(iter(users.values()))))
         async with self.verifying:
-            actual = await asyncio.to_thread(hashlib.scrypt, body.password.encode(), salt=salt,
-                                             **SCRYPT)
+            verifying = asyncio.create_task(asyncio.to_thread(hashlib.scrypt, body.password.encode(), salt=salt, **SCRYPT))
+            cancelled = False
+            # Cancelling a request cannot stop scrypt or release its memory limit early.
+            while not verifying.done():
+                try:
+                    await asyncio.shield(verifying)
+                except asyncio.CancelledError:
+                    cancelled = True
+            actual = verifying.result()
+            if cancelled:
+                raise asyncio.CancelledError
         username_ok = body.username in users
         if not hmac.compare_digest(actual, expected) or not username_ok:
             raise HTTPException(401, '账号或密码不正确。')

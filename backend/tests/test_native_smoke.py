@@ -1,6 +1,10 @@
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
+from types import SimpleNamespace
+import time
 
 import pytest
 
@@ -60,3 +64,46 @@ def test_native_child_is_terminated_when_a_check_fails(tmp_path):
             assert child.poll() is None
             raise AssertionError('Synthetic check failure')
     assert child.poll() is not None
+
+
+@pytest.mark.parametrize('faults', [1, None])
+def test_native_readiness_retries_truncated_status_until_ready_or_deadline(faults):
+    class Handler(BaseHTTPRequestHandler):
+        calls = 0
+        def log_message(self, *args): pass
+        def do_GET(self):
+            type(self).calls += 1
+            if faults is None or type(self).calls <= faults:
+                self.wfile.write(b'HTTP/1.1 20')
+                self.close_connection = True
+                return
+            self.send_response(200)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+    with ThreadingHTTPServer(('127.0.0.1', 0), Handler) as server:
+        worker = Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        started = time.monotonic()
+        try:
+            origin = f'http://127.0.0.1:{server.server_port}'
+            processes = [SimpleNamespace(poll=lambda:None)]
+            if faults is None:
+                with pytest.raises(smoke.SmokeError, match='did not become ready'):
+                    smoke.wait_ready(origin, processes, timeout=0.35)
+            else:
+                smoke.wait_ready(origin, processes, timeout=2)
+        finally:
+            server.shutdown()
+            worker.join(timeout=2)
+    if faults is None:
+        assert Handler.calls >= 1
+    else:
+        assert Handler.calls == 2
+    assert time.monotonic() - started < 2
+
+
+def test_native_readiness_fails_immediately_if_a_process_exits(monkeypatch):
+    monkeypatch.setattr(smoke, 'status', lambda *args:pytest.fail('Exited processes must fail before HTTP'))
+    with pytest.raises(smoke.SmokeError, match='process exited'):
+        smoke.wait_ready('http://127.0.0.1', [SimpleNamespace(poll=lambda:1)])

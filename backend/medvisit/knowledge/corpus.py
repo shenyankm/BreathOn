@@ -105,23 +105,22 @@ class MedicalCorpus:
             return {}
         approved = self.reviewed_documents()
         matches = {}
+        receipts = []
         for doc in approved:
             receipt = {'document_id':doc['id'], 'document_version':doc['version'],
                        'version_label':doc['version_label'], 'document_sha256':hashlib.sha256(
                            json.dumps(doc.get('pages', []), ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
+            receipts.append((doc, receipt))
             for page in doc.get('pages', []):
                 matches[(f"platform-document-{doc['id']}", page['number'])] = receipt
         for source in data['sources']:
-            for doc in approved:
+            for doc, receipt in receipts:
                 if not doc.get('source_url') or source.get('url') != doc['source_url']:
                     continue
                 pages = {p['number']: quotation_text(p['text']) for p in doc.get('pages', [])}
                 for page in source.get('pages', []):
                     if pages.get(page['number']) == quotation_text(page['text']) and pages.get(page['number']):
                         key = (source['id'], page['number'])
-                        receipt = {'document_id':doc['id'], 'document_version':doc['version'],
-                                   'version_label':doc['version_label'], 'document_sha256':hashlib.sha256(
-                                       json.dumps(doc.get('pages', []), ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
                         if key not in matches or (receipt['document_id'], receipt['document_version']) < (matches[key]['document_id'], matches[key]['document_version']):
                             matches[key] = receipt
         return matches

@@ -122,7 +122,7 @@ class SessionRecord:
         write_private(directory / f'{self.data["id"]}.json', json.dumps(self.data, ensure_ascii=False).encode())
 
 
-def list_records(directory: Path, *, workspace=None, owner_id=None, team=None, activity=False, limit=50) -> list[dict]:
+def list_records(directory: Path, *, workspace=None, owner_id=None, team=None, activity=False, limit=50, include_owner=False) -> list[dict]:
     records = []
     paths = []
     for path in directory.glob("*.json"):
@@ -159,7 +159,8 @@ def list_records(directory: Path, *, workspace=None, owner_id=None, team=None, a
                 records.append({
                     **{key: data.get(key) for key in ("id", "experience", "mode", "started_at", "ended_at", "status")},
                     "message_count": len(data["messages"]),
-                    "scenario_title": (data.get('training') or {}).get('scenario', {}).get('title')})
+                    "scenario_title": (data.get('training') or {}).get('scenario', {}).get('title'),
+                    **({'owner_id': data.get('owner_id')} if include_owner else {})})
         except (OSError, ValueError, TypeError, AttributeError, KeyError):
             continue
         if limit is not None and len(records) == limit:

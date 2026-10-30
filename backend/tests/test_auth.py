@@ -1,3 +1,5 @@
+import asyncio
+import threading
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -7,7 +9,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from medvisit.api.app import create_app
-from medvisit.api.auth import COOKIE, hash_password
+from medvisit.api.auth import COOKIE, Authentication, Login, hash_password
 from medvisit.core.config import Settings
 
 ORIGIN = 'https://openwook.cloud'
@@ -87,6 +89,62 @@ def test_public_auth_configuration_fails_closed_and_hash_is_private():
     with pytest.raises(ValueError, match='HTTPS'):
         Settings(auth_required=True, admin_password_hash=encoded, origins=('http://public.example',))
     assert encoded not in repr(Settings(auth_required=True, admin_password_hash=encoded))
+
+
+async def test_cancelled_login_holds_verification_slot_until_password_worker_finishes(tmp_path, monkeypatch):
+    from fastapi import Response
+
+    encoded = f'scrypt:{bytes(16).hex()}:{bytes(32).hex()}'
+    auth = Authentication(Settings(records=tmp_path, auth_required=True, admin_password_hash=encoded))
+    started, release = asyncio.Event(), threading.Event()
+    loop = asyncio.get_running_loop()
+    active = peak = 0
+
+    def verify(*args, **kwargs):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        loop.call_soon_threadsafe(started.set)
+        try:
+            assert release.wait(5), 'Password worker was not released'
+            return bytes(32)
+        finally:
+            active -= 1
+
+    monkeypatch.setattr('medvisit.api.auth.hashlib.scrypt', verify)
+    body = Login(username='admin', password=PASSWORD)
+    first = asyncio.create_task(auth.login(body, Response()))
+    second = None
+    try:
+        await asyncio.wait_for(started.wait(), 1)
+        first.cancel()
+        await asyncio.sleep(0)
+        first.cancel()
+        second = asyncio.create_task(auth.login(body, Response()))
+        await asyncio.sleep(0.05)
+        assert (first.done(), peak) == (False, 1)
+        assert auth.sessions == {}
+    finally:
+        release.set()
+        results = await asyncio.gather(first, *([second] if second else []), return_exceptions=True)
+    assert isinstance(results[0], asyncio.CancelledError)
+    assert results[1]['authenticated'] is True
+    assert len(auth.sessions) == 1 and active == 0 and peak == 1
+    assert not auth.verifying.locked()
+
+
+async def test_password_worker_failure_releases_slot_for_next_login(tmp_path, monkeypatch):
+    from fastapi import Response
+
+    encoded = f'scrypt:{bytes(16).hex()}:{bytes(32).hex()}'
+    auth = Authentication(Settings(records=tmp_path, auth_required=True, admin_password_hash=encoded))
+    body = Login(username='admin', password=PASSWORD)
+    with patch('medvisit.api.auth.hashlib.scrypt', side_effect=RuntimeError('synthetic verifier failure')):
+        with pytest.raises(RuntimeError, match='synthetic verifier failure'):
+            await auth.login(body, Response())
+    assert auth.sessions == {} and not auth.verifying.locked()
+    monkeypatch.setattr('medvisit.api.auth.hashlib.scrypt', lambda *args, **kwargs: bytes(32))
+    assert (await auth.login(body, Response()))['authenticated'] is True
 
 
 @pytest.mark.parametrize('storage', ['file', 'postgres'])
