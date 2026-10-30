@@ -19,6 +19,7 @@ from websockets.exceptions import ConnectionClosed, InvalidStatus
 from ..voice.asr import AsrStream, asr_connection, request_packet, run_practice
 from ..services.practice import PracticeDialogue
 from ..services.final_review import review_training
+from ..services.visit_summary import build_visit_summary
 from ..services.service_status import check_services
 from ..voice.protocol import BridgeError, DUPLEX_MODEL, GREETING, MAX_MESSAGE_BYTES, event, parse_client_message, session_config
 from ..storage.records import FileRecords, SessionRecord
@@ -466,6 +467,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     if training:
                         record.data['analysis_status'] = 'error'
                     logger.error('session cleanup failed: %s', session_id)
+                try:
+                    record.data['capture_status'] = status
+                    record.data['summary_card'] = await build_visit_summary(settings, record)
+                    with contextlib.suppress(Exception):
+                        await send_client({'type':'summary_card','card':record.data['summary_card']})
+                except asyncio.CancelledError:
+                    finalization_cancelled = True
+                except Exception:
+                    logger.error('visit summary failed: %s', session_id)
                 def persist():
                     saved, recovery_saved = True, False
                     try:

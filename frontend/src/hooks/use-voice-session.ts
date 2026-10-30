@@ -31,7 +31,7 @@ export function useVoiceSession() {
     current.audio.stop()
     if (current.ws?.readyState === WebSocket.OPEN) {
       current.ws.send(JSON.stringify({ type: 'stop' }))
-      current.finishTimeout = window.setTimeout(() => current.ws?.close(), current.experience === 'combat' || training ? 60000 : 12000)
+      current.finishTimeout = window.setTimeout(() => current.ws?.close(), 90000)
     } else current.ws?.close()
     setStatus(previous => previous === 'error' ? 'error' : 'ended')
   }, [training])
