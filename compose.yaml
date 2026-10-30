@@ -32,6 +32,7 @@ services:
       args:
         DEBIAN_MIRROR: ${DEBIAN_MIRROR:-http://deb.debian.org}
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+        PYPI_DOWNLOAD_BASE: ${PYPI_DOWNLOAD_BASE:-https://files.pythonhosted.org}
     env_file:
       - path: ${BACKEND_ENV_FILE:-./backend/.env}
         required: false

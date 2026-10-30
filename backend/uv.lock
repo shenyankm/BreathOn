@@ -1347,7 +1347,7 @@ wheels = [
 ]
 
 [[package]]
-name = "medvisit-backend"
+name = "medcoach-backend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
