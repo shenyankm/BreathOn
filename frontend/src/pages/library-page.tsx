@@ -7,7 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MedicalLibrary } from '@/components/medical-library'
@@ -25,11 +25,11 @@ const skillDocument: LibraryDocument = {
   content: '优秀医药代表必备知识与技能\n来源：钰兔科技 · 发布日期：2022-02-24\n\n知识准备：了解行业、疾病与药品，以及公司制度。\n\n技能训练：职业礼仪、时间安排、信息整理与专业拜访。\n\n阅读方向：从访前准备、倾听提问、回应问题，到访后复盘，梳理自己的练习目标。\n\n本页为阅读导览，完整内容请查看原文。外部培训资料不作为现行政策依据。',
 }
 const modules = [
-  { id: 'drugs', name: '药品文档', icon: BookOpen },
-  { id: 'medical', name: '医学依据核验', icon: BookOpen },
-  { id: 'skills', name: '医药代表技能', icon: GraduationCap },
-  { id: 'doctors', name: '医生医院文档', icon: Hospital },
-  { id: 'policies', name: '政策文档', icon: Landmark },
+  { id: 'drugs', mobileName: '药品', name: '药品文档', icon: BookOpen },
+  { id: 'medical', mobileName: '核验', name: '医学依据核验', icon: BookOpen },
+  { id: 'skills', mobileName: '技能', name: '医药代表技能', icon: GraduationCap },
+  { id: 'doctors', mobileName: '医生', name: '医生医院文档', icon: Hospital },
+  { id: 'policies', mobileName: '政策', name: '政策文档', icon: Landmark },
 ]
 const emptyState = <T,>(): LoadState<T> => ({ data: [], loading: true, error: '' })
 const ownershipLabels = { company: '本公司产品', competitor: '竞品', unknown: '归属待核实' }
@@ -91,7 +91,14 @@ export function LibraryPage() {
   return <div className="min-w-0 space-y-4 sm:space-y-6">
     <header className="space-y-1.5"><h1 className="text-2xl font-semibold tracking-tight">学习资料</h1></header>
     <Tabs value={category} onValueChange={setCategory} className="min-w-0 gap-4 sm:gap-6">
-      <ScrollArea className="min-w-0 border-b pb-2"><TabsList variant="line" className="h-auto! min-w-max justify-start gap-1" aria-label="文档分类">{modules.map(module => <TabsTrigger key={module.id} value={module.id} className="min-h-11 flex-none gap-2 px-3 sm:px-4"><module.icon aria-hidden="true" />{module.name}{count[module.id] !== null && <span className="ml-1 text-xs tabular-nums text-muted-foreground">{count[module.id]}</span>}</TabsTrigger>)}</TabsList><ScrollBar orientation="horizontal" /></ScrollArea>
+      <TabsList className="grid h-auto! w-full grid-cols-5 items-stretch gap-1 rounded-2xl p-1" aria-label="文档分类">
+        {modules.map(module => <TabsTrigger key={module.id} value={module.id} aria-label={module.name} className="h-auto min-h-16 min-w-0 flex-col gap-1.5 rounded-xl px-1 py-2 text-xs sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm">
+          <module.icon aria-hidden="true" className="size-5 sm:size-4" />
+          <span className="sm:hidden">{module.mobileName}</span>
+          <span className="hidden sm:inline">{module.name}</span>
+          {count[module.id] !== null && <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">{count[module.id]}</span>}
+        </TabsTrigger>)}
+      </TabsList>
       <TabsContent value="medical"><MedicalLibrary /></TabsContent>
       <TabsContent value="drugs"><section className="space-y-4 sm:space-y-5" aria-label="药品文档资料">
         <header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">药品文档</h2></header>
