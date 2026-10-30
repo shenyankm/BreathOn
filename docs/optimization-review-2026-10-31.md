@@ -324,3 +324,43 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 
 
 本项完整后端 **939 passed、0 skipped、94.68 秒**，随后单独实际原生部署集成通过（`private-commit-full.log`、`private-commit-native.log`）：真实 Caddy/Uvicorn、进程重启、PG 停机恢复和 Cookie/角色/账号隔离，独立临时库已删除。未在全量 pytest/测量期间停止共享测试容器。生产代码 diff 33 行新增、6 行删除，变更只在失败路径增加核实，正常路径没有新增数据库请求；非平凡边界保留回归。前端/原生树未变，保留相同树已有验收并由本项每个新 SHA CI 重跑完整前端和 ARM64 APK 检查；不将模拟 ASR 或已有真机缺项写成通过。剩余 raw 崩溃/延期孤儿回收、研究服务自身启动线程及其他候选继续审查，最终无新增有效优化轮次仍为零。
+
+第十三项最终提交 `e6d7675f9644cd81ff7c3843e92385df7a433d20` 已通过分支 [41140694942](https://github.com/shenyankm/BreathOn/actions/runs/41140694942) 四项和 main [41141702786](https://github.com/shenyankm/BreathOn/actions/runs/41141702786) 五项 CI。生产日志精确 release SHA 与提交一致，随后外部 live/ready 均 200、精确 ok JSON。源分支本地/远程删除，只剩 main、工作区干净、原 stash 保留。完整回执复用 `private-commit-outcome-acceptance.json`。
+
+## 14. 回收进程崩溃留下的未引用录音（改动前标准）
+
+在 e6d7675 上，两组各三次实际 Uvicorn/隔离 PG/ffprobe 试验：上传 5,120,044 字节 WAV，完成校验并 fsync 后、数据库保存引用前，SIGKILL 自己的临时进程并重启。启动及显式附件清理后，每次原文件都仍占磁盘；一组使用当前 mtime，另一组注入 31 天前 mtime，已提交录音、活动上传和非管理文件均有对照（`raw-audio-crash-discovery.json`、`raw-audio-expired-crash-discovery.json`）。31 天为时间注入，崩溃与重启是真实进程；没有付费调用。新增核心回归在原源码上 **8 failed、6 passed、1.66 秒**，失败包含孤儿回收和故障恢复，正常引用及活动上传对照保留。
+
+改动前完整标准已保存于 `raw-audio-orphan-acceptance.json`：三次新文件与三次时间注入崩溃均必须回收确切孤儿字节；只处理 32 位小写十六进制名称的普通文件，保护所有账号及旧工作区的已提交引用、活动上传、符号链接、目录和未管理名称。已有错误回滚本就立即删除确定未提交文件，30/7 天规则属于已保存录音，故不新增任意孤儿等待期。原事务尚未结束时必须先等待，另取新引用快照，真实 PG 的 read committed/repeatable read 和提交/回滚分别验收。创建文件至登记持有权之间也须防止并发清理；连续取消、校验/落盘失败、UUID 冲突和 DB/IO 故障不得泄漏 FD、误删既有文件或吞原异常。
+
+范围仅 raw 文件回收、上传所有权、必要行为回归和本记录。优先现有 workspace 事务串行化与标准库 [fcntl](https://docs.python.org/3/library/fcntl.html) 的 [flock](https://man7.org/linux/man-pages/man2/flock.2.html)，不引入依赖、缓存、配置、持久锁记录或新产品恢复功能。无 POSIX 文件锁的平台保留原 raw 清理行为；当前支持的实际 macOS/Linux 须验收。正常上传同一 ffprobe/WAV/鉴权 HTTP，文件与 PG 各三组交替前后进程、每进程每尺寸 30 次热样本，每组合每版本 90 次；p50/p95 不得同时退化超过 15% 且 5 ms。另测各存储三轮 500×64 KB 孤儿加 20 已引用文件，精确回收且每批小于一秒、并行 live p95 小于 50 ms；无孤儿热清理各至少 30 次，p50/p95 不得同时退化超过 20% 且 10 ms。正常、失败、取消各三轮 20 次后 FD/连接/文件数量须稳定，允许仅每活动上传额外持有一个 FD。
+
+相关及完整零跳过实际 PG 后端、随后顺序原生 Caddy/Uvicorn/PG 重启与故障恢复、diff 审查、独立提交推送、当前 SHA 分支四项/main 五项 CI、实际生产 SHA 和外部健康均为必需。前端/原生未改时沿用同一树已有验收，远程每 SHA 重新构建。回退 git revert 本项 SHA，无迁移；已确认未引用并回收的文件不能恢复，与既有确定回滚清理边界相同。真机麦克风/扬声器仍不可用，goal 尚未完成。
+
+实现复用原上传预检查事务，改为短暂 workspace 写屏障，并在其中创建文件、登记文件锁；同一 FD 持有至流接收、校验、提交/错误核实全部结束，在 finally 关闭。清理持有既有 workspace 屏障后另取全工作区新引用快照，只在普通管理文件未引用且可非阻塞取得文件锁时删除。没有跨请求缓存、额外锁记录、依赖、配置或质量调整。隔离模块分别移除持有锁、移除创建屏障的负对照，回归为 **6 failed/2 passed**、**2 failed/6 passed**：失败均为活动/刚创建文件被清理，证明两项保护各自必要；正式源码始终未变（`raw-audio-negative-*.json/log`）。
+
+相同正式探针对原 e6d7675 canonical 模块与候选源码各做六次真实 SIGKILL/重启：原版六份文件都遗留，候选六份全部回收，共 **30,720,264 字节**；已提交控制录音每次均 200、字节精确一致，活动上传、未管理文件及符号链接保持完整（`raw-audio-orphan-before/after.json`）。批量资源对照每存储三进程，每批 500×64,000 字节加 20 已引用录音：候选六批共回收 **192,000,000 字节**，保留全部引用内容及私有下载头；文件批次 43.507–44.571 ms、PG 51.129–52.358 ms，均小于一秒，并行 live 各批实际样本 144–166 个、p95 0.349–0.394 ms。原版不回收、批次仅 1.848–4.319 ms，不把新增清理工作写成提速。无孤儿热清理每存储每版 90 次，文件 p50/p95 0.509/0.581 → 0.734/0.833 ms、PG 1.386/1.457 → 1.892/2.183 ms，绝对增加不到一毫秒，符合原门槛。
+
+资源各版各存储单进程三轮，每轮 20 成功、20 无效音频和 20 实际 TCP 提前断线。候选文件存储 FD 13/13/13；PG 15/16/16、池 2/3/3，均全部可用且无等待者，最后两轮稳定，未调原 max=4。引用文件 40/60/80 是正常保存结果，字节总量精确等于成功上传量，无失败/断线孤儿；退出后 PG 连接在两秒内归零。代价是每个活动上传持有一个 FD、清理期间一个额外短只读事务，连接池可能因并发扩至三个连接。没有声称降低 RSS 或排除长期泄漏；原始 RSS、瞬时连接与全部分布保存在 `raw-audio-resources-before/after.json` 和 comparison 中。
+
+正常上传首次三对进程每版本每组合 90 个热样本，文件 5 MB p50/p95 11.336/12.610 → 11.267/11.776 ms、51 MB 34.200/46.782 → 33.506/45.081 ms、PG 5 MB 13.394/15.690 → 13.477/16.345 ms 均符合门槛，**PG 51 MB 35.468/60.731 → 35.663/152.005 ms 未通过**。同插桩阶段诊断在旧版也出现长尾；相同旧源码两标签对照 p95 69.021 → 83.521 ms、最大 1,032.696 ms，也超过门槛。该诊断改变中间件开销，只用于定位测量不稳定，不能据此认定原因或验收通过。
+
+保留全部失败数据，在执行前记录新的控制方式：两台无插桩服务各用新隔离 DB，相邻请求顺序逐次交替、启动顺序逐对交替；仍三对进程、每尺寸每版 90 次、同一 ffprobe/WAV/鉴权、同一 15% 且 5 ms 门槛。先做旧版对旧版校准，通过后再测实际原版/候选：PG 5 MB p50/p95 **13.227/15.745 → 13.329/15.694 ms**，51 MB **34.896/121.313 → 35.798/87.078 ms**，均通过，无删异常值或放宽标准；只作为正常路径无新增退化的受控证据，不宣称加速（`raw-audio-upload-comparison.json`、`raw-audio-interleaved-1/0.json`）。
+
+相关回归 **173 passed、25.18 秒**；完整 `npm run test:api -- -q` 带隔离 `TEST_DATABASE_URL` 得 **967 passed、0 skipped、101.25 秒**。原一次性提交错误夹具仍注入真正改变 audio_path 的原事务，保留全部原断言，避免新增创建屏障改变故障位置。新边界覆盖实际 PG 原事务延迟提交/回滚与两种隔离级别、跨进程文件锁、流/校验取消、创建交接时取消/锁失败、旧工作区引用、DB/IO 核实故障及真实池耗尽恢复。最后只给 POSIX 专用池耗尽测试补充同其他新测试一致的平台 guard，当前 macOS/Linux 行为不变，并单独复验该案例；远程当前 SHA 会再跑完整测试。
+
+全量后才顺序执行真实 `deploy/check-native.py`。首个本地 wrapper 误传 conninfo 字符串，被入口校验拒绝、未进入服务验收；失败记录保留，改成要求的回环 URL 后重新新建 DB、完整执行并通过。实际 Caddy/Uvicorn、进程重启、PG 停机恢复、Cookie/角色/账号隔离均通过，临时 DB/服务清理完成（`raw-audio-native-result.json/log`）。可复现命令在仓库根目录：
+
+```sh
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- tests/test_visits.py tests/test_runtime.py -q
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- -q
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_orphan_probe.py before
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_orphan_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_resource_probe.py before
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_resource_probe.py after
+PROBE_CONTROL=1 uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_upload_interleaved.py paired
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_upload_interleaved.py paired
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py
+```
+
+上述 helper 只使用本记录指定的自建回环容器、每次新建并删除的 UUID 库和临时目录，ffprobe 子进程 PATH 只指向已验签的本地工具。外部收费请求为零；负对照只在隔离模块执行，不修改工作树。生产 diff 已审查，前端/原生树未变，本项的远程 CI、main 合并和生产确认尚待完成，不能以本地通过替代。三轮最终无新增有效优化复查仍为零。

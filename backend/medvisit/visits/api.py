@@ -10,6 +10,7 @@ import json
 import logging
 import hashlib
 import secrets
+import stat
 import httpx
 from typing import Literal
 from uuid import uuid4
@@ -23,6 +24,11 @@ from ..core.identity import current_role
 from ..platform.store import now
 from ..platform.models import content_usable
 from ..agents.web_search import public_url
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 MAX_AUDIO = 100_000_000
 logger = logging.getLogger('medvisit')
@@ -344,8 +350,15 @@ def visits_router(store, settings, current_user):
         content_type = request.headers.get('content-type', '').split(';', 1)[0].lower()
         if content_type not in MEDIA_TYPES:
             raise HTTPException(415, '请上传 MP3、M4A 或 WAV 音频。')
+        name = uuid4().hex
+        path = audio_dir / name
+        fd = None
+        size = 0
+        committed = persisting = False
         def check():
-            with store.transaction(user['workspace'], write=False) as tx:
+            nonlocal fd
+            # Serialize file visibility and lease registration with orphan cleanup.
+            with store.transaction(user['workspace']) as tx:
                 item = get_item(tx, user, item_id)
                 if item['owner_id'] != user['id']:
                     raise HTTPException(403, '仅记录本人可上传录音。')
@@ -355,16 +368,14 @@ def visits_router(store, settings, current_user):
                     raise HTTPException(409, '该记录已上传录音。')
                 if retention_expired(item):
                     raise HTTPException(409, '录音的保留期限已到，请新建记录。')
-        await work(check)
-        audio_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(audio_dir, 0o700)
-        name = uuid4().hex
-        path = audio_dir / name
-        size = 0
-        committed = persisting = False
-        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                audio_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+                os.chmod(audio_dir, 0o700)
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                if fcntl is not None:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         try:
-            with os.fdopen(fd, 'wb') as output:
+            await work(check)
+            with os.fdopen(fd, 'wb', closefd=False) as output:
                 async for chunk in request.stream():
                     size += len(chunk)
                     if size > MAX_AUDIO:
@@ -390,7 +401,7 @@ def visits_router(store, settings, current_user):
             persisting = True
             result = await work(persist)
         except BaseException:
-            if not committed:
+            if fd is not None and not committed:
                 if persisting:
                     try:
                         await work(discard_private, name, user['workspace'])
@@ -399,6 +410,9 @@ def visits_router(store, settings, current_user):
                 else:
                     path.unlink(missing_ok=True)
             raise
+        finally:
+            if fd is not None:
+                os.close(fd)
         return result
 
     @router.get('/{item_id}/audio')
@@ -679,6 +693,30 @@ def visits_router(store, settings, current_user):
                             path.unlink(missing_ok=True)
                     except FileNotFoundError:
                         pass
+                if fcntl is not None:
+                    # A separate snapshot sees commits that settled while acquiring the workspace guard.
+                    with store.transaction(workspace, write=False) as snapshot:
+                        raw_references = set()
+                        for row in snapshot.execute("SELECT document FROM platform_entities WHERE kind='visit'"):
+                            item = json.loads(row[0])
+                            raw_references.update((item.get('audio_path'), item.get('transcript_file')))
+                    for path in audio_dir.iterdir():
+                        if not re.fullmatch(r'[a-f0-9]{32}', path.name) or path.name in raw_references:
+                            continue
+                        try:
+                            if not stat.S_ISREG(path.lstat().st_mode):
+                                continue
+                            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                            try:
+                                try:
+                                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                except BlockingIOError:
+                                    continue
+                                path.unlink(missing_ok=True)
+                            finally:
+                                os.close(fd)
+                        except FileNotFoundError:
+                            pass
 
     router.visit_work = work
     router.visit_cleanup = cleanup
