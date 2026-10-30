@@ -1,15 +1,23 @@
 # BreathOn
 
-面向医药代表的学术沟通演练与复盘工具，支持语音对话、场景训练、资料检索和复盘重练。
+面向医药代表的 Android 学术沟通演练与复盘工具，用户通过账号登录，演练与拜访记录按账号隔离。
 
-- **练习模式**：医生语音与文字回应，可开启实时教练建议。
-- **实战模式**：双向语音对话，结束后统一复盘。
+- **辅助练习**：医生语音与文字回应，对话中提供实时教练建议。
+- **实战练习**：双向语音对话，结束后统一复盘。
 - **管理后台**：维护药品、医生、政策、场景和审核资料；审核拜访反馈并查看代表记录。
 - **拜访日记**：记录访后观察或导入已获授权的录音，确认脱敏后提交审核。
 
-技术栈：React / Vite / shadcn/ui、FastAPI、AgentScope；支持本地 JSON 或 PostgreSQL 存储。
+技术栈：React / Vite / shadcn/ui Maia + Tauri 2 Android、FastAPI、AgentScope；服务器使用 PostgreSQL，本地开发兼容 JSON 存储。
 
 Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。用户界面内置于 APK，Web 只提供管理后台；后端仍由服务器运行。
+
+| 部分 | 部署与职责 |
+| --- | --- |
+| Android App | React 页面由 Tauri 2 打包；底栏为「练习、学习、我的」，日记与复盘位于「我的」 |
+| Web 管理端 | 服务器提供 `/admin`，管理员维护共享训练内容和审核记录；不提供 Web 用户端 |
+| 后端服务 | HTTPS API 与 WebSocket；校验登录、管理员权限及记录归属，密钥仅保留在服务器 |
+
+`main` 的自动部署在 CI 检查通过后执行，部署与恢复方式见[服务器与 CI/CD](docs/server-deployment.md)。
 
 ## 本地运行
 
@@ -65,6 +73,7 @@ npm test
 npm run test:api
 npm run lint
 npm run build
+npm run build:android
 ```
 
 CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建及数据库故障恢复检查。模拟测试不调用收费服务；真实服务与麦克风、外放效果需单独验收。
@@ -79,7 +88,13 @@ CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建�
 
 - [使用手册](docs/user-manual.md)：配置、演练与常见问题
 - [架构与部署](docs/architecture.md)：目录结构、存储与测试
-- [单用户部署运维](docs/operations.md)：备份、恢复、升级与排查
+- [部署运维](docs/operations.md)：备份、恢复、升级与排查
 - [检索助手](docs/research-agents.md) · [药品资料库](docs/drug-library.md) · [医生角色](docs/doctor-agent.md)
 - [训练交付记录](docs/training-delivery.md)：验收范围与已知限制
 - [医学 Wiki](docs/medical-wiki.md)：产品知识条目、来源缺口、导入与逐句核验
+
+## 贡献与许可
+
+提交改动前请阅读[贡献指南](CONTRIBUTING.md)。问题与功能建议使用仓库的 Issue 模板，PR 请填写验证结果。
+
+原创代码与文档采用 [MIT License](LICENSE)。第三方依赖、技能及医学资料保留各自权利与许可，见[第三方声明](THIRD_PARTY_NOTICES.md)。

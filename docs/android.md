@@ -84,8 +84,20 @@ adb -s emulator-5554 logcat -b crash -d
 adb -s emulator-5554 reverse --remove tcp:5176
 ```
 
+## CI 可安装工件
+
+每次 Pull Request 和推送都会运行真实 ARM64 debug APK 编译，不只构建 Vite 页面。CI 使用与本机验收对应的 JDK 25、Rust 1.98.1、SDK `platforms;android-37.0`、Build-Tools `36.0.0`、NDK `28.2.13676358`，沿用仓库的 Gradle wrapper 和 Rust 锁文件：
+
+```sh
+npm run android:build -- --debug --apk --target aarch64 --ci -- --locked
+```
+
+GitHub Actions 的工件 `BreathOn-android-arm64-debug-<commit>` 中只上传可安装 APK，保留 14 天。它使用调试签名，用户页面来自 APK，默认连接真实服务器的 HTTPS API；安装后仍须使用服务器已有的合法账号登录。私钥、发布 keystore 和 CI 认证测试账号不会进入工件。Web 和 Android 两次构建都会检查实际模块图，阻止管理页面与用户页面交叉打包。
+
+该编译任务是生产 CD 的前置条件，编译失败会阻止 Web 管理后台和后端部署。CI 不会自动安装到用户手机或发布应用商店，也不能代替 AVD 与真实设备的操作验收。
+
 ## 发布与验证边界
 
 正式构建使用 `npm run android:build -- --apk` 或 `--aab`，按所需 ABI 添加 `--target`。APK 和 AAB 分别位于 Android 工程的 `app/build/outputs/apk/` 与 `app/build/outputs/bundle/`。按 [Tauri Android 签名说明](https://v2.tauri.app/distribute/sign/android/) 配置自己的签名密钥、`gen/android/keystore.properties` 和 Gradle `signingConfig`；升级保持应用标识与签名一致，并提高版本号。密钥、密码和 `keystore.properties` 不得提交。
 
-APK 构建不会部署远程后端或 Web 管理页面。AVD 安装和界面验收也不能代替真实麦克风、扬声器、蓝牙耳机、权限拒绝后的恢复与实际弱网验收。前端基础检查为 `npm test`、`npm run lint`、`npm run build`、`npm run build:android`；Android 编译与安装需另外执行。
+APK 构建不会部署远程后端或 Web 管理页面。AVD 安装和界面验收也不能代替真实麦克风、扬声器、蓝牙耳机、权限拒绝后的恢复与实际弱网验收。前端基础检查为 `npm test`、`npm run lint`、`npm run build`、`npm run build:android`；CI 另外执行上面的原生 APK 编译，安装与设备验收仍需单独进行。

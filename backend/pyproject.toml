@@ -1,6 +1,7 @@
 [project]
 name = "breathon-backend"
 version = "0.1.0"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "agentscope>=2.0,<3",

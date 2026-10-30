@@ -1,0 +1,33 @@
+name: 功能建议
+description: 说明遇到的需求和期待的行为。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先搜索已有建议，描述实际使用场景。
+        任何字段、日志和截图都不得包含密码、Token、密钥或真实患者信息，请先脱敏。
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 需求涉及的平台
+      options:
+        - Android 用户端
+        - 服务器后端
+        - Web 管理后台
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: 问题或需求
+      description: 你在什么场景下遇到了什么问题？目前如何处理？
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待行为
+      description: 希望如何操作，以及操作后得到什么结果？
+    validations:
+      required: true

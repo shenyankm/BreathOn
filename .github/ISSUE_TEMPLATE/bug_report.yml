@@ -1,0 +1,59 @@
+name: 问题反馈
+description: 报告可复现的问题。
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先搜索已有问题，再提供复现信息。
+        任何字段、日志和截图都不得包含密码、Token、密钥或真实患者信息，请先脱敏。
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 发生问题的平台
+      options:
+        - Android 用户端
+        - 服务器后端
+        - Web 管理后台
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本与运行环境
+      description: 填写应用或服务版本、提交号，以及对应的平台环境。
+      placeholder: |
+        版本或提交号：
+        Android 版本与机型 / 服务器系统与部署方式 / 管理后台浏览器版本：
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 从进入哪个页面或执行哪个命令开始，逐步说明如何触发。
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 正常情况下应该发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么？如有错误提示，请提供脱敏后的原文。
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志或截图（可选）
+      description: 仅提供与问题相关且已脱敏的内容，勿上传完整配置或含敏感信息的录音。

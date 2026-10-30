@@ -3,14 +3,18 @@
 ## 调用关系
 
 ```text
-React 页面 / use-voice-session
-  └─ /api HTTP + WebSocket
+React + Tauri 2 Android App（用户端，页面内置 APK）
+  └─ HTTPS /api HTTP + WSS（登录 Cookie）
+服务器 Web 管理端 /admin（管理员）
+  └─ 同源 /api HTTP
       └─ FastAPI api/app.py
           ├─ voice/：SeedASR / Seeduplex / TTS
           ├─ services/practice.py：会话、转录修正、取消、重试、复盘
           │   └─ agents/coach.py：独立 AgentScope Agent → DeepSeek → 输出校验
           └─ storage/：PostgreSQL（Docker）或 JSON（本地兼容）
 ```
+
+Android 是唯一用户端，底部导航为「练习、学习、我的」，拜访日记和复盘记录属于「我的」。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
 
 `main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；模型与客户端均关闭自动重试，由现有会话层处理重试和取消。
 
@@ -30,11 +34,13 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 `platform/`处理版本化目录、医学审核、校准、点评与重练。Compose复用PostgreSQL连接池和`platform_entities`表；未配置数据库时，演练仍存JSON，平台元数据存`records/platform.sqlite3`（权限0600）。写操作使用事务与版本CAS；PostgreSQL用事务锁，SQLite用`BEGIN IMMEDIATE`及WAL，让读取快照不阻塞其他请求提交，保持`FULL`同步。本地备份应停止API后复制整个记录目录，包含尚未合并的WAL文件。PDF原件作为同一库内的资产保存，单文件20MB、最多200页，只解析文字层，不做OCR；解析在限时子进程内执行。大规模资料库需在实测后迁移对象存储与语义索引。
 
-本机开发默认免登录；公网部署启用按账号区分的 Cookie 会话，HTTP 和 WebSocket 均检查登录，写入继续校验 Origin，详见[服务器与 CI/CD](server-deployment.md)。登录账号可提交、审核共享资料；演练记录、点评、重练、案例和统计仅本人可访问；医学改分仍须有本次有效资料的逐字依据。资料被标记为审核通过不代表已由独立医学专家审核。仅提供本地上传与批量JSON草稿导入。
+服务器使用预配置账号，不开放注册。Android 始终要求启用登录；仅 Web 本机开发兼容免登录。HTTP 和 WebSocket 校验 Cookie 会话，写入校验 Origin；Cookie 使用 HttpOnly、SameSite=Strict，HTTPS 下附加 Secure。退出会撤销当前会话，服务重启会清除会话。账号切换会卸载原用户页面，避免沿用原会话的内存数据。
+
+管理员维护共享药品、医生、场景和审核资料；代表只能读取允许用于训练的内容。个人演练、点评、重练、经验案例、拜访日记与统计按账号归属隔离，后端逐次校验，不能依靠隐藏前端入口代替权限检查。管理员通过专用管理接口访问代表记录并留存审计。医学改分仍须有本次有效资料的逐字依据；资料标记为审核通过不等于专业医学审核。认证配置见[服务器与 CI/CD](server-deployment.md)。
 
 ## 评价与同版本重练
 
-已发布场景绑定医生、量表和审核资料，启动时采集当前医生资料及量表、资料版本；每次推理前后检查资料仍有效。医生资料在同一ID上直接更新，不复制新版本；会话快照保留开始时的医生资料。删除医生会保留删除标记，阻止启动时重新生成默认医生；仍被场景引用时不可删除。检索对中文二元词与英文词做有界词法排序，最多10段，每段1300字。模型评分必须引用实际学员原话和检索片段，代码核对角色、原文、页码及整数分值；独立适用性审核Agent只能撤除缺乏医学依据的评分。未观察记null，全部维度有依据才形成总分。当前评价版本为3。
+已发布场景绑定医生、量表和审核资料，启动时采集当前医生资料及量表、资料版本；每次推理前后检查资料仍有效。已发布医生须先创建草稿，核对并发布后更新原稳定身份；历史会话保留开始时的医生快照。删除医生会保留删除标记，阻止启动时重新生成默认医生；仍被场景引用时不可删除。检索对中文二元词与英文词做有界词法排序，最多10段，每段1300字。模型评分必须引用实际学员原话和检索片段，代码核对角色、原文、页码及整数分值；独立适用性审核Agent只能撤除缺乏医学依据的评分。未观察记null，全部维度有依据才形成总分。当前评价版本为3。
 
 评分校准保留，用于检验量表与模型的一致性。校准任务需各维度至少5份专家有效标注，工程阈值为MAE≤0.5且相差不超过1档的比例≥90%；合成样本不授予专家校准。后台任务有进度、取消和过期中断状态，重启不自动重放收费请求。真实适用性与阈值仍需专业团队确认。
 
@@ -73,7 +79,8 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 | 场景 | 命令 | 数据存储 |
 | --- | --- | --- |
-| 本地前端 | `npm run dev -- --host 127.0.0.1` | 通过 Vite 代理 API |
+| 本地 Web 管理端 | `npm run dev -- --host 127.0.0.1` | 通过 Vite 代理 API |
+| Android App | `npm run android:build -- --debug --apk --target aarch64` | APK 内置页面，数据保存在服务器 |
 | 本地 API | `npm run dev:api` | `DATABASE_URL` 为空时使用原 JSON |
 | Docker | `docker compose up -d --build --wait` | PostgreSQL 命名卷 |
 
@@ -81,7 +88,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 根目录 `.env` 管理数据库用户名、密码、网页端口和允许的 Origin；`backend/.env` 管理模型与语音密钥。Compose 使用 `PGHOST` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` 连接数据库，避免密码中的 URI 特殊字符造成解析错误。密钥、历史数据、虚拟环境及构建缓存都由 `.dockerignore` 排除；前端镜像只含静态构建产物。
 
-修改 `WEB_PORT` 时也要修改 `ALLOWED_ORIGINS`，例如 `http://127.0.0.1:8090,http://localhost:8090`。免登录模式保持绑定本机；公网必须启用登录并使用 HTTPS。API 维持单进程的 2 会话限制；增加 worker 前需先实现共享限流和后台任务执行器。
+修改 `WEB_PORT` 时也要修改 `ALLOWED_ORIGINS`，例如 `http://127.0.0.1:8090,http://localhost:8090`。免登录模式保持绑定本机；公网必须启用登录并使用 HTTPS。API 使用单进程，每账号至多一场演练，总并发由 `VOICE_MAX_SESSIONS` 控制（默认 10）；增加 worker 前需先实现共享限流和后台任务执行器。
 
 ## 导入旧 JSON
 
@@ -93,7 +100,7 @@ docker compose run --rm --no-deps --user root \
   api python -m medvisit.storage.import_records /legacy
 ```
 
-命令先校验全部记录，再在一个事务中导入；保持原文件修改时间对应的列表顺序。UUID 已存在时跳过，不覆盖数据库的新版本。原 JSON 以只读方式挂载并保留在原处；遇到损坏或非法文件会失败，不提交部分记录。单用户模式可读取旧匿名记录、已有记录及关联点评，不更改其归属字段。已有平台资料沿用首次初始化的工作区；其他旧工作区资料和重练保留在原库中，但不会自动合并，避免标识及引用冲突。
+命令先校验全部记录，再在一个事务中导入；保持原文件修改时间对应的列表顺序。UUID 已存在时跳过，不覆盖数据库的新版本。原 JSON 以只读方式挂载并保留在原处；遇到损坏或非法文件会失败，不提交部分记录。仅本机免登录兼容模式可读取旧匿名记录及关联点评，不更改其归属字段；服务器账号不能因此越过记录归属检查。已有平台资料沿用首次初始化的工作区；其他旧工作区资料和重练保留在原库中，但不会自动合并，避免标识及引用冲突。
 
 本地 API 连接自行管理的 PostgreSQL 时，可在 `backend/.env` 中设置 `DATABASE_URL`，再执行 `uv run --directory backend python -m medvisit.storage.import_records`。连接串中的密码需按 PostgreSQL URI 规则编码。
 

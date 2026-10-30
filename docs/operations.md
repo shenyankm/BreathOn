@@ -1,6 +1,6 @@
-# 单用户部署运维
+# 部署运维
 
-服务使用单个 API 进程。本机免登录模式仅供本机访问；公网须启用管理员登录并通过 Caddy 提供 HTTPS，见[服务器与 CI/CD](server-deployment.md)。PostgreSQL 保存演练与平台元数据，`research_data` 保存 `/app/data/sessions` 下的检索原件、HTML 阅读副本与任务文件；备份和恢复必须同时覆盖两者。不要对需要保留的数据执行 `docker compose down -v`。
+服务使用单个 API 进程。本机免登录模式仅供本机访问；公网须启用账号登录、管理员权限与用户数据隔离，并通过 Caddy 提供 HTTPS，见[服务器与 CI/CD](server-deployment.md)。PostgreSQL 保存演练与平台元数据，`research_data` 保存 `/app/data/sessions` 下的检索原件、HTML 阅读副本与任务文件；备份和恢复必须同时覆盖两者。不要对需要保留的数据执行 `docker compose down -v`。
 
 ## 启动与排查
 
@@ -86,7 +86,7 @@ SQL
 
 ## 验证边界
 
-普通测试不调用真实模型。备份脚本有 12 项归档安全、哈希、私有权限、失败恢复、同项目锁和已有目标拒绝测试。2026-10-29 在隔离 Compose 项目实际完成备份与全新项目恢复：1 条演练、3 条平台实体、5 个文件的计数与哈希一致；来源 API 恢复健康，新项目 API 保持停止，未调用付费服务。原容器停止后的可写层导出也单独验证通过。[验收记录](../backend/data/validation/backup-recovery/summary.json)保存在本机忽略目录。
+普通测试不调用真实模型。备份脚本有 12 项归档安全、哈希、私有权限、失败恢复、同项目锁和已有目标拒绝测试。2026-10-29 在隔离 Compose 项目实际完成备份与全新项目恢复：1 条演练、3 条平台实体、5 个文件的计数与哈希一致；来源 API 恢复健康，新项目 API 保持停止，未调用付费服务。原容器停止后的可写层导出也单独验证通过。验收记录保存在本机忽略目录。
 
 定期使用独立项目做完整恢复演练，确认数据库与 HTML 原件都可读取。单机命名卷和本机备份仍不提供高可用、异地容灾或专业医学审核。
 
@@ -98,17 +98,17 @@ SQL
 
 页面仅需要 shadcn 的 CSS，不需要在运行依赖中携带其 CLI。原版样式固定在 `frontend/src/styles/vendor/shadcn-4.22.1.css`，完整 MIT 许可证和来源信息随 `frontend/public/licenses/` 发布。升级样式时同步保留来源、许可证，并比较构建后的 CSS；不要通过强制降级来清除依赖审计提示。
 
-## 本轮验收记录
+## 历史本地验收记录（2026-10-29）
 
 2026-10-29 本地验证结果如下；原始报告保留在 Git 忽略的 `backend/data/validation/`，不把测试状态当成已完成生产切换。
 
 | 检查 | 结果 |
 | --- | --- |
-| 后端 | [398 项通过、无跳过](../backend/data/validation/engineering/backend.xml)，含 SQLite 与真实临时 PostgreSQL |
+| 后端 | 398 项通过、无跳过，含 SQLite 与真实临时 PostgreSQL |
 | 前端 | 20 项测试、构建通过；lint 仅原有 3 条 Fast Refresh 提示 |
-| 依赖 | 移除 292 个未使用的 CLI 传递包；npm audit 为 0；[编译 CSS 逐字节相同](../backend/data/validation/engineering/frontend-dependency-cleanup.json) |
-| 部署 | [镜像构建与 Compose 检查](../backend/data/validation/engineering/deployment.json)通过；非 root 文件写入、容器替换后保留、代理缓存/上传、数据库断连和恢复均验证 |
-| 备份恢复 | [真实独立恢复](../backend/data/validation/backup-recovery/summary.json)通过；1 条演练、3 条平台实体、5 个文件及其哈希一致，恢复项目未启动付费追踪 |
+| 依赖 | 移除 292 个未使用的 CLI 传递包；npm audit 为 0；编译 CSS 逐字节相同 |
+| 部署 | 镜像构建与 Compose 检查通过；非 root 文件写入、容器替换后保留、代理缓存/上传、数据库断连和恢复均验证 |
+| 备份恢复 | 真实独立恢复通过；1 条演练、3 条平台实体、5 个文件及其哈希一致，恢复项目未启动付费追踪 |
 | 主项目 | 保持原有本机服务，未切换已有 Docker 部署，未写入合成验收历史或开启追踪 |
 
-GitHub 工作流已配置，本轮未推送或运行远端 CI；也未执行真实断电、长时间负载、异机灾备或多副本验收。收费服务与真人音频链路未在本轮重新调用。当前部署仍是单机单用户范围，上公网需要另行完成认证、访问控制与相应验收。
+以上仅描述当时的本地验收，不能代表当前版本或生产状态。当前架构为 Android 用户端及服务器 Web 管理端、后端服务，支持多账号登录和记录隔离；当前 CI/CD 配置与部署要求见[服务器与 CI/CD](server-deployment.md)。真实语音、长时间负载、灾备和多副本能力仍需单独验收。
