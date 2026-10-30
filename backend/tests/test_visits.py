@@ -725,3 +725,152 @@ def test_failed_visit_commit_cleans_only_uncommitted_files(tmp_path, monkeypatch
     with store.transaction('local', write=False) as tx:
         assert tx.list('local', 'visit') == before
     assert {path.name:path.read_bytes() for path in directory.glob('*')} == before_files
+
+
+def audio_request(content=b'synthetic audio'):
+    async def receive():
+        return {'type':'http.request', 'body':content, 'more_body':False}
+    return Request({'type':'http', 'method':'POST', 'headers':[
+        (b'content-type', b'audio/wav'), (b'x-recording-authorized', b'true')]}, receive)
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_upload_keeps_storage_and_response_reads_off_loop(tmp_path, monkeypatch, request, storage):
+    from pathlib import Path
+    import httpx
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
+        created = (await client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'synthetic private text'})).json()
+        transaction, read_text = store.transaction, Path.read_text
+        loop_thread = threading.get_ident()
+        modes = []
+        @contextmanager
+        def off_loop(*args, **kwargs):
+            assert threading.get_ident() != loop_thread, 'Upload storage blocked the event loop'
+            assert current_role.get() == 'representative'
+            modes.append(kwargs.get('write', True))
+            with transaction(*args, **kwargs) as tx:
+                yield tx
+        def private_read(path, *args, **kwargs):
+            if path.suffix == '.transcript':
+                assert threading.get_ident() != loop_thread, 'Upload response read blocked the event loop'
+            return read_text(path, *args, **kwargs)
+        with monkeypatch.context() as checks:
+            checks.setattr(store, 'transaction', off_loop)
+            checks.setattr(Path, 'read_text', private_read)
+            url = '/api/visits/' + created['id'] + '/audio'
+            headers = {'content-type':'audio/wav', 'x-recording-authorized':'true'}
+            assert (await client.post(url, content=b'synthetic', headers={**headers, 'x-user':'bob'})).status_code == 404
+            response = await client.post(url, content=b'synthetic', headers=headers)
+        assert response.status_code == 202 and response.json()['text'] == 'synthetic private text'
+        assert modes == [False, False, True]
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_upload_cancellation_drains_audio_verification(tmp_path, monkeypatch, request, storage):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    item = TestClient(app).post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/audio' and 'POST' in route.methods)
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    paths = []
+    def verify(path, content_type):
+        paths.append(path)
+        entered.set()
+        try:
+            assert release.wait(5)
+            assert path.is_file(), 'Cancellation removed a file still used by the verifier'
+            return 10.0
+        finally:
+            finished.set()
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', verify)
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    task = asyncio.create_task(endpoint(item['id'], audio_request(), user=user))
+    try:
+        assert await asyncio.to_thread(entered.wait, 2)
+        task.cancel(); await asyncio.sleep(0)
+        task.cancel(); await asyncio.sleep(0)
+        assert not task.done() and paths[0].is_file(), 'Upload abandoned its verification worker'
+    finally:
+        release.set()
+        await asyncio.to_thread(finished.wait, 2)
+        await asyncio.gather(task, return_exceptions=True)
+    assert task.cancelled() and not paths[0].exists()
+    with store.transaction('local', write=False) as tx:
+        assert tx.get('local', 'visit', item['id'])['audio_status'] == 'none'
+    result = await endpoint(item['id'], audio_request(), user=user)
+    assert result['audio_status'] == 'transcription_unavailable' and paths[1].is_file()
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('commit_fails', [False, True])
+async def test_upload_cancellation_preserves_committed_audio(tmp_path, monkeypatch, request, storage, commit_fails):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    item = TestClient(app).post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/audio' and 'POST' in route.methods)
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    transaction = store.transaction
+    entered, release = threading.Event(), threading.Event()
+    @contextmanager
+    def delayed(*args, **kwargs):
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+            if kwargs.get('write', True):
+                entered.set()
+                assert release.wait(5)
+                if commit_fails:
+                    raise RuntimeError('synthetic upload commit failure')
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    with monkeypatch.context() as changes:
+        changes.setattr(store, 'transaction', delayed)
+        task = asyncio.create_task(endpoint(item['id'], audio_request(), user=user))
+        try:
+            assert await asyncio.to_thread(entered.wait, 2)
+            task.cancel(); await asyncio.sleep(0)
+            task.cancel(); await asyncio.sleep(0)
+            assert not task.done()
+        finally:
+            release.set()
+        with pytest.raises(RuntimeError if commit_fails else asyncio.CancelledError):
+            await asyncio.wait_for(task, 3)
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    files = list((tmp_path / 'visit-audio').iterdir())
+    if commit_fails:
+        assert saved['audio_status'] == 'none' and files == []
+    else:
+        assert saved['audio_status'] == 'transcription_unavailable'
+        assert len(files) == 1 and files[0].name == saved['audio_path']
+        assert files[0].read_bytes() == b'synthetic audio'
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_concurrent_uploads_keep_only_one_authorized_file(tmp_path, monkeypatch, request, storage):
+    from fastapi import HTTPException
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    item = TestClient(app).post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31'}).json()
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/audio' and 'POST' in route.methods)
+    barrier = threading.Barrier(2)
+    def verify(*args):
+        barrier.wait(timeout=5)
+        return 10.0
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', verify)
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    payloads = [b'first synthetic audio', b'second synthetic audio']
+    results = await asyncio.gather(*(endpoint(item['id'], audio_request(payload), user=user) for payload in payloads), return_exceptions=True)
+    assert sum(isinstance(result, dict) for result in results) == 1
+    assert sum(isinstance(result, HTTPException) and result.status_code == 409 for result in results) == 1
+    winner = next(index for index, result in enumerate(results) if isinstance(result, dict))
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    files = list((tmp_path / 'visit-audio').iterdir())
+    assert len(files) == 1 and files[0].name == saved['audio_path']
+    assert files[0].read_bytes() == payloads[winner]
+    await router.visit_close()

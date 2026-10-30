@@ -208,3 +208,36 @@ AVD 以 `-no-audio` 启动，未点击开始练习、语音输入或录音；本
 前七项全部完成各自远程 CI：第六项 [41110086049](https://github.com/shenyankm/BreathOn/actions/runs/41110086049) 与第七项 [41110922966](https://github.com/shenyankm/BreathOn/actions/runs/41110922966) 的四项 job 均 success，逐项核对 head_sha（`admission-jobs-final.json`、`visit-retry-jobs-final.json`）。[PR #6 的合并验证 41111414851](https://github.com/shenyankm/BreathOn/actions/runs/41111414851) 四项也全部 success，head 为 b5430db、base 为 b8e766d；该分支生产 job 按规则 skipped。获得自动部署授权后才执行上述合并。
 
 本项初始提交 `682af8f1232b92ac99c29557cb7c1c5e52bf082f` 已推送。其 [首次 CI 41112965869](https://github.com/shenyankm/BreathOn/actions/runs/41112965869) 前端/后端成功、Android 失败，deployment 因依赖失败跳过，未关闭本项。日志显示 buildSrc 的 Kotlin 2.3.21 依赖在 Gradle Plugin Portal 未找到；当前同一 POM 在原仓库及 Maven Central 均恢复为 HTTP 200、SHA-256 相同，已仅重跑失败 job，尚待完整结果。未降低版本或跳过构建。为后续顺序合并，已将本项相同代码/测试原样整理到最新 main 的独立分支；保留原提交和失败证据，最终新 head 仍须自己的 CI 全绿。
+
+## 9. 上传事务及取消收尾（改动前标准）
+
+上传接口的初次读取和最终写入仍直接运行同步事务，连接池耗尽会阻塞整个事件循环。此前发现期的 90 个真实 Uvicorn 存活请求 p95 为 4920.953 ms（`visit-upload-fault-discovery.json`）；正式对比使用当前 e553d13 与相同 `visit_upload_fault_probe.py`，三次 6.2 秒窗口，仍须按 5 秒真实 PoolTimeout 失败。最小方案复用现有 work 排空 helper，把读取、提交/响应读取放在线程；验证器取消也须等待已开始的线程结束。已提交标志必须在事务退出后设置，取消不能删除数据库已引用的录音。
+
+调用方已检查：日记导入与 SelfReportRecorder 都向同一 audio 路由发送授权头，120 秒客户端超时；格式、大小、保留期、所有权、原文私有化及手动启动转写保持。范围仅本路由和必要回归，无新配置、依赖或并发机制；流式写入和 100 MB/30 分钟限制保持。回退 git revert 本项 SHA。
+
+预设标准：池耗尽时 live p95 <100 ms，正常/恢复的 p50/p95 不得同时退化 >10% 且 >1 ms。文件/真实 PG 上传读取、提交与响应私有文本读取均不得占用事件循环；重复取消验证和提交时等待线程收尾，回滚无新文件，已提交即保留文件，重试/并发重复上传只有一个成功且无额外临时录音。已有提交后故障保护、授权、保留期与完整回归继续通过。
+
+正常上传正式基线：真实 Cookie 代表账号、原生 ffprobe、单声道 16 kHz PCM16 合成静音 WAV，160 秒/5,120,044 字节与 1600 秒/51,200,044 字节；每种存储 3 次进程启动，首上传分列、预热 3 次后每类各 10 次，总计每类每模式 30 样本。每轮另做大文件上传期间 live 探针（每轮仅 3–4 个样本，不据此声称稳定分位），最终回读两类原文件核对全部字节和 no-store/nosniff。正式脚本 `audio_upload_probe.py`，前后相同工具/参数；未清系统文件缓存，不称完全冷读。
+
+三轮 p50/p95 中位数（ms）：文件 5 MB **12.413/12.734**、51 MB **36.404/45.177**；PG 分别 **16.605/17.827**、**40.319/44.685**。预设正常回归界限：两种存储各类 p50/p95 不得同时增加 >10% 且 >2 ms（5 MB）或 >5 ms（51 MB）；字节与元数据必须一致。较大文件 p95 各轮文件 41.684–45.364、PG 44.249–51.951 ms，保留各轮与原始样本，不按个别更快运行宣称收益。
+
+最初真实上传测量因本机无 ffprobe 返回 503，未计为通过；测试账号第一次还缺少必需管理员配置，配置校验正确拒绝。已从 [FFmpeg 官方](https://ffmpeg.org/download.html) 下载 9.0.2 源码，在本次容器的独立公钥目录核对官方指纹并通过 PGP 验签，源码 SHA-256 为 `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e`；仅在忽略的验收目录以 2 个编译任务构建原生 ffprobe，基线/对比使用相同 PATH。没有安装全局包或改项目依赖；不是生产 ffmpeg、麦克风或扬声器验收。
+
+改动前针对性回归 **4 failed**：两种存储都同步占用事件循环，取消也会立即放弃仍在验证的工作线程。改后日记模块 **50 passed**，完整仓库后端含真实 PG **864 passed、0 skipped，81.88 秒**。覆盖验证/提交的重复取消、真实事务提交/回滚、正确身份上下文、响应私有文件读取、后续重试、两个并发上传仅一个成功及无额外录音。只有两个事务/响应读取改为现有 work，验证器复用其取消排空；提交成功标志在事务退出后设置，确认已提交的文件不随取消删除。
+
+三次真实 PG 池耗尽窗口的 90 个 live 样本：p50/p95 **3916.461/4927.044 → 6.504/9.321 ms**；min/max 前 1910.748/4929.860、后 1.294/10.260 ms。正常 10 次 p50/p95 **0.345/0.383 → 0.357/0.488 ms**，恢复 30 次 **2.242/3.063 → 1.180/1.740 ms**。仍得到真实 PoolTimeout，无上游调用，全部故障时延标准通过（`upload-fault-comparison.json`）。
+
+相同 HTTP/输入/原生 ffprobe 的正常上传对比（各模式每类 30 个热样本，三轮分位数中位数，ms）：
+
+| 存储/输入 | p50 前→后 | p95 前→后 |
+| --- | --- | --- |
+| 文件 5 MB | 12.413→13.275 | 12.734→13.726 |
+| 文件 51 MB | 36.404→40.730 | 45.177→44.583 |
+| PG 5 MB | 16.605→16.354 | 17.827→17.537 |
+| PG 51 MB | 40.319→36.442 | 44.685→45.556 |
+
+全部预设正常回归界限通过；文件大输入 p50 增加 4.326 ms（11.9%，未超过预设 5 ms 绝对界限），不隐去该代价，也不把其他正常差异写成稳定收益。回读原字节保持不变：5 MB SHA-256 `68100cab8c16c5bf79ae85146d6570e61586891f2105bb81477f03e4d7491d66`，51 MB `87b952be7a2f4a96c8b83ffddfbae7c3f1485130f386877b70a9800820e08a0c`；状态、时长、私有字段和缓存安全头一致。首请求、各轮原值/波动均保存在 `audio-upload-before/after.json`，`audio-upload-comparison.json` 判定全部标准。
+
+全量结束后单独运行隔离原生部署集成通过（`upload-native.log`），实际 Caddy/Uvicorn、PG 停机恢复、Cookie 和账号隔离均通过；未与全量回归重叠。无前端/Android 原生树变化，沿用第七项同一树的 100 项、lint、两种页面构建及 APK 编译，不把模拟验证当真机/麦克风验收。diff 审查和 git diff --check 通过，本项仍须提交推送与当前 SHA CI。
+
+合并进展：`ddb3af8` 的 main CI 五项（含真实 production 部署步骤）全部 success，对外 live/ready 均 HTTP 200（`main-production-health.json`）。附件修复原 SHA 682af8f 仅重跑后四项 CI 全部成功，保留首次失败日志；最新 main 基底提交 `e553d1322672558567c530e5b580800035ac7ad8` 的 push [41115527885](https://github.com/shenyankm/BreathOn/actions/runs/41115527885) 与 PR [41115648424](https://github.com/shenyankm/BreathOn/actions/runs/41115648424) 四项分别全部 success，均核对 head_sha。依授权已将 [PR #7](https://github.com/shenyankm/BreathOn/pull/7) 快进到 main，保留该独立提交及恰好一次共同作者 footer；未强推。该 main 的新 CI/自动部署仍待验证，不复用上一提交的 production 结果。

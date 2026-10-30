@@ -324,21 +324,24 @@ def visits_router(store, settings, current_user):
         content_type = request.headers.get('content-type', '').split(';', 1)[0].lower()
         if content_type not in MEDIA_TYPES:
             raise HTTPException(415, '请上传 MP3、M4A 或 WAV 音频。')
-        with store.transaction(user['workspace'], write=False) as tx:
-            item = get_item(tx, user, item_id)
-            if item['owner_id'] != user['id']:
-                raise HTTPException(403, '仅记录本人可上传录音。')
-            if not has_private_text(item):
-                raise HTTPException(409, '请新建语音自述草稿，再录音上传。')
-            if item['audio_status'] != 'none':
-                raise HTTPException(409, '该记录已上传录音。')
-            if retention_expired(item):
-                raise HTTPException(409, '录音的保留期限已到，请新建记录。')
+        def check():
+            with store.transaction(user['workspace'], write=False) as tx:
+                item = get_item(tx, user, item_id)
+                if item['owner_id'] != user['id']:
+                    raise HTTPException(403, '仅记录本人可上传录音。')
+                if not has_private_text(item):
+                    raise HTTPException(409, '请新建语音自述草稿，再录音上传。')
+                if item['audio_status'] != 'none':
+                    raise HTTPException(409, '该记录已上传录音。')
+                if retention_expired(item):
+                    raise HTTPException(409, '录音的保留期限已到，请新建记录。')
+        await work(check)
         audio_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(audio_dir, 0o700)
         name = uuid4().hex
         path = audio_dir / name
         size = 0
+        committed = False
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             with os.fdopen(fd, 'wb') as output:
@@ -351,19 +354,25 @@ def visits_router(store, settings, current_user):
                 os.fsync(output.fileno())
             if not size:
                 raise HTTPException(422, '录音为空。')
-            duration = await asyncio.to_thread(verify_audio, path, content_type)
-            with store.transaction(user['workspace']) as tx:
-                item = get_item(tx, user, item_id)
-                if item['audio_status'] != 'none':
-                    raise HTTPException(409, '该记录已上传录音。')
-                updated = tx.update(user['workspace'], 'visit', item_id, {**item, 'audio_path':name, 'audio_type':content_type,
-                    'audio_duration':duration, 'audio_uploaded_at':now(), 'audio_status':'transcription_unavailable',
-                    'recording_authorized':True}, item['version'])
-                tx.audit(user['workspace'], user['id'], 'visit.audio_upload', 'visit', item_id)
+            duration = await work(verify_audio, path, content_type)
+            def persist():
+                nonlocal committed
+                with store.transaction(user['workspace']) as tx:
+                    item = get_item(tx, user, item_id)
+                    if item['audio_status'] != 'none':
+                        raise HTTPException(409, '该记录已上传录音。')
+                    updated = tx.update(user['workspace'], 'visit', item_id, {**item, 'audio_path':name, 'audio_type':content_type,
+                        'audio_duration':duration, 'audio_uploaded_at':now(), 'audio_status':'transcription_unavailable',
+                        'recording_authorized':True}, item['version'])
+                    tx.audit(user['workspace'], user['id'], 'visit.audio_upload', 'visit', item_id)
+                committed = True
+                return public(updated)
+            result = await work(persist)
         except BaseException:
-            path.unlink(missing_ok=True)
+            if not committed:
+                path.unlink(missing_ok=True)
             raise
-        return public(updated)
+        return result
 
     @router.get('/{item_id}/audio')
     def audio(item_id: str, user=Depends(current_user)):
