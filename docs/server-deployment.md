@@ -28,7 +28,7 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 
 不同 `main` 提交的检查可并行运行，不会被正在执行的生产部署阻塞；Pull Request 和其他分支仍按分支取消旧检查。只有 `production` 使用固定并发组串行执行，且不自动取消正在运行的部署，主机文件锁继续避免同时更新。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。
 
-GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。当前 wheel 下载基址为 `https://mirrors.cloud.tencent.com`，pip 索引为 `https://mirrors.cloud.tencent.com/pypi/simple`，符合[腾讯云官方镜像说明](https://cloud.tencent.com/document/product/213/8623)。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
+GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。当前 wheel 下载基址为 `https://mirrors.cloud.tencent.com/pypi`，pip 索引为 `https://mirrors.cloud.tencent.com/pypi/simple`，符合[腾讯云官方镜像说明](https://cloud.tencent.com/document/product/213/8623)。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
 
 GitHub 仓库配置：
 
