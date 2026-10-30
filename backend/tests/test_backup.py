@@ -101,7 +101,7 @@ def test_backup_failure_restarts_only_previously_running_api_and_removes_partial
             return json.dumps({'postgres_major':17,'sessions':1,'platform_entities':1}).encode()
         if 'pg_dump' in args:
             raise RuntimeError('simulated storage failure')
-        if 'start' in args and restart_fails:
+        if 'up' in args and restart_fails:
             raise RuntimeError('simulated recovery failure')
         return b''
     monkeypatch.setattr(backup, 'command', command)
@@ -109,7 +109,7 @@ def test_backup_failure_restarts_only_previously_running_api_and_removes_partial
     with pytest.raises(RuntimeError, match='recovery' if restart_fails else 'storage'):
         backup.backup(['docker','compose'], 'original', target)
     assert ['docker','compose','stop','api'] in calls
-    assert calls[-1] == ['docker','compose','start','--wait','--wait-timeout','90','api']
+    assert calls[-1] == ['docker','compose','up','-d','--no-deps','--no-recreate','--wait','--wait-timeout','90','api']
     assert not target.exists() and list(tmp_path.iterdir()) == []
 
 
@@ -128,7 +128,7 @@ def test_backup_retains_verified_snapshot_when_api_restart_fails(tmp_path, monke
                 member = tarfile.TarInfo('research/source/original.html')
                 member.size = 4
                 stream.addfile(member, BytesIO(b'test'))
-        if 'start' in args:
+        if 'up' in args:
             raise failure
         return b''
     monkeypatch.setattr(backup, 'command', command)

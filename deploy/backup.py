@@ -126,7 +126,7 @@ def backup(compose, project, target):
         finally:
             if running:
                 try:
-                    command([*compose, 'start', '--wait', '--wait-timeout', '90', 'api'])
+                    command([*compose, 'up', '-d', '--no-deps', '--no-recreate', '--wait', '--wait-timeout', '90', 'api'])
                 except (OSError, RuntimeError, subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
                     if not captured:
                         raise

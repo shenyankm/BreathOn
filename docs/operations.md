@@ -43,7 +43,7 @@ python3 deploy/backup.py --project medvisit-coach backup /安全目录/medvisit-
 python3 deploy/backup.py verify /安全目录/medvisit-20261029
 ```
 
-目标目录必须不存在。脚本在权限 `0700` 的临时目录中生成 `database.dump`、`files.tar` 和 `manifest.json`，文件权限为 `0600`；检查成功后才发布备份目录。写入失败会清理本次未完成的目录，并尝试恢复原 API。如果两份数据已经完整采集但 API 恢复失败，脚本仍校验并保留备份目录，输出保留位置，再以原恢复异常退出；非零退出不一定表示备份不存在。失败后检查 `docker compose ps`；如果 API 未恢复，查看日志并执行 `docker compose start --wait api`。
+目标目录必须不存在。脚本在权限 `0700` 的临时目录中生成 `database.dump`、`files.tar` 和 `manifest.json`，文件权限为 `0600`；检查成功后才发布备份目录。写入失败会清理本次未完成的目录，并尝试恢复原 API。如果两份数据已经完整采集但 API 恢复失败，脚本仍校验并保留备份目录，输出保留位置，再以原恢复异常退出；非零退出不一定表示备份不存在。失败后检查 `docker compose ps`；如果 API 未恢复，查看日志并执行 `docker compose up -d --no-deps --no-recreate --wait --wait-timeout 90 api`。
 
 `database.dump` 使用 PostgreSQL 自定义格式，`files.tar` 从已停止的原 API 容器复制，覆盖真实文件数据。清单包含时间、来源项目名、数据库主版本、两张应用表的行数，以及归档和每个文件的 SHA-256；不包含连接密码或服务密钥。验证同时拒绝不完整包、篡改、压缩伪装、路径越界、符号链接、硬链接、设备文件和环境配置文件。
 
