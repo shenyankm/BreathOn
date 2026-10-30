@@ -60,3 +60,5 @@ sudo journalctl -u caddy --since '15 minutes ago' --no-pager
 重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重建 API；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
 
 源码传输使用 gzip 压缩以减少跨境 SSH 上传时间，保留受限协议中的 `source.tar` 文件名；服务器通过 `tarfile` 自动识别压缩格式。传输完成前不会停止当前应用或切换版本。
+
+服务器源码包与 Docker 构建上下文排除 `frontend/src-tauri/` 和 `frontend/src/assets/library/`，这两部分仅供 Android APK 使用。GitHub 的完整源码下载不受影响；管理端与后端仍由 CI 构建、集成检查。

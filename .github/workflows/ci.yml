@@ -240,7 +240,18 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
           # The restricted receiver auto-detects gzip; retain its source.tar filename.
-          git archive --format=tar.gz HEAD > "$payload/source.tar"
+          git archive --format=tar.gz HEAD -- . ':(exclude)frontend/src-tauri' ':(exclude)frontend/src/assets/library' > "$payload/source.tar"
+          python - "$payload/source.tar" <<'PYCODE'
+          import sys
+          import tarfile
+          with tarfile.open(sys.argv[1]) as archive:
+              names = set(archive.getnames())
+          required = {'LICENSE', 'compose.yaml', 'deploy/server-deploy.sh', 'deploy/backup.py',
+                      'deploy/frontend.Dockerfile', 'deploy/backend.Dockerfile',
+                      'frontend/src/admin-app.tsx', 'backend/medvisit/api/app.py'}
+          assert required <= names, 'Incomplete server source archive'
+          assert not any(name.startswith(('frontend/src-tauri/', 'frontend/src/assets/library/')) for name in names)
+          PYCODE
           tar -cf - -C "$payload" REVISION source.tar | \
             ssh -i "$transport/key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$transport/known_hosts" -o ServerAliveInterval=30 \

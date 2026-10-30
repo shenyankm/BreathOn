@@ -13,3 +13,6 @@ frontend/src-tauri
 .git
 .taste-skill
 .DS_Store
+
+# User-only documents are bundled in the Android APK.
+frontend/src/assets/library/
