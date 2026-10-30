@@ -1,5 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from contextlib import contextmanager
+import asyncio
+import threading
+
+import pytest
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -7,10 +12,11 @@ from fastapi.testclient import TestClient
 from medvisit.core.identity import current_role
 from medvisit.platform.store import PlatformStore
 from medvisit.visits.api import visits_router
+from test_storage import database_url, store as postgres_store
 
 
-def make_app(tmp_path):
-    store = PlatformStore(tmp_path / 'platform.sqlite3')
+def make_app(tmp_path, *, pool=None):
+    store = PlatformStore(tmp_path / 'platform.sqlite3', pool=pool)
     store.open()
     settings = SimpleNamespace(records=tmp_path / 'records')
     app = FastAPI()
@@ -102,7 +108,16 @@ async def test_provider_fetch_token_and_transcription(tmp_path, monkeypatch):
                 return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'})
             return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'一段录音', 'utterances':[{'text':'一段录音','start_time':0,'end_time':100,'additions':{'speaker':'1'}}]}})
     monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
-    await router.visit_run_job('local', item['id'], 'secret')
+    transaction = store.transaction
+    loop_thread = threading.get_ident()
+    @contextmanager
+    def off_loop(*args, **kwargs):
+        assert threading.get_ident() != loop_thread, 'Transcription storage blocked the event loop'
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+    with monkeypatch.context() as storage_check:
+        storage_check.setattr(store, 'transaction', off_loop)
+        await router.visit_run_job('local', item['id'], 'secret')
     assert requests[0][1]['json']['request']['enable_speaker_info'] is True
     with store.transaction('local', write=False) as tx:
         result = tx.get('local','visit',item['id'])
@@ -111,6 +126,106 @@ async def test_provider_fetch_token_and_transcription(tmp_path, monkeypatch):
     assert detail['text'] == '一段录音' and detail['segments'][0]['speaker_id'] == '1'
     assert result['provider_token_hash'] == ''
     assert TestClient(app).get('/api/visits/' + item['id'] + '/provider-audio?token=secret').status_code == 404
+
+
+@pytest.mark.parametrize('commit_fails', [False, True])
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_transcription_cancellation_drains_commit_before_releasing_slot(tmp_path, monkeypatch, request, commit_fails, storage):
+    import httpx
+
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    with store.transaction('local') as tx:
+        item = tx.create('local', 'visit', {'owner_id':'alice', 'source':'recording', 'audio_status':'transcribing',
+            'transcription_job_id':'synthetic-job', 'provider_token_hash':'synthetic-token'})
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, *args, **kwargs):
+            return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'合成转写', 'utterances':[]}})
+
+    monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
+    transaction = store.transaction
+    started, release, settled = asyncio.Event(), threading.Event(), threading.Event()
+    loop = asyncio.get_running_loop()
+    loop_thread = threading.get_ident()
+    @contextmanager
+    def delayed_commit(*args, **kwargs):
+        assert threading.get_ident() != loop_thread, 'Transcription storage blocked the event loop'
+        write = kwargs.get('write', True)
+        try:
+            with transaction(*args, **kwargs) as tx:
+                yield tx
+                if write:
+                    loop.call_soon_threadsafe(started.set)
+                    assert release.wait(5), 'Commit was not released'
+                    if commit_fails:
+                        raise RuntimeError('synthetic commit failure')
+        finally:
+            if write:
+                settled.set()
+
+    with monkeypatch.context() as storage_check:
+        storage_check.setattr(store, 'transaction', delayed_commit)
+        task = asyncio.create_task(router.visit_run_job('local', item['id']))
+        try:
+            await asyncio.wait_for(started.wait(), 1)
+            task.cancel()
+            await asyncio.sleep(0)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done() and not settled.is_set()
+            slot = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if isinstance(cell.cell_contents, asyncio.Semaphore))
+            assert slot.locked()
+        finally:
+            release.set()
+            result, = await asyncio.gather(task, return_exceptions=True)
+    assert settled.is_set()
+    assert isinstance(result, RuntimeError if commit_fails else asyncio.CancelledError)
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    files = list((tmp_path / 'visit-audio').glob('*.transcript'))
+    if commit_fails:
+        assert saved['audio_status'] == 'transcribing' and files == []
+    else:
+        assert saved['audio_status'] == 'transcribed' and saved['provider_token_hash'] == ''
+        assert [path.name for path in files] == [saved['transcript_file']]
+        assert '合成转写' in files[0].read_text()
+    # The next job must be admitted after success, cancellation or rollback.
+    await asyncio.wait_for(router.visit_run_job('local', 'missing'), 1)
+
+
+async def test_superseded_transcription_does_not_submit_or_promote_replacement(tmp_path, monkeypatch):
+    app, router, store = make_app(tmp_path)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key, settings.origins = 'synthetic-key', ('https://example.test',)
+    with store.transaction('local') as tx:
+        item = tx.create('local', 'visit', {'owner_id':'alice', 'audio_status':'queued', 'audio_type':'audio/wav',
+            'audio_duration':10, 'transcription_job_id':'old-job'})
+    requests = []
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self):
+            with store.transaction('local') as tx:
+                old = tx.get('local', 'visit', item['id'])
+                tx.update('local', 'visit', item['id'], {**old, 'transcription_job_id':'replacement-job'}, old['version'])
+            return self
+        async def __aexit__(self, *args): pass
+        async def post(self, *args, **kwargs):
+            requests.append(args)
+            raise AssertionError('A superseded job attempted a paid request')
+
+    monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
+    await router.visit_run_job('local', item['id'], 'old-token')
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    assert requests == [] and saved['audio_status'] == 'queued'
+    assert saved['transcription_job_id'] == 'replacement-job'
 
 
 def test_provider_link_only_accepts_unexpired_token_for_active_job(tmp_path):

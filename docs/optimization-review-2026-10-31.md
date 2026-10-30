@@ -76,7 +76,41 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 行为验收：相关测试 **54 passed、0 skipped，11.69 秒**；完整后端含隔离真实 PG **821 passed、0 skipped，80.72 秒**。默认个人列表仍不返回 `owner_id`，历史无归属记录为 null，管理员列表/详情审计与角色拒绝访问通过。浏览器在独立 `127.0.0.1:5178` / `8006` 上实际执行三条合成记录列表、按代表搜索、打开详情原文、关闭与刷新；截图为 `admin-browser.jpg`。测试完成已关闭临时页面和两个服务；原有 8000/5173 及 AVD 未修改。
 
-只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交、推送与当前 SHA 的四项远程 CI 完成前仍不关闭本项。
+只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交 `fba107995f2e82f22b852f0fc5b0ff944fde9d6f` 已推送，`git ls-remote` 确认远程精确包含该 SHA。[对应 CI 41100857013](https://github.com/shenyankm/BreathOn/actions/runs/41100857013) 已排队，四项远程 CI 完成前仍不关闭本项。
+
+## 3. 转写后台事务移出事件循环（改动前标准）
+
+**问题**：`run_job` 在协程中同步读取、提交和写入私有转写文件。真实 PG 的 4 个连接占满时，首次查询让 20 ms 的事件循环心跳延迟 5006.999 ms。这使无数据库依赖的存活请求和语音消息也无法调度。初始读取、提交任务、轮询读取、保存成功结果、失败及超时收尾必须一起处理，不能只移动首个查询。
+
+**范围与回退**：仅 `visits/api.py` 的后台 `run_job`，其 `launch`、启动恢复和测试入口保持接口。复用现有 `to_thread` + shield 排空线程模式，事务和文件清理整体在线程内执行，现有单任务信号量在工作线程收尾前不释放。新增等待点允许取消/重建交错，提交前核对 job ID，避免旧任务推进新任务。该交错也在改动前复现：旧任务尝试发起收费 submit（模拟拦截，`visit-stale-before.log`），修复后不提交旧任务，替换任务保持 queued。保留原始音频、私有文本、提供商参数、720 次轮询上限、15 秒等待及不自动重发收费 submit 的规则。无依赖或数据迁移；`git revert <本项 SHA>` 回退。
+
+修改前调用链已检查：HTTP transcription → launch → run_job，启动 recover → launch → run_job；现有 `test_provider_fetch_token_and_transcription` 和重启查询回归。上传和入队接口中的同步事务是相邻候选，取消时存在附件与已提交 job 的一致性要求，另行复现/处理；本项不把它们计为已解决。
+
+**复现/预设验收**：
+
+- `uv run --directory backend pytest -q tests/test_visits.py -k 'provider_fetch_token_and_transcription or transcription_cancellation'`：初始读、提交、轮询及结果保存全部不得在事件循环线程执行；重复取消仍等待提交/回滚完成，正常提交不丢私有转写文件，提交失败清理新文件并传播错误，下一任务可进入。
+- `uv run --directory backend python data/validation/optimization-20261031/visit_http_probe.py`：真实 Uvicorn + 新建隔离 PG 数据库，主动占满 4 个连接。3 个各 6.2 秒的故障窗口中，在 0.25/1.25/3.25 秒各发 10 个并发 `/api/live` 请求，总计 90 样本；修复后 p95 必须 **<100 ms**。故障仍按原有 5 秒池超时报 `PoolTimeout`，不能通过吞错误或提前释放故障连接改善指标；释放连接后每轮 10 次存活请求恢复，退出时排空任务并关闭服务与数据库。
+- 相关单测、完整含真实 PG 回归、必要原生部署检查通过。提供商使用模拟响应；HTTP/PG 故障检查使用空模型、ASR、TTS 凭据，外部调用为 0，不声称真实 ASR、麦克风或扬声器已验收。
+
+改动前针对性回归 **3 failed**（`visit-workers-before.log`），旧任务交错另 **1 failed**。修改后初步针对性 **5 passed**，随后补齐真实 PG 提交/回滚；最终完整后端 **826 passed、0 skipped，77.93 秒**，包含两种存储的重复取消、提交失败、状态和私有文件一致性、槽位释放及下一任务进入。前端 **99 passed**；lint 和 Web / Android 页面构建通过，仍有 3 条既有 Fast Refresh 警告。没有 Android 原生改动，本项不改 APK 参数或原生录音行为。
+
+真实 PG + Uvicorn 网络测量（同脚本、同故障窗口、均无上游调用）：
+
+| `/api/live` | 修改前 p50 / p95 / ms | 修改后 p50 / p95 / ms |
+| --- | --- | --- |
+| 正常，10 次 | 0.350 / 0.403 | 0.443 / 0.636 |
+| 池耗尽，90 次 | 3921.659 / 4920.399 | 6.430 / 8.449 |
+| 恢复，30 次 | 2.009 / 2.527 | 1.041 / 1.578 |
+
+故障样本前 min/max 1922.804/4922.944 ms、后 0.797/9.232 ms，超过噪声且满足预定 p95 <100 ms。每个窗口中的后台任务仍得到真实 `PoolTimeout`，没有提前释放连接或掩盖错误。完整应用 lifespan 退出后写入关闭标记并验证进程结束；Uvicorn 正常处理 SIGTERM 后会重新发出该信号，因此允许退出码 0 或 -15，并要求关闭标记存在。最初脚本误将 -15 作为失败，已根据已安装 Uvicorn 源码修正并增加关闭标记，之后重新采集完整前后结果，不将首次脚本失败计为通过。
+
+原生部署在新建隔离数据库再次通过：Caddy / Uvicorn 路由、重启、真实 PG 停机及恢复、Cookie 与账号隔离（`visit-native.log`）。这证明本机集成，不代表生产部署、强制断电或 SIGKILL 恢复。三个故障窗口是重复验收，不算 goal 的三轮独立复查。提交与远程 CI 完成前不关闭本项。
+
+## 当前真实服务与设备边界
+
+手动执行现有 `check_services` **一次**：四类配置完整的提供商探针各一次、每类 20 秒上限；3.188 秒完成，ASR、TTS、analysis、practice、combat 五个状态均正常（`live-services-once.json`）。practice/combat 为组合状态，实际探针为 SeedASR、TTS、DeepSeek、Seeduplex 四类。使用仓库内的合成音频和简短状态文本，可能产生服务用量；未重复收费压测，不把单次状态检测当延迟分布、医学输出质量或麦克风/扬声器验收。
+
+当前仅检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。已询问可用的隔离真机环境；尚未完成真实麦克风、扬声器与真机端到端验收，goal 仍 active。
 
 ## 待核实/处理候选
 
