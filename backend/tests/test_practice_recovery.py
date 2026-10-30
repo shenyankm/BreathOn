@@ -51,7 +51,7 @@ async def test_cancelled_practice_cleans_up_client_receiver_and_speech(tmp_path,
     client.receive_text = lambda: blocked('client')
     monkeypatch.setattr('medvisit.voice.asr.asr_connection', lambda *_: upstream)
     monkeypatch.setattr(AsrStream, 'receive', lambda _: blocked('asr'))
-    monkeypatch.setattr('medvisit.services.practice.synthesize', lambda *_: blocked('speech'))
+    monkeypatch.setattr('medvisit.services.practice.synthesize', lambda *_, **__: blocked('speech'))
     task = asyncio.create_task(run_practice(client, settings(tmp_path), SessionRecord('test', 'assisted')))
     try:
         await asyncio.wait_for(asyncio.gather(*(event.wait() for event in started.values())), 1)
@@ -73,7 +73,7 @@ async def test_slow_client_cannot_block_cancelled_speech_cleanup(tmp_path, monke
                 await asyncio.Event().wait()
             await super().send_json(event)
 
-    async def speech(*args):
+    async def speech(*args, **kwargs):
         started.set()
         await asyncio.Event().wait()
 

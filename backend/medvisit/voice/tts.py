@@ -44,9 +44,14 @@ def response(raw: bytes) -> tuple[int, int, str, bytes]:
     return kind, event, identity, payload
 
 
-async def synthesize(settings, text: str, section_id: str, send_audio) -> dict:
+async def synthesize(settings, text: str, section_id: str, send_audio, *, instruction: str | None = None) -> dict:
     if not isinstance(text, str) or not text.strip() or len(text) > 1200:
         raise ValueError("无效的医生朗读文字")
+    if instruction is not None and (not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 500):
+        raise ValueError("无效的医生朗读指令")
+    additions = {"section_id": section_id}
+    if instruction is not None:
+        additions["context_texts"] = [instruction]
     session_id = str(uuid4())
     # shortcut: one connection per doctor turn; reuse it if handshake latency becomes material.
     async with asyncio.timeout(60), connect(settings.tts_endpoint, additional_headers={
@@ -68,7 +73,7 @@ async def synthesize(settings, text: str, section_id: str, send_audio) -> dict:
         await send(1)
         await expect(50)
         params = {"speaker": settings.tts_voice, "audio_params": {"format": "pcm", "sample_rate": 24000},
-                  "additions": json.dumps({"section_id": section_id})}
+                  "additions": json.dumps(additions, ensure_ascii=False)}
         await send(100, {"event": 100, "req_params": params}, session_id)
         await expect(150, session_id)
         await send(200, {"event": 200, "req_params": {**params, "text": text}}, session_id)

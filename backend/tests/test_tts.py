@@ -8,6 +8,7 @@ import pytest
 from websockets.asyncio.server import serve
 
 from medvisit.services.practice import OPENING, PracticeDialogue
+from medvisit.platform.training import speech_instructions
 from medvisit.voice.protocol import BridgeError
 from medvisit.storage.records import SessionRecord
 from medvisit.voice.tts import request, response, synthesize
@@ -31,8 +32,10 @@ def test_protocol_matches_official_start_and_rejects_malformed_frames():
     assert 'fake-tts-key' not in str(error.value) and 'private-provider-detail' not in str(error.value)
 
 
-async def test_actual_websocket_synthesis_and_realtime_pacing(tmp_path):
+@pytest.mark.parametrize('instruction', [None, '请用审慎、质疑的语气说话。'])
+async def test_actual_websocket_synthesis_and_realtime_pacing(tmp_path, instruction):
     sent_text = []
+    sent_additions = []
     audio = b'\x01\0' * (24000 * 3)
     async def vendor(ws):
         assert ws.request.headers['X-Api-Key'] == 'fake-tts-key'
@@ -46,6 +49,8 @@ async def test_actual_websocket_synthesis_and_realtime_pacing(tmp_path):
                 identity = raw[offset + 4:offset + 4 + size].decode()
                 offset += size + 4
             data = json.loads(raw[offset + 4:])
+            if event in (100, 200):
+                sent_additions.append(json.loads(data['req_params']['additions']))
             if event == 1:
                 await ws.send(server_packet(50))
             elif event == 100:
@@ -64,20 +69,37 @@ async def test_actual_websocket_synthesis_and_realtime_pacing(tmp_path):
         async def receive(pcm):
             chunks.append(pcm)
         start = monotonic()
-        usage = await synthesize(settings(tmp_path, tts_endpoint=endpoint), '医生文字', 'practice-id', receive)
+        usage = await synthesize(settings(tmp_path, tts_endpoint=endpoint), '医生文字', 'practice-id', receive, instruction=instruction)
         assert monotonic() - start >= 2
     assert sent_text == ['医生文字'] and b''.join(chunks) == audio
     assert max(map(len, chunks)) <= 9600 and usage['text_words'] == 4
     assert usage['submitted_characters'] == 4 and usage['output_audio_seconds'] == 3
     assert usage['model'] == 'seed-tts-2.0'
+    expected = {'section_id': 'practice-id'}
+    if instruction is not None:
+        expected['context_texts'] = [instruction]
+    assert sent_additions == [expected, expected]
 
 
-async def test_only_doctor_text_is_spoken_and_stop_cleans_up(tmp_path):
+@pytest.mark.parametrize('instruction', ['', '   ', '字' * 501, [], 1])
+async def test_invalid_speech_instruction_is_rejected_before_connecting(tmp_path, instruction):
+    with patch('medvisit.voice.tts.connect') as connect:
+        with pytest.raises(ValueError, match='朗读指令'):
+            await synthesize(settings(tmp_path), '医生文字', 'practice-id', AsyncMock(), instruction=instruction)
+        connect.assert_not_called()
+
+
+@pytest.mark.parametrize('configured', [False, True])
+async def test_only_doctor_text_is_spoken_and_stop_cleans_up(tmp_path, configured):
     client, record = Client(), SessionRecord('test', 'assisted')
+    if configured:
+        record.training = {'stage': 'full', 'doctor': {'mood': 'friendly', 'opening': '请先说人群。'}, 'scenario': {}}
     dialogue = PracticeDialogue(client, settings(tmp_path), record)
     spoken = []
-    async def speech(config, text, section_id, send_audio):
+    instructions = []
+    async def speech(config, text, section_id, send_audio, *, instruction=None):
         spoken.append(text)
+        instructions.append(instruction)
         await send_audio(bytes(640))
         return {}
     with patch('medvisit.services.practice.synthesize', speech), patch('medvisit.services.practice.generate_reply', AsyncMock(return_value=(REPLY, {}))):
@@ -88,18 +110,22 @@ async def test_only_doctor_text_is_spoken_and_stop_cleans_up(tmp_path):
         await dialogue.pending
         await dialogue.voice_task
         await dialogue.close()
-    assert spoken == [OPENING, REPLY['doctor_reply']]
+    assert spoken == ['请先说人群。' if configured else OPENING, REPLY['doctor_reply']]
+    assert instructions == [speech_instructions(record.training)] * 2
     assert REPLY['coach']['reply'] not in spoken
     assert dialogue.voice_task is None and dialogue.pending is None
 
 
 async def test_speech_failure_retry_reuses_text_and_has_fresh_playback_id(tmp_path):
     client, record = Client(), SessionRecord('test', 'assisted')
+    record.training = {'stage': 'full', 'doctor': {'mood': 'skeptical', 'opening': OPENING}, 'scenario': {}}
     dialogue = PracticeDialogue(client, settings(tmp_path), record)
     attempts = 0
-    async def speech(config, text, section_id, send_audio):
+    instructions = []
+    async def speech(config, text, section_id, send_audio, *, instruction=None):
         nonlocal attempts
         attempts += 1
+        instructions.append(instruction)
         if attempts == 1:
             raise BridgeError('tts_provider_error', 'private-provider-detail')
         await send_audio(bytes(640))
@@ -115,6 +141,7 @@ async def test_speech_failure_retry_reuses_text_and_has_fresh_playback_id(tmp_pa
         ids = [e['response_id'] for e in client.events if e['type'] == 'response_started']
         assert len(ids) == 2 and ids[0] != ids[1]
         assert 'private-provider-detail' not in json.dumps(client.events)
+        assert instructions == [speech_instructions(record.training)] * 2
         model.assert_not_called()
         await dialogue.close()
 
@@ -123,7 +150,7 @@ async def test_new_trainee_speech_cancels_stale_synthesis(tmp_path):
     client, record = Client(), SessionRecord('test', 'assisted')
     dialogue = PracticeDialogue(client, settings(tmp_path), record)
     started, cancelled = asyncio.Event(), asyncio.Event()
-    async def speech(*args):
+    async def speech(*args, **kwargs):
         started.set()
         try:
             await asyncio.Event().wait()
