@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 import { formatTime } from '../src/lib/session.ts'
 import { applyTranscript } from '../src/lib/voice-events.ts'
+import { invalidateMedicalCheck, updateMedicalChecks } from '../src/lib/medical.ts'
 
 function session(fetchHealth: () => Promise<Response> = async () => Response.json({
   asr_configured: true, voice_configured: true, analysis_configured: true, tts_configured: true,
@@ -52,6 +53,7 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     '@/lib/audio/browser-audio': { BrowserAudio: Audio, encodeAudio: () => '' },
     '@/lib/session': { formatTime },
     '@/lib/voice-events': { applyTranscript },
+    '@/lib/medical': { invalidateMedicalCheck, updateMedicalChecks },
   }
   const exports: { useVoiceSession?: () => any } = {}
   const source = readFileSync(new URL('../src/hooks/use-voice-session.ts', import.meta.url), 'utf8')
@@ -79,6 +81,22 @@ test('cancelling combat during health lookup leaves the session restartable', as
   await opening
   assert.equal(app.sockets.length, 0)
   assert.equal(app.audioOpened(), 0)
+})
+
+test('medical checks follow corrected trainee text and unresolved checks never pass on end', async () => {
+  const app = session()
+  await app.render().start('independent', 'combat')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'one' })
+  ws.receive({ type: 'transcript', id: 'u1', role: 'trainee', text: '旧转录', final: true })
+  ws.receive({ type: 'medical_check', check: { message_id: 'u1', text: '旧转录', status: 'contradicted', statements: [] } })
+  assert.equal(app.render().medicalChecks[0].status, 'contradicted')
+  ws.receive({ type: 'transcript', id: 'u1', role: 'trainee', text: '修正转录', replace: true, final: true })
+  ws.receive({ type: 'medical_check', check: { message_id: 'u1', text: '旧转录', status: 'supported', statements: [] } })
+  assert.equal(app.render().medicalChecks[0].text, '修正转录')
+  assert.equal(app.render().medicalChecks[0].status, 'checking')
+  ws.receive({ type: 'ended', session_id: 'one', saved: true })
+  assert.equal(app.render().medicalChecks[0].status, 'unavailable')
 })
 
 test('trained practice disconnect during final review clears waiting and keeps transcript', async () => {

@@ -3,6 +3,8 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def isolate_doctor_speech(monkeypatch):
+    # Transport fixtures must not send synthetic utterances to real medical-inference providers.
+    monkeypatch.setattr('medvisit.api.app.MEDICAL_SNAPSHOT', None)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("DEEPSEEK_SEARCH_ENABLED", "false")
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173")

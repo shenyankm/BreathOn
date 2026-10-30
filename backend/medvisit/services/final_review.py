@@ -16,8 +16,9 @@ async def review_training(settings, record):
     try:
         if record.validate_training:
             await asyncio.to_thread(record.validate_training)
+        options = {'medical_checks':record.data['medical_checks']} if record.data.get('medical_checks') else {}
         reply,usage=await generate_reply(settings,history,speak=False,training=record.training,
-                                        interactions=record.data['interaction_events'])
+                                        interactions=record.data['interaction_events'],**options)
         if usage:
             record.data['usage'].append({'provider':'deepseek',**usage})
         if record.validate_training:

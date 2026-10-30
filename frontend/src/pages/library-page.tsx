@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { drugs, drugCatalogueCheckedAt, drugCatalogueSource, type Drug } from '@/lib/drugs'
 import { filterPolicies, policyCategories, policyDocuments, policyLevels } from '@/lib/policies'
+import { MedicalLibrary } from '@/components/medical-library'
 
 type LibraryDocument = { id: string; name: string; url: string; description: string; kind: 'text'; content: string; drug?: Drug }
 const drugImages = import.meta.glob<string>('../assets/library/innovent/*.{jpg,png}', { eager: true, query: '?url', import: 'default' })
@@ -18,6 +19,7 @@ const skillDocuments: LibraryDocument[] = [{
 }]
 const modules = [
   { id: 'drugs', name: '药品文档', icon: BookOpen, count: drugs.length },
+  { id: 'medical', name: '医学依据核验', icon: BookOpen, count: null },
   { id: 'skills', name: '医药代表技能', icon: GraduationCap, count: skillDocuments.length },
   { id: 'doctors', name: '医生医院文档', icon: Hospital, count: 0 },
   { id: 'policies', name: '政策文档', icon: Landmark, count: policyDocuments.length },
@@ -47,9 +49,9 @@ export function LibraryPage() {
 
   return <div className="space-y-6">
     <Tabs value={category} onValueChange={setCategory}>
-      <div className="pb-4"><TabsList className="grid h-auto! w-full grid-cols-2 sm:inline-flex sm:w-auto" aria-label="文档分类">{modules.map(module => <TabsTrigger key={module.id} value={module.id} className="min-h-11 gap-2 px-3 sm:px-5"><module.icon />{module.name}<span className="ml-1 text-xs text-muted-foreground">{module.count}</span></TabsTrigger>)}</TabsList></div>
+      <div className="pb-4"><TabsList className="grid h-auto! w-full grid-cols-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="文档分类">{modules.map(module => <TabsTrigger key={module.id} value={module.id} className="min-h-11 gap-2 px-3 sm:px-5"><module.icon />{module.name}{module.count !== null && <span className="ml-1 text-xs text-muted-foreground">{module.count}</span>}</TabsTrigger>)}</TabsList></div>
       {modules.map(module => <TabsContent key={module.id} value={module.id}>
-        {module.id === 'drugs' ? <section className="space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">药品文档</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{drugCatalogueCheckedAt} 核对 · <a className="underline underline-offset-4" href={drugCatalogueSource} target="_blank" rel="noreferrer">官网产品清单</a></p></div><Button asChild variant="outline" className="h-11"><a href="#workspace?tab=research&agent=drug">查找同类药品</a></Button></header><div className="grid auto-rows-fr grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4" aria-label="药品列表">{drugs.map(drug => <Card key={drug.id} className="gap-0 overflow-hidden py-0">
+        {module.id === 'medical' ? <MedicalLibrary/> : module.id === 'drugs' ? <section className="space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">药品文档</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{drugCatalogueCheckedAt} 核对 · <a className="underline underline-offset-4" href={drugCatalogueSource} target="_blank" rel="noreferrer">官网产品清单</a></p></div><Button asChild variant="outline" className="h-11"><a href="#workspace?tab=research&agent=drug">查找同类药品</a></Button></header><div className="grid auto-rows-fr grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4" aria-label="药品列表">{drugs.map(drug => <Card key={drug.id} className="gap-0 overflow-hidden py-0">
           <div className="relative aspect-[4/3] w-full shrink-0 sm:aspect-[4/5]"><img src={drugImages[`../assets/library/innovent/${drug.image}`]} alt={`${drug.brand}${drug.name}${drug.imageLabel ?? '产品图'}`} loading="lazy" decoding="async" className="absolute inset-0 size-full object-contain p-4" />{drug.imageLabel && <span className="absolute right-3 bottom-3 rounded bg-background px-2 py-1 text-xs text-muted-foreground">{drug.imageLabel}</span>}</div>
           <CardContent className="flex flex-1 flex-col gap-4 border-t p-4"><div><CardTitle className="text-base leading-6"><h2>{drug.name}</h2></CardTitle><CardDescription className="mt-1.5">{drug.brand}</CardDescription></div><div className="mt-auto space-y-2"><p className="text-xs text-muted-foreground">{drug.document.label}</p><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" aria-label={`查看${drug.brand}概述`} onClick={event => openDocument({ id: `${drug.id}-overview`, kind: 'text', name: `${drug.name} · ${drug.brand}`, url: drugCatalogueSource, description: '官方公开资料摘编', content: `${drug.category} · ${drug.target}\n\n${drug.overview}`, drug }, event.currentTarget)}>概述</Button><Button asChild variant="outline" size="sm"><a href={drug.document.url} target="_blank" rel="noreferrer" aria-label={`查看${drug.brand}${drug.document.label}（在新标签页打开）`}>详细文档</a></Button></div></div></CardContent>
         </Card>)}</div></section> : module.id === 'skills' ? <section className="space-y-5" aria-label="医药代表技能资料">

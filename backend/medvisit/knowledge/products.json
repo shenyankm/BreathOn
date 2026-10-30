@@ -1,0 +1,162 @@
+[
+  {
+    "id": "sintilimab",
+    "source_id": 1,
+    "name": "信迪利单抗注射液",
+    "brand": "达伯舒",
+    "url": "https://img.innoventbio.com/PackageInsert/sintilimab.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "bevacizumab",
+    "source_id": 4,
+    "name": "贝伐珠单抗注射液",
+    "brand": "达攸同",
+    "url": "https://img.innoventbio.com/7.4/new2.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "adalimumab",
+    "source_id": 3,
+    "name": "阿达木单抗注射液",
+    "brand": "苏立信",
+    "url": "https://img.innoventbio.com/adm3.22.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "rituximab",
+    "source_id": 16,
+    "name": "利妥昔单抗注射液",
+    "brand": "达伯华",
+    "url": "https://img.innoventbio.com/product/HALPRYZAInstructions.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "pemigatinib",
+    "source_id": 14,
+    "name": "佩米替尼片",
+    "brand": "达伯坦",
+    "url": "https://img.innoventbio.com/pmtn3.22.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "olverembatinib",
+    "source_id": 40,
+    "name": "奥雷巴替尼片",
+    "brand": "耐立克",
+    "url": "https://img.innoventbio.com/5c89f09e539a25191.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "ramucirumab",
+    "source_id": 82,
+    "name": "雷莫西尤单抗注射液",
+    "brand": "希冉择",
+    "url": "https://img.innoventbio.com/xrz11.231.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "selpercatinib",
+    "source_id": 83,
+    "name": "塞普替尼胶囊",
+    "brand": "睿妥",
+    "url": "https://img.innoventbio.com/rt.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "equecabtagene",
+    "source_id": 17,
+    "name": "伊基奥仑赛注射液",
+    "brand": "福可苏",
+    "url": "https://images.qingtv.com/%E6%82%A3%E8%80%85%E6%89%8B%E5%86%8C%E4%B8%AD%E6%96%87%E7%89%88.pdf",
+    "document_label": "患者手册（非说明书）"
+  },
+  {
+    "id": "tafolecimab",
+    "source_id": 31,
+    "name": "托莱西单抗注射液",
+    "brand": "信必乐",
+    "url": "https://img.innoventbio.com/tlx3.22.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "fulzerasib",
+    "source_id": 42,
+    "name": "氟泽雷塞片",
+    "brand": "达伯特",
+    "url": "https://img.innoventbio.com/fzlsp.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "pirtobrutinib",
+    "source_id": 107,
+    "name": "匹妥布替尼片",
+    "brand": "捷帕力",
+    "url": "https://img.innoventbio.com/product/pirtobrutinib.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "taletrectinib",
+    "source_id": 37,
+    "name": "己二酸他雷替尼胶囊",
+    "brand": "达伯乐",
+    "url": "https://img.innoventbio.com/2024.12/dbl.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "limertinib",
+    "source_id": 104,
+    "name": "利厄替尼片",
+    "brand": "奥壹新",
+    "url": "https://img.innoventbio.com/25.02/Limertinib.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "teprotumumab",
+    "source_id": 88,
+    "name": "替妥尤单抗N01注射液",
+    "brand": "信必敏",
+    "url": "https://img.innoventbio.com/25.03/teprotumumabN01.jpg",
+    "document_label": "说明书（图片）"
+  },
+  {
+    "id": "mazdutide",
+    "source_id": 30,
+    "name": "玛仕度肽注射液",
+    "brand": "信尔美",
+    "url": "https://img.innoventbio.com/product/S5LGV8EM_SMS_24mg.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "picankibart",
+    "source_id": 13,
+    "name": "匹康奇拜单抗注射液",
+    "brand": "信美悦",
+    "url": "https://img.innoventbio.com/product/PECONDLE.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "ipilimumab",
+    "source_id": 2,
+    "name": "伊匹木单抗N01注射液",
+    "brand": "达伯欣",
+    "url": "https://img.innoventbio.com/product/Ipilimumab.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "abemaciclib",
+    "source_id": 121,
+    "name": "阿贝西利片",
+    "brand": "唯择",
+    "url": "https://www.lillymedical.cn/file/raw/f4e09dab-5cac-445c-91f1-1222ec5bbb93/阿贝西利片说明书.pdf",
+    "document_label": "说明书（PDF）"
+  },
+  {
+    "id": "quizartinib",
+    "source_id": 122,
+    "name": "盐酸奎扎替尼片",
+    "brand": "维复泰",
+    "url": "https://www.daiichisankyo.com.cn/Portals/0/344_0_奎扎替尼说明书.pdf",
+    "document_label": "说明书（PDF）"
+  }
+]

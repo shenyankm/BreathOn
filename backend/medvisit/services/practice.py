@@ -135,6 +135,8 @@ class PracticeDialogue:
             if isinstance(start, int) and isinstance(utterance.get("end_time"), int):
                 stored["speech"].update(start_ms=start, end_ms=utterance["end_time"])
             await self.send_client({"type": "transcript", **latest, "replace": True})
+            if getattr(self.record, 'medical_checks', None):
+                self.record.medical_checks.observe(item_id, text, complete)
         if final:
             for message in self.record.data["messages"]:
                 if message["role"] == "trainee" and not message["final"]:
@@ -144,6 +146,8 @@ class PracticeDialogue:
                     changed = True
                     latest = dict(message)
                     await self.send_client({"type": "transcript", **message, "replace": True})
+                    if getattr(self.record, 'medical_checks', None):
+                        self.record.medical_checks.observe(message['id'], message['text'], True)
         if changed:
             if self.combat:
                 return
@@ -183,6 +187,8 @@ class PracticeDialogue:
                 except HTTPException as exc:
                     raise BridgeError('training_material_changed', exc.detail) from exc
             options = {'training': self.record.training} if self.record.training else {}
+            if self.record.data.get('medical_checks'):
+                options['medical_checks'] = self.record.data['medical_checks']
             result, usage = await generate_reply(self.settings, history, speak=not self.combat, interactions=list(self.record.data["interaction_events"]), **options)
             if usage:
                 self.record.data["usage"].append({"provider": "deepseek", **usage})

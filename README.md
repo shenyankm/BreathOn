@@ -81,3 +81,4 @@ CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建�
 - [单用户部署运维](docs/operations.md)：备份、恢复、升级与排查
 - [检索助手](docs/research-agents.md) · [药品资料库](docs/drug-library.md) · [医生角色](docs/doctor-agent.md)
 - [训练交付记录](docs/training-delivery.md)：验收范围与已知限制
+- [医学 Wiki](docs/medical-wiki.md)：产品知识条目、来源缺口、导入与逐句核验
