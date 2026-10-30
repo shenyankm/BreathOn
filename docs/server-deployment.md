@@ -28,7 +28,7 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 
 不同 `main` 提交的检查可并行运行，不会被正在执行的生产部署阻塞；Pull Request 和其他分支仍按分支取消旧检查。只有 `production` 使用固定并发组串行执行，且不自动取消正在运行的部署，主机文件锁继续避免同时更新。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。
 
-GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
+GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。当前 wheel 下载基址为 `https://mirrors.cloud.tencent.com`，pip 索引为 `https://mirrors.cloud.tencent.com/pypi/simple`，符合[腾讯云官方镜像说明](https://cloud.tencent.com/document/product/213/8623)。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
 
 GitHub 仓库配置：
 
@@ -41,7 +41,7 @@ GitHub 仓库配置：
 
 专用 SSH 密钥使用 `restrict` 和强制命令，仅可调用 root 所有的 `/usr/local/sbin/medvisit-deploy`。原生部署入口对应仓库的 `deploy/native-deploy.sh`；更新脚本时，需由服务器管理员重新安装到该位置。密钥不能获得交互 shell、转发端口或执行任意 SSH 命令。
 
-首次从旧容器版迁移由服务器管理员完成：创建 `medvisit` 用户（UID 10001）、安装 `deploy/medvisit-coach.service` 与 `deploy/database.compose.yaml`、绑定既有持久卷并建立首个原生 `current`，然后安装新的受限入口。自动 CD 只处理原生版本之间的升级，不会重新启动旧 API/Web 容器。
+首次从旧容器版迁移由服务器管理员完成：创建 `medvisit` 用户（UID 10001）、安装 `deploy/medvisit-coach.service` 与 `deploy/database.compose.yaml`、绑定既有持久卷并建立首个原生 `current`，然后安装新的受限入口。UID 10001 与 Caddy 需要对 `/srv/medvisit-coach`、`releases` 具备目录穿越权限；`/app`、`/app/data` 同样须允许服务用户穿越。私有环境文件仍保持 root 所有、0600，数据目录仍仅 UID 10001 可读写。Caddy 访问日志须由 `caddy:caddy` 所有、0600；首次以 root 校验配置可能创建日志文件，启用前须校正其属主。自动 CD 只处理原生版本之间的升级，不会重新启动旧 API/Web 容器。
 
 后续发布先在运行中服务之外接收源码与工件、安装锁定依赖并校验 Caddy。所有准备完成后短暂停止 API，调用 `deploy/native-backup.py` 验证备份，再原子切换 `current`、重启 API 并重载 Caddy。匿名就绪、登录开关、业务接口 401 及 Web 路由检查均通过才确认发布。失败或收到 TERM/HUP/INT 时恢复上一版链接、Caddy 配置并重启旧 API；接收、依赖安装、备份和健康检查均有超时。备份沿用格式 1，包含 PostgreSQL 与 sessions 原文，不包含 visit-audio 卷；不自动回滚数据库。涉及不兼容的数据迁移时，应先停止自动部署并按恢复流程验证。
 
