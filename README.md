@@ -27,6 +27,8 @@ cp -n backend/.env.example backend/.env
 
 默认模型、音色及资源要求见 [`backend/.env.example`](backend/.env.example)。密钥仅由后端读取，不要使用 `VITE_` 前缀或提交 `.env`。
 
+本机开发默认免登录。启用登录时，运行 `uv run --directory backend python -m medvisit.api.auth` 生成密码哈希，在 `backend/.env` 设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`。
+
 在两个终端分别启动：
 
 ```sh
@@ -41,7 +43,7 @@ npm run dev -- --host 127.0.0.1
 
 ## Docker 部署
 
-先按上文配置 `backend/.env`，再执行：
+先按上文配置 `backend/.env` 和管理员密码哈希，再执行：
 
 ```sh
 cp -n .env.example .env
@@ -66,7 +68,7 @@ CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建�
 
 ## 使用边界
 
-- 单用户、无登录保护，仅供本机使用，不要暴露到公网或共享网络。
+- 单管理员；本机免登录模式不可对外开放。公网部署须启用登录并使用 HTTPS，配置见[服务器与 CI/CD](docs/server-deployment.md)。
 - 不保存原始音频；演练音频和文本会发送给配置的语音、模型服务。请勿输入真实患者信息。
 - 模型输出需专业复核；语气分析仅覆盖措辞，不代表声音语调或情绪评估。资料来源核对不等于医学审核。
 

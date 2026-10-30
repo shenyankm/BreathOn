@@ -1,0 +1,30 @@
+{
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "[?].*$" ""
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+}
+
+openwook.cloud {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+www.openwook.cloud {
+	redir https://openwook.cloud{uri} permanent
+}
+
+http://122.51.255.108 {
+	respond 404
+}

@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 from .limits import RateLimit
+from ..api.auth import password_parts
 from ..agents.coach import DEEPSEEK_URL
 from ..voice.asr import ASR_URL
 from ..voice.tts import TTS_URL
@@ -25,6 +26,9 @@ def integer_env(name, default):
 
 @dataclass
 class Settings:
+    auth_required: bool = field(default_factory=lambda: os.getenv('AUTH_REQUIRED', 'false').lower() != 'false')
+    admin_username: str = field(default_factory=lambda: os.getenv('ADMIN_USERNAME', 'admin'))
+    admin_password_hash: str = field(default_factory=lambda: os.getenv('ADMIN_PASSWORD_HASH', ''), repr=False)
     api_key: str = field(default_factory=lambda: os.getenv("DOUBAO_API_KEY", ""), repr=False)
     voice: str = field(default_factory=lambda: os.getenv("DOUBAO_VOICE", "zh_male_xiaotian_jupiter_bigtts"))
     origins: tuple[str, ...] = field(default_factory=lambda: tuple(
@@ -84,6 +88,12 @@ class Settings:
         except (ValueError, TypeError, UnicodeError):
             raise ValueError('ALLOWED_ORIGINS must contain exact HTTP(S) origins without credentials, paths, queries or wildcards') from None
         self.origins = tuple(origins)
+        if self.auth_required:
+            if not self.admin_username.strip() or len(self.admin_username) > 100:
+                raise ValueError('ADMIN_USERNAME must contain 1 to 100 characters')
+            password_parts(self.admin_password_hash)
+            if any(urlsplit(origin).scheme != 'https' and urlsplit(origin).hostname not in ('localhost', '127.0.0.1', '::1') for origin in self.origins):
+                raise ValueError('Authentication requires HTTPS for public ALLOWED_ORIGINS')
         self.records = Path(self.records).expanduser()
         self._deepseek_slots = asyncio.Semaphore(self.deepseek_max_concurrency)
         self._search_rate = RateLimit(self.deepseek_search_qps)

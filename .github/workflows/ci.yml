@@ -9,7 +9,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   frontend:
@@ -67,7 +67,7 @@ jobs:
   deployment:
     needs: [frontend, backend]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       COMPOSE_PROJECT_NAME: medvisit-ci
       POSTGRES_PASSWORD: ci-only-password
@@ -107,6 +107,30 @@ jobs:
           PY
           docker compose up -d --no-deps --no-recreate --wait --wait-timeout 60 db
           python deploy/check-stack.py
+      - name: Deploy production after all checks
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          transport="$RUNNER_TEMP/medvisit-transport"
+          payload="$RUNNER_TEMP/medvisit-payload"
+          mkdir -p "$transport" "$payload"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$transport/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
+          printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
+          git archive --format=tar HEAD > "$payload/source.tar"
+          docker tag medvisit-coach-api:local "medvisit-coach-api:$GITHUB_SHA"
+          docker tag medvisit-coach-web:local "medvisit-coach-web:$GITHUB_SHA"
+          docker save "medvisit-coach-api:$GITHUB_SHA" "medvisit-coach-web:$GITHUB_SHA" postgres:17-alpine | gzip -1 > "$payload/images.tar.gz"
+          tar -cf - -C "$payload" REVISION source.tar images.tar.gz | \
+            ssh -i "$transport/key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$transport/known_hosts" -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST"
       - name: Deployment logs
         if: failure()
         run: docker compose logs --tail 100

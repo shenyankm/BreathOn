@@ -1,6 +1,6 @@
 # 单用户部署运维
 
-服务保持本机访问、单个 API 进程。PostgreSQL 保存演练与平台元数据，`research_data` 保存 `/app/data/sessions` 下的检索原件、HTML 阅读副本与任务文件；备份和恢复必须同时覆盖两者。不要对需要保留的数据执行 `docker compose down -v`。
+服务使用单个 API 进程。本机免登录模式仅供本机访问；公网须启用管理员登录并通过 Caddy 提供 HTTPS，见[服务器与 CI/CD](server-deployment.md)。PostgreSQL 保存演练与平台元数据，`research_data` 保存 `/app/data/sessions` 下的检索原件、HTML 阅读副本与任务文件；备份和恢复必须同时覆盖两者。不要对需要保留的数据执行 `docker compose down -v`。
 
 ## 启动与排查
 

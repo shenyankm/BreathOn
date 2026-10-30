@@ -31,7 +31,7 @@ def client(tmp_path, request):
         yield client
 
 
-def test_no_login_required_and_mutations_reject_untrusted_origin(tmp_path):
+def test_local_mode_and_mutations_reject_untrusted_origin(tmp_path):
     with TestClient(create_app(settings(tmp_path))) as client:
         assert client.get('/api/sessions').status_code == 200
         assert client.get('/api/catalog/doctor').status_code == 200
@@ -43,7 +43,8 @@ def test_no_login_required_and_mutations_reject_untrusted_origin(tmp_path):
                 pass
         assert exc.value.code == 1008
         paths = client.get('/openapi.json').json()['paths']
-        assert not any(path.startswith(('/api/auth/', '/api/members', '/api/workspaces')) for path in paths)
+        assert client.get('/api/auth/session').json()['enabled'] is False
+        assert not any(path.startswith(('/api/members', '/api/workspaces')) for path in paths)
 
 
 def test_content_review_versions_and_audit(client):

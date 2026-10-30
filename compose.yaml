@@ -24,6 +24,7 @@ services:
     logging: *bounded-logging
 
   api:
+    image: medvisit-coach-api:${RELEASE_SHA:-local}
     init: true
     build:
       context: .
@@ -33,6 +34,7 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql://
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
       RECORDS_DIR: /app/data/sessions
       PGHOST: db
       PGPORT: "5432"
@@ -56,6 +58,7 @@ services:
     logging: *bounded-logging
 
   web:
+    image: medvisit-coach-web:${RELEASE_SHA:-local}
     build:
       context: .
       dockerfile: deploy/frontend.Dockerfile

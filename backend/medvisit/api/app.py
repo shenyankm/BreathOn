@@ -33,6 +33,7 @@ from ..platform.progress import capture_prices
 from ..research.api import research_router
 from ..research.service import ResearchService
 from .middleware import ApiMiddleware
+from .auth import Authentication, AuthenticationMiddleware
 
 logger = logging.getLogger("medvisit")
 
@@ -91,10 +92,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.local_user = current_user()
     app.state.research = research
     app.state.ready = False
+    auth = Authentication(settings)
+    app.include_router(auth.router)
     app.include_router(router)
     app.include_router(research_router(research))
     active: dict[str, asyncio.Task] = {}
 
+    app.add_middleware(AuthenticationMiddleware, auth=auth)
     app.add_middleware(ApiMiddleware, origins=settings.origins)
 
     @app.exception_handler(RequestValidationError)

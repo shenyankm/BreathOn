@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { AudioLines, BookOpen, ClipboardList, Menu, Play, Settings, SlidersHorizontal } from 'lucide-react'
+import { AudioLines, BookOpen, ClipboardList, LogOut, Menu, Play, Settings, SlidersHorizontal } from 'lucide-react'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
-export function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
+export function AppNavigation({ page, inSession, onLogout, logoutDisabled = inSession }: { page: string; inSession: boolean; onLogout?: () => void; logoutDisabled?: boolean }) {
   const [open, setOpen] = useState(false)
   const main = [
     { page: 'home', label: '开始演练', icon: Play, href: inSession ? '#start' : '#home' },
@@ -19,7 +19,7 @@ export function AppNavigation({ page, inSession }: { page: string; inSession: bo
   const content = <>
     <a href="#home" className="flex h-16 items-center gap-2.5 px-3 font-semibold" onClick={() => setOpen(false)}><AudioLines className="size-6" />医访练</a>
     <nav aria-label="主导航" className="space-y-1 pt-5">{links(main)}</nav>
-    <nav aria-label="训练工具" className="mt-auto space-y-1 border-t pt-4">{links(tools)}</nav>
+    <nav aria-label="训练工具" className="mt-auto space-y-1 border-t pt-4">{links(tools)}{onLogout && <Button variant="ghost" className="h-11 w-full justify-start gap-3 px-3 font-normal" disabled={logoutDisabled} title={logoutDisabled ? '请先结束演练并确认保存' : undefined} onClick={onLogout}><LogOut className="size-4" />退出登录</Button>}</nav>
   </>
   return <>
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r bg-background px-3 pb-5 lg:flex">{content}</aside>

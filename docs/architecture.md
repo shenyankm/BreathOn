@@ -30,7 +30,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 `platform/`处理版本化目录、医学审核、校准、点评与重练。Compose复用PostgreSQL连接池和`platform_entities`表；未配置数据库时，演练仍存JSON，平台元数据存`records/platform.sqlite3`（权限0600）。写操作使用事务与版本CAS；PostgreSQL用事务锁，SQLite用`BEGIN IMMEDIATE`及WAL，让读取快照不阻塞其他请求提交，保持`FULL`同步。本地备份应停止API后复制整个记录目录，包含尚未合并的WAL文件。PDF原件作为同一库内的资产保存，单文件20MB、最多200页，只解析文字层，不做OCR；解析在限时子进程内执行。大规模资料库需在实测后迁移对象存储与语义索引。
 
-无需注册或登录，单用户可以访问本地记录及配置。HTTP写入和WebSocket保留Origin校验；由于没有身份认证，服务只适合绑定本机，不应暴露到公网或共享网络。单用户可自行提交、审核资料和添加点评；医学改分仍须有本次有效资料的逐字依据。资料被标记为审核通过不代表已由独立医学专家审核。仅提供本地上传与批量JSON草稿导入。
+本机开发默认免登录；公网部署启用单管理员 Cookie 会话，HTTP 和 WebSocket 均检查登录，写入继续校验 Origin，详见[服务器与 CI/CD](server-deployment.md)。单用户可自行提交、审核资料和添加点评；医学改分仍须有本次有效资料的逐字依据。资料被标记为审核通过不代表已由独立医学专家审核。仅提供本地上传与批量JSON草稿导入。
 
 ## 评价与同版本重练
 
@@ -81,7 +81,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 根目录 `.env` 管理数据库用户名、密码、网页端口和允许的 Origin；`backend/.env` 管理模型与语音密钥。Compose 使用 `PGHOST` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` 连接数据库，避免密码中的 URI 特殊字符造成解析错误。密钥、历史数据、虚拟环境及构建缓存都由 `.dockerignore` 排除；前端镜像只含静态构建产物。
 
-修改 `WEB_PORT` 时也要修改 `ALLOWED_ORIGINS`，例如 `http://127.0.0.1:8090,http://localhost:8090`。服务没有登录保护，保持绑定本机。API 维持单进程的 2 会话限制；增加 worker 前需先实现共享限流和后台任务执行器。
+修改 `WEB_PORT` 时也要修改 `ALLOWED_ORIGINS`，例如 `http://127.0.0.1:8090,http://localhost:8090`。免登录模式保持绑定本机；公网必须启用登录并使用 HTTPS。API 维持单进程的 2 会话限制；增加 worker 前需先实现共享限流和后台任务执行器。
 
 ## 导入旧 JSON
 
