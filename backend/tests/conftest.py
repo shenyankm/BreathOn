@@ -12,6 +12,11 @@ def isolate_doctor_speech(monkeypatch):
         await send_audio(bytes(640))
         return {"text_words": len(text)}
     monkeypatch.setattr('medvisit.services.practice.synthesize', speech)
+    async def summary(settings, record):
+        from medvisit.services.visit_summary import validate_summary
+        return validate_summary({}, record, settings.deepseek_model)
+    # Transport tests use synthetic providers; exercise summary inference separately with a mocked HTTP model.
+    monkeypatch.setattr('medvisit.api.app.build_visit_summary', summary)
 
 
 from fastapi.testclient import TestClient as RawTestClient
