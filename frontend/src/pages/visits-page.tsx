@@ -57,6 +57,7 @@ export function VisitsPage() {
   const reload = useCallback(async () => {
     const list = await api<Visit[]>('/visits')
     setRows(list)
+    setError('')
     return list
   }, [])
   useEffect(() => {

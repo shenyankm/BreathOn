@@ -22,13 +22,17 @@ const visit = (id: string) => ({ id, version: 1, source: 'self_report', status: 
 function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   const slots: any[] = [], effects: (() => void)[] = [], listeners: Record<string, () => void> = {}, calls: { path: string; options?: RequestInit }[] = []
   let cursor = 0
+  let listFailure: string | null = null
   const location = { get hash() { return hash }, set hash(value: string) { hash = value.startsWith('#') ? value : `#${value}` } }
   const jsx = (type: string, props: any) => ({ type, props })
   const exports: { VisitsPage?: () => Node } = {}
   const api = async (path: string, options?: RequestInit) => {
     calls.push({ path, options })
     if (path === '/visits' && options?.method === 'POST') return visit('created/id')
-    if (path === '/visits') return records
+    if (path === '/visits') {
+      if (listFailure) throw new Error(listFailure)
+      return records
+    }
     if (path === '/catalog/doctor' || path === '/catalog/drug') return []
     const record = records.find(row => path === `/visits/${row.id}`)
     if (record) return record
@@ -37,7 +41,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/pages/visits-page.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
-    exports, AbortController, URLSearchParams, encodeURIComponent,
+    exports, Error, AbortController, URLSearchParams, encodeURIComponent,
     FormData: class { values: Record<string, string>; constructor(values: Record<string, string>) { this.values = values } get(name: string) { return this.values[name] } },
     document: { addEventListener() {}, removeEventListener() {} },
     window: { location, history: { replaceState(_state: unknown, _title: string, path: string) { location.hash = path } }, addEventListener(name: string, listener: () => void) { listeners[name] = listener }, removeEventListener() {} },
@@ -63,6 +67,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   })
   return {
     calls, location,
+    failList(message: string | null) { listFailure = message },
     render() { cursor = 0; const tree = exports.VisitsPage!(); effects.splice(0).forEach(effect => effect()); return tree },
     hash(value: string) { location.hash = value; listeners.hashchange() },
   }
@@ -121,4 +126,23 @@ test('visit deep links retain local detail edits and require confirmation before
   app.hash('#visits?visit=two'); app.render(); tree = app.render()
   button(tree, '丢弃修改并切换').props.onClick(); app.render(); await settle(); tree = app.render()
   assert.equal(find(tree, 'Textarea').find(node => node.props.id === 'visit-original')!.props.value, '原文 two')
+})
+
+test('visit refresh retains current failures and clears the error after recovery', async () => {
+  const app = mount()
+  app.render(); await settle()
+  const refresh = () => find(app.render(), 'Button').find(node => node.props['aria-label'] === '刷新日记列表')!.props.onClick()
+  for (const failure of ['Temporary service outage', 'Still unavailable, try again']) {
+    app.failList(failure)
+    refresh(); await settle()
+    const errors = find(app.render(), 'AlertDescription')
+    assert.ok(errors.length > 0)
+    assert.ok(errors.every(node => textOf(node) === failure))
+  }
+  app.failList(null)
+  refresh(); await settle()
+  const tree = app.render()
+  assert.equal(find(tree, 'Alert').length, 0)
+  assert.equal(find(tree, 'Button').filter(node => textOf(node).includes('2026-10-30')).length, 2)
+  assert.equal(app.calls.filter(call => call.path === '/visits').length, 4)
 })
