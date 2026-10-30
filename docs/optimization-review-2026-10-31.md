@@ -112,7 +112,7 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 手动执行现有 `check_services` **一次**：四类配置完整的提供商探针各一次、每类 20 秒上限；3.188 秒完成，ASR、TTS、analysis、practice、combat 五个状态均正常（`live-services-once.json`）。practice/combat 为组合状态，实际探针为 SeedASR、TTS、DeepSeek、Seeduplex 四类。使用仓库内的合成音频和简短状态文本，可能产生服务用量；未重复收费压测，不把单次状态检测当延迟分布、医学输出质量或麦克风/扬声器验收。
 
-当前仅检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。用户确认“暂时无真机，先完成其他验收”；真实麦克风、扬声器与真机端到端保留待验收，goal 仍 active。正准备独立 AVD 做基础 UI 验收；首次启动因默认 userdata 需要 12288 MB、本机可用 12114.80 MB 失败，未清理用户文件或改变旧 AVD。
+初次检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。用户确认“暂时无真机，先完成其他验收”；真实麦克风、扬声器与真机端到端保留待验收，goal 仍 active。正准备独立 AVD 做基础 UI 验收；首次启动因默认 userdata 需要 12288 MB、本机可用 12114.80 MB 失败，未清理用户文件或改变旧 AVD。
 
 ## 待核实/处理候选
 
@@ -154,3 +154,17 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 - 原生部署 `wait_ready` 在收到截断状态行后抛出 `BadStatusLine`，没有继续等待就绪。真实本机 HTTP 服务器第一次发送 `HTTP/1.1 20`，第二次应返回 200；当前只请求一次就失败（`native-probe-before.json`）。需独立修复并验证有限重试与进程退出行为。
 - 日记转写任务在协程内直接调用同步数据库事务。真实隔离 PG 占满 4 个连接后运行现有 `visit_run_job`，20 ms 事件循环心跳实际延迟 **5006.999 ms**，直到连接池超时才恢复（`visit-pool-before.json`）。没有调用上游服务；这是实际 PG 加进程内心跳测量，尚不是网络 HTTP 时延验收。需独立修复数据库阻塞与取消收尾，并检查任务在数据库恢复后的状态。
 - 个人进度列表也读完整会话以核算历史费用与中断状态。当前这些字段对正确核算有用，不能直接删除正文读取；后续需要测量和完整等价性证据才能改。
+
+## 6. 转写入队事务的异步隔离（改动前标准）
+
+`POST /api/visits/{id}/transcription` 仍在 async 处理器内同步提交事务；即使后台 run_job 已修复，启动转写时的连接池等待仍可能阻塞存活和语音消息。先用 `visit_admission_probe.py`（复用第三项真实 Uvicorn/PG 故障脚本，仅切换到实际入队处理器）建立基线；3 个 6.2 秒池耗尽窗口、90 个并发存活样本、正常 10 个与恢复 30 个。故障必须仍为真实 PoolTimeout，任何上游调用为 0。
+
+预设标准：故障期 live p95 <100 ms，正常/恢复不得同时退化 >10% 且 >1 ms；事务在事件循环以外执行。保留身份、所有权、保留期、状态校验、事务审计和单任务槽位，不重发不确定的收费 submit。重复取消必须等待提交/回滚；已提交且客户端取消的入队明确标记中断并清除提供商令牌，不启动付费后台；回滚不产生 job。并发重复提交只能一个成功，其他 409；关闭与入队互斥并排空，关闭后不得创建新任务。文件/真实 PG 回归与部署集成必须通过。仅本路由生命周期/入队及必要回归；上传文件是独立候选，不在本项声称解决。无依赖或迁移，回退 git revert 本项 SHA。
+
+第六项改动前文件/PG 针对性回归 **2 failed**；故障期真实 HTTP p50/p95 **3919.432/4926.358 ms**，修改后 **3.533/9.739 ms**（90 样本，三窗口，min/max 前 1919.412/4928.995、后 0.680/10.921 ms）。正常 10 次 p50/p95 0.391/0.492 → 0.458/0.520 ms；恢复 30 次 2.527/3.406 → 0.881/1.700 ms，均满足预设标准（`visit-admission-comparison.json`）。不是收费提供商延迟或正常 ASR 首包指标。
+
+原生部署故障验收通过（`visit-admission-native.log`）。首次误与全量 PG 回归重叠，导致持久管理员连接 AdminShutdown、测试数据库清理失败，结果 **838 passed、1 error** 不计为通过；已保存 `visit-admission-full-overlap.log`，仅删除该次遗留的一次性数据库，恢复后顺序重跑全量。新取消测试首次漏按 object_id 筛选本用例审计，PG 模块内其他测试审计导致断言失败；改为只验证当前记录的审计，没有删改产品校验或放宽本记录断言。
+
+单独重跑完整后端使用隔离真实 PG：**840 passed、0 skipped，80.37 秒**。包含文件/PG 的事务线程校验、重复取消等待提交/回滚、取消后令牌清除及状态恢复、再次发起成功、并发重复提交一成功一 409、关闭等待及关闭后 503；HTTP 202、所有权 403/404、保留期 409、敏感路径/令牌不出响应继续通过。复用已有 work 排空 helper，增加的生命周期互斥沿用 ResearchService 模式，保证关闭不越过未完成入队；没有增加后台重试或提供商调用。前端树与第五项相同，本项无页面或 Android 原生行为改动。diff 审查与 git diff --check 通过，提交推送后须验证本项精确 SHA 的四个 CI job。
+
+第五项提交 `edf32c2f12192de12f518291266442b4df354341` 已推送到 `sheny/optimize-medical-receipts-20261031`，远程分支精确匹配。[CI 41106221710](https://github.com/shenyankm/BreathOn/actions/runs/41106221710) 的 frontend、backend、android、deployment 全部成功（`medical-checks-latest.json` 校验各 job 的 head_sha），production skipped；第五项验收完成。

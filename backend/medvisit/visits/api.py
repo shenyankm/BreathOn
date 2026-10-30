@@ -99,6 +99,22 @@ def visits_router(store, settings, current_user):
     audio_dir = Path(settings.records).parent / 'visit-audio'
     slots = asyncio.Semaphore(1)
     tasks = set()
+    lifecycle = asyncio.Lock()
+    closing = False
+
+    async def work(function, *args):
+        worker = asyncio.create_task(asyncio.to_thread(function, *args))
+        cancelled = False
+        # Keep lifecycle guards until the transaction and private-file cleanup finish.
+        while not worker.done():
+            try:
+                await asyncio.shield(worker)
+            except asyncio.CancelledError:
+                cancelled = True
+        result = worker.result()
+        if cancelled:
+            raise asyncio.CancelledError
+        return result
 
     def has_private_text(item):
         return item.get('source') == 'recording' or item.get('private_audio', False)
@@ -360,20 +376,6 @@ def visits_router(store, settings, current_user):
             return FileResponse(audio_dir / name, media_type=item['audio_type'], headers={'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'})
 
     async def run_job(workspace, item_id, token=None):
-        async def work(function, *args):
-            worker = asyncio.create_task(asyncio.to_thread(function, *args))
-            cancelled = False
-            # Keep the job slot until its transaction and private-file cleanup finish.
-            while not worker.done():
-                try:
-                    await asyncio.shield(worker)
-                except asyncio.CancelledError:
-                    cancelled = True
-            result = worker.result()
-            if cancelled:
-                raise asyncio.CancelledError
-            return result
-
         def read():
             with store.transaction(workspace, write=False) as tx:
                 return tx.get(workspace, 'visit', item_id)
@@ -481,20 +483,44 @@ def visits_router(store, settings, current_user):
             raise HTTPException(503, '录音转写服务尚未配置可访问的 HTTPS 地址或凭据。')
         token = secrets.token_urlsafe(32)
         job_id = str(uuid4())
-        with store.transaction(user['workspace']) as tx:
-            item = get_item(tx, user, item_id)
-            if item['owner_id'] != user['id']:
-                raise HTTPException(403, '仅记录本人可发起转写。')
-            if item.get('audio_status') not in ('transcription_unavailable', 'transcription_interrupted', 'transcription_failed'):
-                raise HTTPException(409, '录音不存在或转写正在进行。')
-            if not item.get('audio_path') or retention_expired(item):
-                raise HTTPException(409, '录音已删除或已到保留期限。')
-            item = tx.update(user['workspace'], 'visit', item_id, {**item, 'audio_status':'queued',
-                'transcription_job_id':job_id, 'provider_token_hash':hashlib.sha256(token.encode()).hexdigest(),
-                'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, item['version'])
-            tx.audit(user['workspace'], user['id'], 'visit.transcription_start', 'visit', item_id)
-        launch(user['workspace'], item_id, token)
-        return public(item)
+        item = None
+
+        def enqueue():
+            nonlocal item
+            with store.transaction(user['workspace']) as tx:
+                current = get_item(tx, user, item_id)
+                if current['owner_id'] != user['id']:
+                    raise HTTPException(403, '仅记录本人可发起转写。')
+                if current.get('audio_status') not in ('transcription_unavailable', 'transcription_interrupted', 'transcription_failed'):
+                    raise HTTPException(409, '录音不存在或转写正在进行。')
+                if not current.get('audio_path') or retention_expired(current):
+                    raise HTTPException(409, '录音已删除或已到保留期限。')
+                updated = tx.update(user['workspace'], 'visit', item_id, {**current, 'audio_status':'queued',
+                    'transcription_job_id':job_id, 'provider_token_hash':hashlib.sha256(token.encode()).hexdigest(),
+                    'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, current['version'])
+                tx.audit(user['workspace'], user['id'], 'visit.transcription_start', 'visit', item_id)
+            item = updated
+            return item
+
+        def interrupt():
+            with store.transaction(user['workspace']) as tx:
+                current = tx.get(user['workspace'], 'visit', item_id)
+                if current and current.get('audio_status') == 'queued' and current.get('transcription_job_id') == job_id:
+                    tx.update(user['workspace'], 'visit', item_id, {**current, 'audio_status':'transcription_interrupted',
+                        'provider_token_hash':'', 'provider_token_expires':None}, current['version'])
+                    tx.audit(user['workspace'], user['id'], 'visit.transcription_cancel', 'visit', item_id)
+
+        async with lifecycle:
+            if closing:
+                raise HTTPException(503, '服务正在停止，请稍后重试。')
+            try:
+                await work(enqueue)
+            except asyncio.CancelledError:
+                if item is not None:
+                    await work(interrupt)
+                raise
+            launch(user['workspace'], item_id, token)
+            return public(item)
 
     @router.post('/{item_id}/transcription/cancel')
     def cancel_transcription(item_id: str, user=Depends(current_user)):
@@ -575,10 +601,13 @@ def visits_router(store, settings, current_user):
                     launch(workspace, item['id'])
 
     async def close():
-        for task in tasks.copy():
-            task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        nonlocal closing
+        async with lifecycle:
+            closing = True
+            for task in tasks.copy():
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     def cleanup(workspace):
         cutoff = datetime.now(timezone.utc)

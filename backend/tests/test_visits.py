@@ -427,3 +427,152 @@ def test_expired_raw_audio_and_text_inaccessible_before_cleanup(tmp_path, monkey
         tx.update('local','visit',item['id'],{**row,'audio_uploaded_at':(datetime.now(timezone.utc)-timedelta(days=31)).isoformat()},row['version'])
     assert client.get(url).json()['text'] == ''
     assert client.get(url+'/audio').status_code == 404
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_transcription_admission_keeps_storage_off_event_loop(tmp_path, monkeypatch, request, storage):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    settings.origins = ('https://example.test',)
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/transcription')
+    transaction = store.transaction
+    loop_thread = threading.get_ident()
+    @contextmanager
+    def off_loop(*args, **kwargs):
+        assert threading.get_ident() != loop_thread, 'Transcription admission blocked the event loop'
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+    monkeypatch.setattr(store, 'transaction', off_loop)
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as error:
+        await endpoint('missing', user={'id':'alice', 'workspace':'local', 'team':''})
+    assert error.value.status_code == 404
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('commit_fails', [False, True])
+async def test_cancelled_transcription_admission_drains_and_recovers(tmp_path, monkeypatch, request, storage, commit_fails):
+    from fastapi import HTTPException
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    settings.origins = ('https://example.test',)
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/transcription')
+    with store.transaction('local') as tx:
+        item = tx.create('local', 'visit', {'owner_id':'alice', 'source':'recording',
+            'audio_status':'transcription_unavailable', 'audio_path':'a' * 32, 'audio_type':'audio/wav', 'audio_duration':10})
+    launched = []
+    launch = next(cell for name, cell in zip(endpoint.__code__.co_freevars, endpoint.__closure__) if name == 'launch')
+    monkeypatch.setattr(launch, 'cell_contents', lambda *args: launched.append(args))
+    transaction = store.transaction
+    entered, release = threading.Event(), threading.Event()
+    loop_thread = threading.get_ident()
+    @contextmanager
+    def delayed(*args, **kwargs):
+        assert threading.get_ident() != loop_thread
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+            if not entered.is_set():
+                entered.set()
+                assert release.wait(3), 'Test did not release admission transaction'
+                if commit_fails:
+                    raise RuntimeError('synthetic commit failure')
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    with monkeypatch.context() as changes:
+        changes.setattr(store, 'transaction', delayed)
+        task = asyncio.create_task(endpoint(item['id'], user=user))
+        try:
+            assert await asyncio.to_thread(entered.wait, 1)
+            task.cancel()
+            await asyncio.sleep(0)
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done(), 'Cancellation released the lifecycle before the database worker finished'
+        finally:
+            release.set()
+        with pytest.raises(RuntimeError if commit_fails else asyncio.CancelledError):
+            await asyncio.wait_for(task, 2)
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+        actions = [entry['action'] for entry in tx.list('local', 'audit') if entry['object_id'] == item['id']]
+    assert launched == []
+    if commit_fails:
+        assert saved['audio_status'] == 'transcription_unavailable'
+        assert actions == []
+    else:
+        assert saved['audio_status'] == 'transcription_interrupted'
+        assert saved['provider_token_hash'] == '' and saved['provider_token_expires'] is None
+        assert set(actions) == {'visit.transcription_start', 'visit.transcription_cancel'}
+    results = await asyncio.gather(endpoint(item['id'], user=user), endpoint(item['id'], user=user), return_exceptions=True)
+    assert sum(isinstance(result, dict) and result['audio_status'] == 'queued' for result in results) == 1
+    assert sum(isinstance(result, HTTPException) and result.status_code == 409 for result in results) == 1
+    assert len(launched) == 1
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_transcription_shutdown_waits_for_admission(tmp_path, monkeypatch, request, storage):
+    from fastapi import HTTPException
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    settings.origins = ('https://example.test',)
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/transcription')
+    transaction = store.transaction
+    entered, release = threading.Event(), threading.Event()
+    @contextmanager
+    def delayed(*args, **kwargs):
+        with transaction(*args, **kwargs) as tx:
+            entered.set()
+            assert release.wait(3)
+            yield tx
+    user = {'id':'alice', 'workspace':'local', 'team':''}
+    with monkeypatch.context() as changes:
+        changes.setattr(store, 'transaction', delayed)
+        admission = asyncio.create_task(endpoint('missing', user=user))
+        try:
+            assert await asyncio.to_thread(entered.wait, 1)
+            stopping = asyncio.create_task(router.visit_close())
+            await asyncio.sleep(0)
+            assert not stopping.done()
+        finally:
+            release.set()
+        with pytest.raises(HTTPException) as missing:
+            await asyncio.wait_for(admission, 2)
+        assert missing.value.status_code == 404
+        await asyncio.wait_for(stopping, 2)
+    with pytest.raises(HTTPException) as stopped:
+        await endpoint('missing', user=user)
+    assert stopped.value.status_code == 503
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+def test_transcription_admission_preserves_http_guards(tmp_path, monkeypatch, request, storage):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    settings.origins = ('https://example.test',)
+    endpoint = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}/transcription')
+    launched = []
+    launch = next(cell for name, cell in zip(endpoint.__code__.co_freevars, endpoint.__closure__) if name == 'launch')
+    monkeypatch.setattr(launch, 'cell_contents', lambda *args: launched.append(args))
+    with store.transaction('local') as tx:
+        item = tx.create('local', 'visit', {'owner_id':'alice', 'source':'recording',
+            'audio_status':'transcription_unavailable', 'audio_path':'a' * 32, 'audio_type':'audio/wav', 'audio_duration':10})
+        expired = tx.create('local', 'visit', {**item, 'audio_uploaded_at':(datetime.now(timezone.utc) - timedelta(days=31)).isoformat()})
+    client = TestClient(app)
+    url = '/api/visits/' + item['id'] + '/transcription'
+    assert client.post(url, headers={'x-user':'bob'}).status_code == 404
+    assert client.post(url, headers={'x-user':'admin','x-role':'admin'}).status_code == 403
+    assert client.post('/api/visits/' + expired['id'] + '/transcription').status_code == 409
+    response = client.post(url)
+    assert response.status_code == 202 and response.json()['audio_status'] == 'queued'
+    assert 'provider_token_hash' not in response.json() and 'audio_path' not in response.json()
+    assert client.post(url).status_code == 409
+    assert len(launched) == 1
