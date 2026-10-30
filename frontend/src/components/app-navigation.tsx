@@ -1,28 +1,28 @@
-import { useState } from 'react'
-import { AudioLines, BookOpen, ClipboardList, LogOut, Menu, Play, Settings, SlidersHorizontal } from 'lucide-react'
+import { AudioLines, BookOpen, Play, UserRound } from 'lucide-react'
 import { Button } from './ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
-export function AppNavigation({ page, inSession, onLogout, logoutDisabled = inSession, username }: { page: string; inSession: boolean; onLogout?: () => void; logoutDisabled?: boolean; username?: string }) {
-  const [open, setOpen] = useState(false)
+export function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
   const main = [
-    { page: 'home', label: '开始演练', icon: Play, href: inSession ? '#start' : '#home' },
-    { page: 'records', label: '复盘记录', icon: ClipboardList, href: '#records' },
-    { page: 'library', label: '学习资料', icon: BookOpen, href: '#library' },
+    { page: 'home', label: '练习', icon: Play, href: inSession ? '#start' : '#home' },
+    { page: 'library', label: '学习', icon: BookOpen, href: '#library' },
+    { page: 'me', label: '我的', icon: UserRound, href: '#me' },
   ]
-  const tools = [
-    { page: 'workspace', label: '训练管理', icon: SlidersHorizontal, href: '#workspace' },
-    { page: 'settings', label: '服务设置', icon: Settings, href: '#settings' },
-  ]
-  const active = page === 'start' ? 'home' : page
-  const links = (items: typeof main) => items.map(item => <Button asChild key={item.page} variant={active === item.page ? 'secondary' : 'ghost'} className="h-11 w-full justify-start gap-3 px-3 font-normal"><a href={item.href} aria-current={active === item.page ? 'page' : undefined} onClick={() => setOpen(false)}><item.icon className="size-4" />{item.label}{item.page === 'home' && inSession && <span className="ml-auto text-xs">进行中</span>}</a></Button>)
-  const content = <>
-    <a href="#home" className="flex h-16 items-center gap-2.5 px-3 font-semibold" onClick={() => setOpen(false)}><AudioLines className="size-6" />BreathOn</a>
-    <nav aria-label="主导航" className="space-y-1 pt-5">{links(main)}</nav>
-    <nav aria-label="训练工具" className="mt-auto space-y-1 border-t pt-4">{links(tools)}{username && <p className="px-3 py-2 text-xs text-muted-foreground">当前账号：{username}</p>}{onLogout && <Button variant="ghost" className="h-11 w-full justify-start gap-3 px-3 font-normal" disabled={logoutDisabled} title={logoutDisabled ? '请先结束演练并确认保存' : undefined} onClick={onLogout}><LogOut className="size-4" />退出登录</Button>}</nav>
-  </>
+  const active = page === 'start' ? 'home' : ['visits', 'records'].includes(page) ? 'me' : page
+  const currentTitle = main.find(item => item.page === active)?.label ?? '练习'
+
   return <>
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r bg-background px-3 pb-5 lg:flex">{content}</aside>
-    <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b bg-background px-4 lg:hidden"><a href="#home" className="flex items-center gap-2 font-semibold"><AudioLines className="size-5" />BreathOn</a><Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="ghost" className="h-11 px-3"><Menu />菜单</Button></DialogTrigger><DialogContent style={{maxHeight:'100svh'}} className="inset-y-0 left-0 flex h-svh w-72 max-w-[85vw] translate-x-0 translate-y-0 flex-col rounded-none p-4 sm:rounded-none"><DialogHeader className="sr-only"><DialogTitle>BreathOn导航</DialogTitle><DialogDescription>选择演练、复盘记录、学习资料或训练管理。</DialogDescription></DialogHeader>{content}</DialogContent></Dialog></header>
+    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
+      <div className="mx-auto flex h-14 max-w-[960px] items-center justify-between gap-4 px-4 sm:px-6">
+        <a href={inSession ? '#start' : '#home'} aria-label="BreathOn 练习首页" className="flex min-h-11 items-center gap-2.5 font-semibold tracking-tight"><AudioLines aria-hidden="true" className="size-5 text-primary" />BreathOn<span className="ml-3 hidden border-l pl-5 text-sm font-normal tracking-normal text-muted-foreground sm:block">{currentTitle}</span></a>
+        <div className="flex items-center gap-2">
+          {inSession && <Button asChild variant="secondary" size="sm" className="h-11"><a href="#start"><AudioLines aria-hidden="true" />返回演练</a></Button>}
+        </div>
+      </div>
+    </header>
+    <nav aria-label="底部标签栏" className="fixed inset-x-0 bottom-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto grid h-16 max-w-2xl grid-cols-3 gap-1 px-2">
+        {main.map(item => <Button asChild key={item.page} variant="ghost" className="h-full min-w-0 flex-col gap-1 rounded-none px-1 text-xs font-normal text-muted-foreground aria-[current=page]:text-foreground"><a href={item.href} aria-current={active === item.page ? 'page' : undefined}><span className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${active === item.page ? 'bg-secondary text-foreground' : ''}`}><item.icon aria-hidden="true" className="size-5" strokeWidth={active === item.page ? 2 : 1.7} /></span><span className={active === item.page ? 'font-semibold' : ''}>{item.label}</span></a></Button>)}
+      </div>
+    </nav>
   </>
 }

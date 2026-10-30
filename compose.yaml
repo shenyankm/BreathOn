@@ -48,6 +48,7 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080}
     volumes:
       - research_data:/app/data/sessions
+      - visit_audio:/app/data/visit-audio
     depends_on:
       db:
         condition: service_healthy
@@ -82,3 +83,4 @@ services:
 volumes:
   postgres_data:
   research_data:
+  visit_audio:

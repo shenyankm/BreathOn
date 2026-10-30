@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BrowserAudio, encodeAudio } from '@/lib/audio/browser-audio'
 import { formatTime } from '@/lib/session'
-import type { TrainingSnapshot } from '@/lib/catalog-types'
+import type { FreePracticeContext, TrainingSnapshot } from '@/lib/catalog-types'
 import { applyTranscript, type VoiceMessage, type LiveCoach } from '@/lib/voice-events'
+import type { TrainingChoice } from '@/components/scenario-picker'
 import { invalidateMedicalCheck, updateMedicalChecks, type MedicalCheck } from '@/lib/medical'
 
 type Status = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
-type Connection = { ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat' }
+type PolicyCheck = { message_id: string; text: string; rule_id: string; quote: string; reason: string; risk: string; status: string; action: string; article: string; policy_quote: string; policy_title: string; source_url: string }
+type Connection = { ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat'; policyPaused?: boolean; resumeMuted?: boolean }
 
 export function useVoiceSession() {
   const [status, setStatus] = useState<Status>('idle')
@@ -19,35 +21,39 @@ export function useVoiceSession() {
   const [seconds, setSeconds] = useState(0)
   const [coach, setCoach] = useState<LiveCoach | null>(null)
   const [medicalChecks, setMedicalChecks] = useState<MedicalCheck[]>([])
+  const [policyChecks, setPolicyChecks] = useState<PolicyCheck[]>([])
+  const [policyUnavailable, setPolicyUnavailable] = useState<{message_id:string;text:string}[]>([])
+  const [policyPaused, setPolicyPaused] = useState(false)
   const medicalText = useRef(new Map<string, string>())
   const [practiceState, setPracticeState] = useState<'listening' | 'thinking' | 'error'>('listening')
   const [analysisStatus, setAnalysisStatus] = useState('not_started')
   const [speechState, setSpeechState] = useState('idle')
   const [training, setTraining] = useState<TrainingSnapshot | null>(null)
+  const [freeContext, setFreeContext] = useState<FreePracticeContext | null>(null)
   const connection = useRef<Connection | null>(null)
 
   const stop = useCallback(() => {
     const current = connection.current
     if (!current || current.closing) return
     current.closing = true
-    if (current.started && (current.experience === 'combat' || training)) setAnalysisStatus('thinking')
+    if (current.started && (current.experience === 'combat' || training || freeContext)) setAnalysisStatus('thinking')
     current.audio.stop()
     if (current.ws?.readyState === WebSocket.OPEN) {
       current.ws.send(JSON.stringify({ type: 'stop' }))
       current.finishTimeout = window.setTimeout(() => current.ws?.close(), 90000)
     } else current.ws?.close()
     setStatus(previous => previous === 'error' ? 'error' : 'ended')
-  }, [training])
+  }, [training, freeContext])
 
-  const start = useCallback(async (mode: string, experience: 'practice' | 'combat', selection?: {scenario_id:string;stage:string;remediation_id?:string}) => {
+  const start = useCallback(async (mode: string, experience: 'practice' | 'combat', selection?: TrainingChoice) => {
     const old = connection.current
     if (old) { old.closing = true; old.audio.stop(); old.ws?.close() }
     const current: Connection = { audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
-    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setError(''); setMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
+    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
     medicalText.current.clear()
     setAnalysisStatus('not_started')
-    setSpeechState('idle'); setTraining(null); setMode(mode)
+    setSpeechState('idle'); setTraining(null); setFreeContext(null); setMode(mode)
     function fail(message: string) {
       if (connection.current !== current || current.closing) return
       setError(message)
@@ -67,12 +73,13 @@ export function useVoiceSession() {
     try {
       const health = await fetch('/api/health', { signal: AbortSignal.timeout(5000) })
       if (connection.current !== current || current.closing) return
-      if (!health.ok) throw new Error('后端服务未启动，请先运行 npm run dev:api')
+      if (health.status === 401) window.dispatchEvent(new Event('medvisit:unauthorized'))
+      if (!health.ok) throw new Error('服务暂时不可用，请稍后重试或联系管理员')
       const config = await health.json()
-      if (!config.asr_configured) throw new Error('请先在 backend/.env 配置 SEEDASR_API_KEY 并重启后端')
-      if (experience === 'combat' && !config.voice_configured) throw new Error('请先在 backend/.env 配置 DOUBAO_API_KEY 并重启后端')
-      if (!config.analysis_configured) throw new Error('请在 backend/.env 配置 DEEPSEEK_API_KEY 和 DEEPSEEK_MODEL，启用 AI 分析')
-      if (experience === 'practice' && !config.tts_configured) throw new Error('请在 backend/.env 配置 DOUBAO_TTS_API_KEY，启用医生语音朗读')
+      if (!config.asr_configured) throw new Error('语音识别服务暂不可用，请联系管理员')
+      if (experience === 'combat' && !config.voice_configured) throw new Error('实时语音服务暂不可用，请联系管理员')
+      if (!config.analysis_configured) throw new Error('分析服务暂不可用，请联系管理员')
+      if (experience === 'practice' && !config.tts_configured) throw new Error('医生语音服务暂不可用，请联系管理员')
       if (connection.current !== current || current.closing) return
       await current.audio.open(buffer => {
         if (connection.current !== current || current.closing || !current.started || current.ws?.readyState !== WebSocket.OPEN) return
@@ -84,6 +91,10 @@ export function useVoiceSession() {
       url.searchParams.set('experience', experience)
       if (selection?.scenario_id) { url.searchParams.set('scenario_id', selection.scenario_id); url.searchParams.set('stage', selection.stage) }
       if (selection?.remediation_id) url.searchParams.set('remediation_id', selection.remediation_id)
+      if (!selection?.scenario_id && !selection?.remediation_id) {
+        if (selection?.drug_id) url.searchParams.set('drug_id', selection.drug_id)
+        if (selection?.doctor_id) url.searchParams.set('doctor_id', selection.doctor_id)
+      }
       url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const ws = new WebSocket(url)
       current.ws = ws
@@ -98,6 +109,7 @@ export function useVoiceSession() {
             current.started = performance.now()
             setSessionId(event.session_id)
             setTraining(event.training ?? null)
+            setFreeContext(event.free_context ?? null)
             if (['assisted','independent'].includes(event.mode)) setMode(event.mode)
             setStatus('active')
           } else if (event.type === 'error') {
@@ -109,6 +121,8 @@ export function useVoiceSession() {
             // The server still needs to finish saving and send its ended acknowledgement.
             current.finishTimeout ??= window.setTimeout(() => ws.close(), 60000)
           } else if (event.type === 'ended') {
+            current.policyPaused = false
+            setPolicyPaused(false)
             setMedicalChecks(previous => previous.map(check => check.status === 'checking' ? { ...check, status: 'unavailable', reason: '结束时本句核验尚未完成，需进一步核实。' } : check))
             window.clearTimeout(handshake)
             window.clearTimeout(current.finishTimeout)
@@ -124,6 +138,21 @@ export function useVoiceSession() {
             setStatus(previous => previous === 'error' || event.saved !== true ? 'error' : 'ended')
           } else if (event.type === 'medical_check') {
             if (medicalText.current.get(event.check.message_id) === event.check.text) setMedicalChecks(previous => updateMedicalChecks(previous, event.check))
+          } else if (event.type === 'policy_check') {
+            if (medicalText.current.get(event.message_id) === event.text && Array.isArray(event.findings)) {
+              setPolicyChecks(previous => [...previous.filter(check => check.message_id !== event.message_id), ...event.findings])
+              setPolicyUnavailable(previous => [...previous.filter(check => check.message_id !== event.message_id), ...(event.status === 'unavailable' ? [{message_id:event.message_id, text:event.text}] : [])])
+              if (!current.closing && !current.policyPaused && event.findings.some((item: PolicyCheck) => item.status === 'risk' && item.risk === 'high' && item.action === 'pause')) {
+                current.resumeMuted = current.audio.muted
+                current.policyPaused = true
+                current.audio.setMuted(true)
+                current.audio.interrupt()
+                if (current.response) current.retired.add(current.response)
+                ws.send(JSON.stringify({type:'mute', muted:true}))
+                if (experience === 'combat') ws.send(JSON.stringify({type:'interrupt'}))
+                setMuted(true); setPolicyPaused(true)
+              }
+            }
           } else if (event.type === 'coaching') {
             setCoach(event.coach)
             setAnalysisStatus('completed')
@@ -143,12 +172,16 @@ export function useVoiceSession() {
             if (event.role === 'trainee' && event.text && (event.replace || event.final)) {
               medicalText.current.set(event.id, event.text)
               setMedicalChecks(previous => invalidateMedicalCheck(previous, event.id, event.text))
+              setPolicyChecks(previous => previous.filter(check => check.message_id !== event.id || check.text === event.text))
+              setPolicyUnavailable(previous => previous.filter(check => check.message_id !== event.id || check.text === event.text))
             }
           } else if (!current.closing) {
             if (event.type === 'practice_turn') {
               const time = formatTime(Math.max(0, Math.floor((performance.now() - current.started) / 1000)))
               setMessages(previous => applyTranscript(previous, event.message, time))
               if (event.coach) setCoach(event.coach)
+            } else if (event.type === 'response_started' && current.policyPaused) {
+              current.retired.add(event.response_id)
             } else if (event.type === 'response_started' && !current.retired.has(event.response_id)) {
               current.response = event.response_id
               current.responseMessage = event.message_id || event.response_id
@@ -157,10 +190,10 @@ export function useVoiceSession() {
               interruptPlayback()
               if (event.coaching_invalidated) setCoach(previous => previous ? { ...previous, superseded: true } : previous)
               if (experience === 'practice') setSpeechState('idle')
-            } else if (event.type === 'audio' && !current.retired.has(event.response_id)) {
+            } else if (event.type === 'audio' && !current.policyPaused && !current.retired.has(event.response_id)) {
               current.response = event.response_id || current.response
               current.audio.play(event.audio)
-            } else if (event.type === 'muted') setMuted(event.muted)
+            } else if (event.type === 'muted' && !current.policyPaused) setMuted(event.muted)
           }
         } catch { fail('语音事件或音频格式异常，请重新连接') }
       }
@@ -179,18 +212,28 @@ export function useVoiceSession() {
       }
     } catch (cause) {
       if (connection.current !== current || current.closing) return
-      if (cause instanceof DOMException && cause.name === 'NotAllowedError') fail('麦克风权限被拒绝，请在浏览器中允许麦克风')
+      if (cause instanceof DOMException && cause.name === 'NotAllowedError') fail('麦克风权限被拒绝，请在系统设置中允许麦克风后重试')
       else fail(cause instanceof Error ? cause.message : '无法启动语音演练')
     }
   }, [])
 
   function toggleMute() {
     const current = connection.current
-    if (!current || current.closing || current.ws?.readyState !== WebSocket.OPEN) return
+    if (!current || current.closing || current.policyPaused || current.ws?.readyState !== WebSocket.OPEN) return
     const next = !muted
     current.audio.setMuted(next)
     current.ws.send(JSON.stringify({ type: 'mute', muted: next }))
     setMuted(next)
+  }
+
+  function resumePolicy() {
+    const current = connection.current
+    if (!current || current.closing || !current.policyPaused || current.ws?.readyState !== WebSocket.OPEN) return
+    const next = current.resumeMuted === true
+    current.policyPaused = false
+    current.audio.setMuted(next)
+    current.ws.send(JSON.stringify({type:'mute', muted:next}))
+    setMuted(next); setPolicyPaused(false)
   }
 
   function retryReply() {
@@ -217,6 +260,22 @@ export function useVoiceSession() {
   }
 
   useEffect(() => {
+    function onHidden() {
+      if (document.visibilityState !== 'hidden' || !connection.current || connection.current.closing) return
+      setError('应用进入后台，录音已停止。请返回查看保存结果。')
+      stop()
+    }
+    function onOffline() {
+      if (!connection.current || connection.current.closing) return
+      setError('网络已断开，录音已停止。请返回查看保存结果。')
+      stop()
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('offline', onOffline)
+    return () => { document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('offline', onOffline) }
+  }, [stop])
+
+  useEffect(() => {
     if (status !== 'active') return
     const timer = window.setInterval(() => {
       const started = connection.current?.started
@@ -231,5 +290,5 @@ export function useVoiceSession() {
     if (current) { current.closing = true; current.audio.stop(); current.ws?.close() }
   }, [])
 
-  return { mode, training, status, messages, medicalChecks, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, interrupt, retryReply, retrySpeech }
+  return { mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
 }

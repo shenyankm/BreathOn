@@ -3,6 +3,7 @@ import asyncio
 from fastapi import HTTPException
 from ..agents.coach import generate_reply
 from ..voice.protocol import BridgeError
+from ..knowledge.live import checked_snapshot, validate_snapshot
 
 
 async def review_training(settings, record):
@@ -16,11 +17,15 @@ async def review_training(settings, record):
     try:
         if record.validate_training:
             await asyncio.to_thread(record.validate_training)
-        options = {'medical_checks':record.data['medical_checks']} if record.data.get('medical_checks') else {}
+        checks = await checked_snapshot(record)
+        options = {'medical_checks':checks} if checks else {}
+        if record.data.get('free_context'):
+            options['free_context'] = record.data['free_context']
         reply,usage=await generate_reply(settings,history,speak=False,training=record.training,
                                         interactions=record.data['interaction_events'],**options)
         if usage:
             record.data['usage'].append({'provider':'deepseek',**usage})
+        await validate_snapshot(record, checks)
         if record.validate_training:
             await asyncio.to_thread(record.validate_training)
     except HTTPException as exc:

@@ -9,9 +9,9 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from .catalog import Catalog, require_item
-from .models import Content, ContentEdit, Doctor, DoctorEdit, Rubric, RubricEdit, Scenario, ScenarioEdit, Publish, Transition
+from .models import Content, ContentEdit, Policy, PolicyEdit, PolicyRule, PolicyRuleEdit, Drug, DrugEdit, TaxonomyEdit, Doctor, DoctorEdit, Rubric, RubricEdit, Scenario, ScenarioEdit, Publish, Transition, content_usable, policy_usable
 from .pdf_extract import extract_pdf
-from .training import prepare_training, snapshot
+from .training import prepare_training, prepare_free_context, snapshot
 from .calibration import Calibrator, CalibrationSample
 from .operations import Operations, Review, Retrain
 from .importer import Batch, import_content
@@ -19,11 +19,11 @@ from .generation import GenerateScenario, generate_scenario
 from .cases import Cases, CaseFromRecord, CaseEdit, CaseImport
 from .progress import Prices, capture_prices, save_prices, personal_progress
 from .sharing import TrainingTemplate, export_template, import_template
-from ..core.identity import current_actor
+from ..core.identity import current_actor, current_role
 
-Kind = Literal['content', 'doctor', 'rubric', 'scenario']
-CREATE_MODELS = {'content': Content, 'doctor': Doctor, 'rubric': Rubric, 'scenario': Scenario}
-EDIT_MODELS = {'content': ContentEdit, 'doctor': DoctorEdit, 'rubric': RubricEdit, 'scenario': ScenarioEdit}
+Kind = Literal['content', 'policy', 'policy_rule', 'drug', 'doctor', 'rubric', 'scenario']
+CREATE_MODELS = {'content': Content, 'policy': Policy, 'policy_rule': PolicyRule, 'drug': Drug, 'doctor': Doctor, 'rubric': Rubric, 'scenario': Scenario}
+EDIT_MODELS = {'content': ContentEdit, 'policy': PolicyEdit, 'policy_rule': PolicyRuleEdit, 'drug': DrugEdit, 'doctor': DoctorEdit, 'rubric': RubricEdit, 'scenario': ScenarioEdit}
 
 
 def parse(model, body):
@@ -205,9 +205,11 @@ def platform_router(store, settings, records):
             return {**result, 'asset_id': asset['id'], 'sha256': asset['sha256']}
         return await asyncio.to_thread(persist)
 
-    @router.get('/catalog/content/{item_id}/file')
-    def content_file(item_id: str, user=Depends(current_user)):
-        item = catalog.get(user, 'content', item_id)
+    @router.get('/catalog/{kind}/{item_id}/file')
+    def content_file(kind: Literal['content', 'policy'], item_id: str, user=Depends(current_user)):
+        item = catalog.get(user, kind, item_id)
+        if current_role.get() != 'admin' and not (policy_usable(item) if kind == 'policy' else content_usable(item)):
+            raise HTTPException(404, '记录不存在。')
         if not item.get('asset_id'):
             raise HTTPException(404, '此版本没有PDF原件。')
         with store.transaction(user['workspace'], write=False) as tx:
@@ -221,17 +223,43 @@ def platform_router(store, settings, records):
         return Response(content=raw, media_type='application/pdf',
             headers={'Content-Disposition': f'attachment; filename="document-{item_id}.pdf"', 'X-Content-Type-Options': 'nosniff'})
 
+    @router.get('/catalog/taxonomy')
+    def taxonomy_list(user=Depends(current_user)):
+        rows = catalog.taxonomy(user)
+        if current_role.get() != 'admin':
+            rows = [{**row, 'terms':[term for term in row['terms'] if term['status'] == 'active']} for row in rows]
+        return rows
+
+    @router.put('/catalog/taxonomy/{kind}')
+    def taxonomy_edit(kind: Literal['category', 'disease', 'mechanism', 'dosage_form', 'region'], body: TaxonomyEdit, user=Depends(current_user)):
+        return catalog.update_taxonomy(user, kind, body)
+
     @router.get('/catalog/{kind}')
     def catalog_list(kind: Kind, user=Depends(current_user)):
-        return catalog.list(user, kind)
+        rows = [item for item in catalog.list(user, kind) if item.get('status') != 'archived']
+        if current_role.get() != 'admin':
+            allowed = 'approved' if kind in ('content', 'policy') else 'published'
+            rows = [item for item in rows if item.get('status') == allowed]
+            if kind in ('content', 'policy'):
+                rows = [item for item in rows if item['usable']]
+        return rows
 
     @router.get('/catalog/{kind}/{item_id}')
     def catalog_get(kind: Kind, item_id: str, user=Depends(current_user)):
-        return catalog.get(user, kind, item_id)
+        item = catalog.get(user, kind, item_id)
+        allowed = 'approved' if kind in ('content', 'policy') else 'published'
+        if current_role.get() != 'admin' and (item.get('status') != allowed or
+                kind == 'content' and not content_usable(item) or kind == 'policy' and not policy_usable(item)):
+            raise HTTPException(404, '记录不存在。')
+        return item
+
+    @router.get('/practice/preview')
+    def practice_preview(drug_id: str = Query(min_length=1, max_length=80), doctor_id: str = Query(min_length=1, max_length=80), user=Depends(current_user)):
+        return prepare_free_context(store, user, drug_id, doctor_id)
 
     @router.get('/scenarios/{item_id}/preview')
     def scenario_preview(item_id: str, stage: str = 'full', user=Depends(current_user)):
-        return snapshot(prepare_training(store, user, item_id, stage, preview=True))
+        return snapshot(prepare_training(store, user, item_id, stage, preview=current_role.get() == 'admin'))
 
     @router.post('/catalog/{kind}', status_code=201)
     def catalog_create(kind: Kind, body: dict, user=Depends(current_user)):
@@ -249,12 +277,16 @@ def platform_router(store, settings, records):
     def catalog_revision(kind: Kind, item_id: str, user=Depends(current_user)):
         return catalog.revision(user, kind, item_id)
 
-    @router.post('/catalog/content/{item_id}/review')
-    def content_review(item_id: str, body: Transition, user=Depends(current_user)):
-        return catalog.review(user, item_id, body)
+    @router.post('/catalog/{kind}/{item_id}/review')
+    def content_review(kind: Literal['content', 'policy'], item_id: str, body: Transition, user=Depends(current_user)):
+        return catalog.review(user, item_id, body, kind)
 
     @router.post('/catalog/{kind}/{item_id}/publish')
-    def catalog_publish(kind: Literal['doctor','rubric','scenario'], item_id: str, body: Publish, user=Depends(current_user)):
+    def catalog_publish(kind: Literal['doctor','drug','policy_rule','rubric','scenario'], item_id: str, body: Publish, user=Depends(current_user)):
         return catalog.publish(user, kind, item_id, body.version)
+
+    @router.post('/catalog/drug/{item_id}/retire')
+    def drug_retire(item_id: str, body: Publish, user=Depends(current_user)):
+        return catalog.retire(user, 'drug', item_id, body.version)
 
     return router, initialize, current_user, operations

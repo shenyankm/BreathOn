@@ -5,12 +5,13 @@ import hashlib
 import hmac
 import secrets
 import time
+import re
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse
-from ..core.identity import current_actor
+from ..core.identity import current_actor, current_role
 
 COOKIE = 'medvisit_session'
 SESSION_SECONDS = 8 * 60 * 60
@@ -62,10 +63,14 @@ class Authentication:
     def username(self, connection):
         return self.sessions.get(self.token_key(connection.cookies.get(COOKIE, '')), {}).get('username')
 
+    def role(self, username):
+        return 'admin' if username in (self.settings.admin_users or [self.settings.admin_username]) else 'representative'
+
     async def session(self, request: Request):
         expires = self.expires(request)
         return {'enabled':self.settings.auth_required, 'authenticated':bool(expires),
-                'username':self.username(request) if expires else None, 'expires_at':expires or None}
+                'username':self.username(request) if expires else None, 'expires_at':expires or None,
+                'role':self.role(self.username(request)) if expires else ('admin' if not self.settings.auth_required else None)}
 
     async def login(self, body: Login, response: Response):
         if not self.settings.auth_required:
@@ -91,7 +96,7 @@ class Authentication:
         self.sessions[self.token_key(token)] = {'username':body.username, 'expires_at':expires}
         response.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, httponly=True, samesite='strict',
                             secure=all(origin.startswith('https://') for origin in self.settings.origins), path='/')
-        return {'enabled':True, 'authenticated':True, 'username':body.username, 'expires_at':expires}
+        return {'enabled':True, 'authenticated':True, 'username':body.username, 'expires_at':expires, 'role':self.role(body.username)}
 
     async def logout(self, request: Request, response: Response):
         self.sessions.pop(self.token_key(request.cookies.get(COOKIE, '')), None)
@@ -108,14 +113,32 @@ class AuthenticationMiddleware:
         if scope['type'] not in ('http', 'websocket') or not self.auth.settings.auth_required:
             return await self.app(scope, receive, send)
         public = ('/api/live', '/api/ready', '/api/auth/session', '/api/auth/login', '/api/auth/logout')
-        if scope['type'] == 'http' and scope['path'] in public:
+        provider_audio = (scope['type'] == 'http' and scope.get('method') == 'GET' and
+                          re.fullmatch(r'/api/visits/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/provider-audio', scope['path']))
+        if scope['type'] == 'http' and (scope['path'] in public or provider_audio):
             return await self.app(scope, receive, send)
         connection = HTTPConnection(scope)
         if not self.auth.expires(connection):
             if scope['type'] == 'websocket':
                 return await send({'type':'websocket.close', 'code':1008})
             return await JSONResponse({'detail':'请先登录。'}, status_code=401, headers={'Cache-Control':'no-store'})(scope, receive, send)
-        identity = current_actor.set(self.auth.username(connection))
+        username = self.auth.username(connection)
+        role = self.auth.role(username)
+        path = scope['path']
+        method = scope.get('method', '')
+        admin_path = (path.startswith(('/api/admin/', '/api/research', '/api/calibration', '/api/rubrics/'))
+            or path == '/api/services/check' or path == '/api/usage/prices' and method != 'GET'
+            or path.startswith('/api/catalog/') and method not in ('GET', 'HEAD')
+            or path.startswith('/api/scenarios/') and path.endswith('/export')
+            or path in ('/api/content/pdf', '/api/content/import', '/api/scenarios/import', '/api/scenarios/generate')
+            or path.startswith('/api/sessions/') and path.endswith('/reviews') and method == 'POST')
+        if role != 'admin' and admin_path:
+            if scope['type'] == 'websocket':
+                return await send({'type':'websocket.close', 'code':1008})
+            status = 404 if path.startswith('/api/sessions/') and path.endswith('/reviews') else 403
+            return await JSONResponse({'detail':'无权访问。'}, status_code=status, headers={'Cache-Control':'no-store'})(scope, receive, send)
+        identity = current_actor.set(username)
+        role_token = current_role.set(role)
         try:
             if scope['type'] == 'websocket':
                 async def authenticated_receive():
@@ -128,6 +151,7 @@ class AuthenticationMiddleware:
             return await self.app(scope, receive, send)
         finally:
             current_actor.reset(identity)
+            current_role.reset(role_token)
 
 
 if __name__ == '__main__':

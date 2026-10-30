@@ -1,6 +1,35 @@
 """Keep every finalized ASR sentence check separate from cancellable doctor replies."""
 import asyncio
 import contextlib
+from copy import deepcopy
+
+from ..voice.protocol import BridgeError
+
+
+async def checked_snapshot(record):
+    checks = deepcopy(record.data.get('medical_checks', []))
+    live = getattr(record, 'medical_checks', None)
+    verifier = getattr(live, 'verifier', None)
+    if verifier and hasattr(verifier, 'invalidate_revoked'):
+        await verifier.invalidate_revoked(checks)
+    else:
+        for row in checks:
+            if row.get('status') in ('supported', 'contradicted'):
+                row.update(status='insufficient', reason='无法确认审核依据仍然有效。', statements=[])
+    return checks
+
+
+async def validate_snapshot(record, snapshot):
+    checked = deepcopy(snapshot)
+    live = getattr(record, 'medical_checks', None)
+    verifier = getattr(live, 'verifier', None)
+    if verifier and hasattr(verifier, 'invalidate_revoked'):
+        await verifier.invalidate_revoked(checked)
+    elif any(row.get('status') in ('supported', 'contradicted') for row in snapshot):
+        raise BridgeError('training_material_changed', '医学审核依据暂不可读取，请重新核验。')
+    if any(before.get('status') in ('supported', 'contradicted') and after.get('status') != before.get('status')
+           for before, after in zip(snapshot, checked)):
+        raise BridgeError('training_material_changed', '医学审核依据已变更，请重新核验。')
 
 
 class LiveMedicalChecks:
@@ -74,3 +103,5 @@ class LiveMedicalChecks:
             for row in self.rows.values():
                 if row['status']=='checking':
                     row.update(status='unavailable',reason='结束时本句核验尚未完成，需进一步核实。',statements=[])
+            if hasattr(self.verifier, 'invalidate_revoked'):
+                await self.verifier.invalidate_revoked(list(self.rows.values()))

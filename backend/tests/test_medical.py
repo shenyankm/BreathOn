@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 from zipfile import ZipFile
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from medvisit.api.app import create_app
@@ -14,7 +15,10 @@ from medvisit.knowledge.corpus import MedicalCorpus, sentences
 from medvisit.knowledge.compile import validate_facts
 from medvisit.knowledge.live import LiveMedicalChecks
 from medvisit.knowledge.verify import MedicalVerifier, validate_result, apply_review
+from medvisit.knowledge.api import medical_router
+from medvisit.core.identity import current_role
 from medvisit.storage.records import SessionRecord
+from medvisit.services.visit_summary import build_visit_summary
 from test_bridge import settings
 
 
@@ -30,7 +34,9 @@ def corpus_fixture(root):
     (root/'corpus.json').write_text(json.dumps(data))
     for name in ['purpose.md','schema.md','wiki/index.md']:
         p=root/name;p.parent.mkdir(exist_ok=True);p.write_text('Synthetic wiki')
-    return MedicalCorpus(root)
+    document={'id':'approved-content','title':'Synthetic trial','version':1,'version_label':'test-v1','status':'approved',
+              'source_url':data['sources'][0]['url'],'pages':deepcopy(data['sources'][0]['pages'])}
+    return MedicalCorpus(root, approved_documents=lambda:[document])
 
 
 def model_result(evidence):
@@ -85,7 +91,8 @@ def test_corpus_replacement_and_corruption_never_keep_old_evidence(tmp_path):
     corpus=corpus_fixture(tmp_path);first=corpus.load()['version']
     p=tmp_path/'corpus.json';data=json.loads(p.read_text());data['sources'][0]['pages'][0]['text']='新版资料明确不同。'
     p.write_text(json.dumps(data));assert corpus.load()['version']!=first
-    p.write_text('broken');assert corpus.load()['version']=='unavailable' and not corpus.search('测试药甲')
+    p.write_text('broken');assert corpus.load()['version']=='unavailable'
+    assert all(row['source_id'].startswith('platform-document-') for row in corpus.search('测试药甲'))
 
 
 def test_historical_citations_are_pinned_and_do_not_silently_open_a_new_version(tmp_path):
@@ -99,6 +106,28 @@ def test_historical_citations_are_pinned_and_do_not_silently_open_a_new_version(
     assert corpus.source('test-source','a'*64)['pages'][0]['text']==old['pages'][0]['text']
     assert corpus.source('test-source','b'*64)['pages'][0]['text']=='新版不同文字。'
     assert corpus.source('../test-source','a'*64) is None
+
+def test_historical_source_authorization_matches_the_selected_version(tmp_path):
+    corpus = corpus_fixture(tmp_path)
+    archived = deepcopy(corpus.load()['sources'][0])
+    archived.update(sha256='b'*64, pages=[{'number':1, 'text':'未审核的旧版软件测试资料。'}])
+    history = tmp_path/'versions/test-source'/('b'*64+'.json')
+    history.parent.mkdir(parents=True)
+    history.write_text(json.dumps(archived))
+    source = {route.path:route.endpoint for route in medical_router(corpus, object()).routes}['/api/medical/sources/{source_id}']
+    token = current_role.set('representative')
+    try:
+        assert source('test-source', 'a'*64).status_code == 200
+        with pytest.raises(HTTPException) as exc:
+            source('test-source', 'b'*64)
+        assert exc.value.status_code == 404
+    finally:
+        current_role.reset(token)
+    token = current_role.set('admin')
+    try:
+        assert archived['pages'][0]['text'].encode() in source('test-source', 'b'*64).body
+    finally:
+        current_role.reset(token)
 
 
 def test_lint_detects_modified_originals_and_title_only_citations_are_not_proof(tmp_path):
@@ -117,6 +146,82 @@ def test_lint_detects_modified_originals_and_title_only_citations_are_not_proof(
 async def test_empty_corpus_fails_closed_without_model_calls(tmp_path):
     result=await MedicalVerifier(settings(tmp_path),MedicalCorpus(tmp_path)).check('测试药甲适合所有患者。')
     assert result['status']=='insufficient' and result['statements']==[]
+
+
+async def test_medical_evidence_requires_matching_live_approval_and_revocation_invalidates_result(tmp_path):
+    corpus = corpus_fixture(tmp_path)
+    document = corpus.approved_documents()[0]
+    query = '测试药甲的指标是99%。'
+    evidence = corpus.search(query)
+    assert evidence[0]['document_id'] == document['id']
+    statement = validate_result(model_result(evidence), query, evidence)[0]
+    result = {'text':query, 'status':'contradicted', 'corpus_version':corpus.load()['version'], 'statements':[statement]}
+    verifier = MedicalVerifier(settings(tmp_path), corpus)
+    await verifier.invalidate_revoked([result])
+    assert result['status'] == 'contradicted'
+    document['status'] = 'retired'
+    assert not corpus.search(query)
+    await verifier.invalidate_revoked([result])
+    assert result['status'] == 'insufficient' and result['statements'] == []
+    document['status'] = 'approved'
+    document['pages'][0]['text'] += '不一致'
+    assert all(row['source_id'] != 'test-source' for row in corpus.search(query))
+    document['pages'][0]['text'] = evidence[0]['text']
+    document['source_url'] = 'https://example.org/other'
+    assert all(row['source_id'] != 'test-source' for row in corpus.search(query))
+    corpus.approved_documents = None
+    assert not corpus.search(query)
+
+
+async def test_uploaded_approved_platform_content_is_searchable_without_corpus(tmp_path):
+    document={'id':'new-doc','version':1,'version_label':'v1','title':'测试说明书', 'status':'approved',
+        'source_url':'','scope':'测试人群', 'pages':[{'number':1,'text':'测试药乙在测试人群中的数值是10%，仅用于软件测试。'}]}
+    corpus=MedicalCorpus(tmp_path/'empty', approved_documents=lambda:[document])
+    evidence=corpus.search('测试药乙在测试人群的数值是多少？')
+    assert evidence and evidence[0]['source_id']=='platform-document-new-doc'
+    assert corpus.source('platform-document-new-doc')['pages'] == document['pages']
+    document['status']='retired'
+    assert not corpus.search('测试药乙在测试人群的数值是多少？')
+    assert corpus.source('platform-document-new-doc') is None
+
+
+def test_representative_cannot_read_unreviewed_corpus_or_export(tmp_path):
+    corpus = corpus_fixture(tmp_path)
+    document = corpus.approved_documents()[0]
+    router = medical_router(corpus, object())
+    routes = {r.path:r.endpoint for r in router.routes}
+    token = current_role.set('representative')
+    try:
+        assert len(routes['/api/medical']()['sources']) == 2
+        with pytest.raises(Exception) as exc:
+            routes['/api/medical/sources/{source_id}/original']('test-source')
+        assert exc.value.status_code == 404
+        document['status'] = 'retired'
+        assert routes['/api/medical']()['sources'] == []
+        for path in ('/api/medical/sources/{source_id}', '/api/medical/sources/{source_id}/original'):
+            with pytest.raises(Exception) as exc:
+                routes[path]('test-source')
+            assert exc.value.status_code == 404
+        with pytest.raises(Exception) as exc:
+            routes['/api/medical/wiki.zip']()
+        assert exc.value.status_code == 403
+        with pytest.raises(Exception) as exc:
+            routes['/api/medical/audit']()
+        assert exc.value.status_code == 403
+    finally:
+        current_role.reset(token)
+
+
+async def test_summary_does_not_score_unverifiable_saved_medical_result(tmp_path):
+    record = SessionRecord('test', 'assisted')
+    record.transcript('u1', 'trainee', '测试药甲指标为99%。', final=True)
+    record.data['capture_status'] = 'completed'
+    record.data['medical_checks'] = [{'message_id':'u1', 'text':'测试药甲指标为99%。', 'status':'supported',
+                                      'statements':[{'status':'supported'}]}]
+    config = settings(tmp_path)
+    config.deepseek_api_key = ''
+    summary = await build_visit_summary(config, record)
+    assert summary['dimensions'][0]['score'] is None and summary['total'] is None
 
 
 async def test_live_checks_cover_each_final_segment_and_drop_corrected_inflight_results():

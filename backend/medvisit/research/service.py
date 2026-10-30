@@ -6,14 +6,20 @@ import hashlib
 import json
 import logging
 import re
+import base64
+import subprocess
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException
 from pydantic import ValidationError
 
 from ..platform.store import now
+from ..platform.models import Doctor, Policy
+from ..platform.pdf_extract import extract_pdf
 from .agents import PROFILES, observations, run_agent, validate_result
-from .archive import canonical_url, write_private
+from .archive import canonical_url, read_source, write_private
 from .doctor import doctor_draft
+from .word_extract import extract_word
 from .models import DoctorResearchRequest, ResearchResult
 
 logger = logging.getLogger('medvisit.research')
@@ -66,6 +72,154 @@ class ResearchService:
             captured = self._observations(job['id'])
             job['progress'] = {'searches':len(captured['queries']), 'archives':len(captured['archives'])}
         return job
+
+    def doctor_draft(self, job_id, body):
+        job = self.get_job(job_id)
+        if job['kind'] != 'doctor' or job['status'] not in ('completed', 'partial') or not job.get('result'):
+            raise HTTPException(409, '请先完成医生公开资料检索。')
+        captured = self._observations(job_id)
+        try:
+            report = deepcopy(job['result'])
+            for finding in report['findings']:
+                for detail in finding['details']:
+                    detail.pop('quote', None)
+                    detail.pop('source_version', None)
+            result = validate_result(ResearchResult.model_validate(report), PROFILES['doctor'], self.archives, captured)
+            finding = result['findings'][body.finding_index]
+        except (ValueError, KeyError, IndexError, TypeError, OSError):
+            raise HTTPException(409, '候选资料或原文无法核验，请重新检索。') from None
+        details = finding['details']
+        names = {d['value'].strip() for d in details if d['label'] == '姓名'}
+        if names != {body.confirmed_name.strip()}:
+            raise HTTPException(422, '请确认与候选来源一致的医生姓名。')
+        hospitals = {d['value'].strip() for d in details if d['label'] == '医院' and d['value'].strip()}
+        if len(hospitals) != 1:
+            raise HTTPException(422, '候选医院不明确或存在冲突，请先核对身份。')
+        # Each detail remains tied to its archived evidence; none is treated as an established fact.
+        archives = {(a['id'], a['raw_sha256']): a for a in captured['archives']}
+        evidence = [{**d, 'url':archives[(d['source_id'], d['source_version'])]['url']} for d in details]
+        sources = list(dict.fromkeys(item['url'] for item in evidence))
+        facts = '\n'.join(f"{d['label']}：{d['value']}" for d in details if d['label'] != '同名或时效疑点')[:3000]
+        def field(label, default=''):
+            return next((d['value'] for d in details if d['label'] == label), default)
+        try:
+            doctor = Doctor(name=body.confirmed_name.strip(), specialty=field('科室', '待核对')[:80],
+                hospital=field('医院')[:200], professional_title=field('专业职称')[:100],
+                background_type='public', public_facts=facts, sources=sources,
+                population='待管理员确认训练人群', focus='待管理员确认训练关注点',
+                training_style='模拟交流方式，待管理员确认', mood='neutral', opening='您好，请问今天方便交流吗？')
+        except ValueError:
+            raise HTTPException(422, '候选资料不完整或来源不符合要求，请先核对。') from None
+        user = self.current_user()
+        with self.store.transaction(self.workspace) as tx:
+            current = tx.get(self.workspace, 'research_job', job_id)
+            key = str(body.finding_index)
+            existing = (current.get('doctor_drafts') or {}).get(key)
+            if existing:
+                draft = tx.get(self.workspace, 'doctor', existing)
+                if draft and draft.get('status') != 'deleted':
+                    return draft
+            data = {**doctor.model_dump(mode='json'), 'status':'draft', 'created_by':user['id'],
+                'display_name':doctor.name+'（训练模拟）', 'research_job_id':job_id,
+                'research_finding_index':body.finding_index, 'research_evidence':evidence,
+                'identity_confirmed_by':user['id'], 'identity_confirmed_at':now(),
+                'research_caveats':finding.get('caveats', []) + [d['value'] for d in details if d['label'] == '同名或时效疑点']}
+            draft = tx.create(self.workspace, 'doctor', data)
+            tx.update(self.workspace, 'research_job', job_id, {**current,
+                'doctor_drafts':{**(current.get('doctor_drafts') or {}), key:draft['id']}}, current['version'])
+            tx.audit(self.workspace, user['id'], 'doctor.research_draft', 'doctor', draft['id'], {'job_id':job_id})
+            return draft
+
+    def _policy_pages(self, data, kind):
+        try:
+            if kind == 'pdf':
+                return extract_pdf(data)['pages']
+            text = extract_word(data) if kind in ('doc', 'docx') else data.decode('utf-8')
+            if not text.strip() or len(text) > 20000:
+                raise ValueError('原文为空或超过单段限制，请人工分段录入并核对原件。')
+            return [{'number':1, 'text':text}]
+        except (ValueError, UnicodeError, OSError, subprocess.SubprocessError) as exc:
+            raise HTTPException(422, str(exc) or '原文解析失败。') from None
+
+    def _policy(self, title, pages, source_url=''):
+        try:
+            return Policy(title=title.strip()[:180], version_label='待审核版本', scope='待审核确认适用范围',
+                pages=pages, source_url=source_url, legal_status='unknown')
+        except ValueError:
+            raise HTTPException(422, '政策标题或原文不符合导入要求。') from None
+
+    def policy_draft(self, job_id, body):
+        job = self.get_job(job_id)
+        if job['kind'] != 'policy' or job['status'] not in ('completed', 'partial'):
+            raise HTTPException(409, '请先完成政策原文归档。')
+        captured = self._observations(job_id)
+        if not any(a['id'] == body.source_id and a['raw_sha256'] == body.source_version for a in captured['archives']):
+            raise HTTPException(404, '原文不属于本次检索。')
+        try:
+            metadata, text = read_source(self.archives, body.source_id, body.source_version)
+        except (ValueError, OSError, KeyError):
+            raise HTTPException(409, '原文归档不完整或已损坏，请重新核对。') from None
+        host = urlsplit(metadata['resolved_url']).hostname or ''
+        if host != 'gov.cn' and not host.endswith('.gov.cn'):
+            raise HTTPException(422, '仅政府官网归档可作为官方政策原文导入。')
+        folder = self.archives / body.source_id / body.source_version
+        raw = (folder / metadata['original_file']).read_bytes() if metadata['kind'] == 'pdf' else text.encode('utf-8')
+        pages = self._policy_pages(raw, 'pdf' if metadata['kind'] == 'pdf' else 'text')
+        policy = self._policy(metadata['title'], pages, metadata['resolved_url'])
+        user = self.current_user()
+        key = body.source_id + ':' + body.source_version
+        with self.store.transaction(self.workspace) as tx:
+            current = tx.get(self.workspace, 'research_job', job_id)
+            previous = (current.get('policy_drafts') or {}).get(key)
+            if previous:
+                existing = tx.get(self.workspace, 'policy', previous)
+                if existing and existing.get('status') != 'deleted':
+                    return existing
+            asset = tx.create(self.workspace, 'asset', {'data':base64.b64encode(raw).decode(),
+                'sha256':hashlib.sha256(raw).hexdigest(), 'size':len(raw), 'format':'pdf', 'created_by':user['id']}) if metadata['kind'] == 'pdf' else None
+            item = tx.create(self.workspace, 'policy', {**policy.model_dump(mode='json'), 'status':'draft',
+                'asset_id':asset['id'] if asset else None,
+                'created_by':user['id'], 'research_job_id':job_id, 'research_source_id':body.source_id,
+                'research_source_version':body.source_version, 'original_kind':metadata['kind'],
+                'pagination':'pdf_pages' if metadata['kind'] == 'pdf' else 'text_document'})
+            item = tx.update(self.workspace, 'policy', item['id'], {**item, 'series_id':item['id']}, item['version'])
+            tx.update(self.workspace, 'research_job', job_id, {**current,
+                'policy_drafts':{**(current.get('policy_drafts') or {}), key:item['id']}}, current['version'])
+            tx.audit(self.workspace, user['id'], 'policy.research_draft', 'policy', item['id'], {'job_id':job_id})
+            return item
+
+    def policy_file(self, title, data):
+        if len(data) > 20_000_000:
+            raise HTTPException(413, '原文超过20MB。')
+        kind = 'pdf' if data.startswith(b'%PDF-') else 'docx' if data.startswith(b'PK') else 'doc' if data.startswith(bytes.fromhex('d0cf11e0a1b11ae1')) else None
+        if not kind:
+            raise HTTPException(415, '请选择 PDF、DOC 或 DOCX 原文。')
+        pages = self._policy_pages(data, kind)
+        policy = self._policy(title, pages)
+        user = self.current_user()
+        with self.store.transaction(self.workspace) as tx:
+            asset = tx.create(self.workspace, 'asset' if kind == 'pdf' else 'research_upload', {'data':base64.b64encode(data).decode(),
+                'sha256':hashlib.sha256(data).hexdigest(), 'size':len(data), 'format':kind, 'created_by':user['id']})
+            item = tx.create(self.workspace, 'policy', {**policy.model_dump(mode='json'), 'status':'draft',
+                'created_by':user['id'], 'asset_id':asset['id'] if kind == 'pdf' else None,
+                'research_upload_id':asset['id'], 'original_kind':kind,
+                'pagination':'pdf_pages' if kind == 'pdf' else 'text_document'})
+            item = tx.update(self.workspace, 'policy', item['id'], {**item, 'series_id':item['id']}, item['version'])
+            tx.audit(self.workspace, user['id'], 'policy.file_draft', 'policy', item['id'], {'asset_id':asset['id']})
+            return item
+
+    def policy_file_original(self, item_id):
+        with self.store.transaction(self.workspace, write=False) as tx:
+            item = tx.get(self.workspace, 'research_upload', item_id) or tx.get(self.workspace, 'asset', item_id)
+        if not item:
+            raise HTTPException(404, '政策原件不存在。')
+        try:
+            raw = base64.b64decode(item['data'], validate=True)
+            if len(raw) != item['size'] or hashlib.sha256(raw).hexdigest() != item['sha256']:
+                raise ValueError
+        except (KeyError, ValueError, TypeError):
+            raise HTTPException(409, '政策原件损坏。') from None
+        return item, raw
 
     def _create_job(self, request, watch_id=None):
         if not self.settings.deepseek_api_key or not self.settings.deepseek_search_enabled:

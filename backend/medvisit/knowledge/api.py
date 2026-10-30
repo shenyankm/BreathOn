@@ -7,6 +7,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from ..core.identity import current_role
 
 
 class CheckRequest(BaseModel):
@@ -18,12 +19,32 @@ class CheckRequest(BaseModel):
 def medical_router(corpus, verifier):
     router = APIRouter(prefix='/api/medical')
 
+    def visible(source, approvals):
+        return bool(source.get('pages')) and all((source['id'], p['number']) in approvals for p in source['pages'])
+
+    def authorized_source(source_id, version=None):
+        item = corpus.source(source_id, version)
+        if not item or (current_role.get() != 'admin' and not visible(item, corpus.approval_snapshot({'sources':[item]}))):
+            raise HTTPException(404,'医学依据不存在。')
+        return item
+
     @router.get('')
     def status():
-        return corpus.status()
+        result = corpus.status()
+        if current_role.get() == 'admin':
+            return result
+        data = corpus.load()
+        approvals = corpus.approval_snapshot(data)
+        ids = {source['id'] for source in data['sources'] if visible(source, approvals)}
+        derived = [{key:value for key,value in source.items() if key not in ('pages','original_path')} | {'original_available':False}
+                   for source in corpus.approved_sources()]
+        return {**result, 'sources':[source for source in result['sources'] if source['id'] in ids] + derived,
+                'products':[], 'compiled':{}}
 
     @router.post('/audit')
     def audit():
+        if current_role.get() != 'admin':
+            raise HTTPException(403, '仅管理员可审计待审核资料。')
         return corpus.audit()
 
     @router.post('/check')
@@ -34,6 +55,8 @@ def medical_router(corpus, verifier):
 
     @router.get('/wiki.zip')
     def export_wiki():
+        if current_role.get() != 'admin':
+            raise HTTPException(403, '仅管理员可导出待审核资料。')
         data = corpus.load()
         if not data['sources']:
             raise HTTPException(404,'医学依据库尚未导入。')
@@ -74,23 +97,23 @@ def medical_router(corpus, verifier):
 
     @router.get('/sources/{source_id}')
     def source(source_id: str, version: str | None = None):
-        item = corpus.source(source_id,version)
-        if not item:
-            raise HTTPException(404,'医学依据不存在。')
+        item = authorized_source(source_id, version)
         body = ''.join(f'<section id="p{page["number"]}"><h2>第 {page["number"]} 页 / 段</h2><pre>{html.escape(page["text"])}</pre></section>' for page in item['pages'])
+        notice = '已审核平台资料；自动判断仍需复核。' if source_id.startswith('platform-document-') else '自动归档，未经人工医学审核。'
         return HTMLResponse('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
             '<style>body{max-width:900px;margin:32px auto;padding:0 20px;font:16px/1.8 system-ui}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}</style>'
             f'<title>{html.escape(item["title"])}</title><h1>{html.escape(item["title"])}</h1>'
-            f'<p>自动归档，未经人工医学审核。抓取时间：{html.escape(item["retrieved_at"])}</p>'
+            f'<p>{notice} 时间：{html.escape(item["retrieved_at"])}</p>'
             f'<p><a href="{html.escape(item["url"],quote=True)}" rel="noreferrer">原文来源</a> · '
             +(f'<a href="{source_id}/original?version={item["sha256"]}">下载归档原件</a>' if (corpus.root/item['original_path']).is_file() else '原件未下载到此环境，请从来源链接核对')+f'</p>{body}',
             headers={'Content-Security-Policy':"sandbox; default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'",'X-Content-Type-Options':'nosniff'})
 
     @router.get('/sources/{source_id}/original')
     def original(source_id: str, version: str | None = None):
-        item = corpus.source(source_id,version)
-        if not item:
-            raise HTTPException(404,'医学依据不存在。')
+        # The archived binary is not proven identical to the reviewed platform asset.
+        if current_role.get() != 'admin':
+            raise HTTPException(404,'归档原件暂不可读取。')
+        item = authorized_source(source_id, version)
         path = (corpus.root / item['original_path']).resolve()
         if not path.is_relative_to((corpus.root/'raw'/'sources').resolve()) or not path.is_file():
             raise HTTPException(404,'归档原件暂不可读取。')

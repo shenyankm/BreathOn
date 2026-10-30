@@ -2,6 +2,7 @@
 from contextvars import ContextVar
 
 current_actor = ContextVar('breathon_actor', default=None)
+current_role = ContextVar('breathon_role', default='admin')
 
 
 def private_entry_visible(kind, item):

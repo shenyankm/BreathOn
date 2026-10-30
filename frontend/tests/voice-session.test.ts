@@ -12,12 +12,15 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
 })) {
   const slots: any[] = [], sockets: Socket[] = [], timers = new Map<number, () => void>()
   let cursor = 0, nextTimer = 0, audioOpened = 0
+  const effects: (() => unknown)[] = [], listeners: Record<string, () => void> = {}
+  const document = { visibilityState: 'visible', addEventListener: (name: string, listener: () => void) => { listeners[name] = listener }, removeEventListener: () => {} }
   class Audio {
     isPlaying = false
+    muted = false
     async open() { audioOpened++ }
     stop() {}
     interrupt() {}
-    setMuted() {}
+    setMuted(value: boolean) { this.muted = value }
     play() {}
   }
   class Socket {
@@ -29,7 +32,8 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     onerror?: () => void
     onmessage?: (event: { data: string }) => void
     sent: unknown[] = []
-    constructor() { sockets.push(this) }
+    url: string
+    constructor(url: string) { this.url = url; sockets.push(this) }
     open() { this.readyState = 1; this.onopen?.() }
     receive(event: unknown) { this.onmessage?.({ data: JSON.stringify(event) }) }
     send(value: string) { this.sent.push(JSON.parse(value)) }
@@ -46,7 +50,7 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
       return slots[index] ??= { current: initial }
     },
     useCallback(callback: unknown) { return callback },
-    useEffect() {},
+    useEffect(callback: () => unknown) { effects.push(callback) },
   }
   const imports: Record<string, unknown> = {
     react,
@@ -61,12 +65,14 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
     exports, require: (name: string) => { assert.ok(name in imports, name); return imports[name] },
-    fetch: fetchHealth, AbortSignal, DOMException, URL, performance, WebSocket: Socket,
+    fetch: fetchHealth, AbortSignal, DOMException, Event, URL, performance, WebSocket: Socket, document,
     window: { location: { href: 'http://localhost/', protocol: 'http:' },
+      addEventListener: (name: string, listener: () => void) => { listeners[name] = listener }, removeEventListener: () => {},
+      dispatchEvent: (event: Event) => { listeners[event.type]?.(); return true },
       setTimeout: (callback: () => void) => { timers.set(++nextTimer, callback); return nextTimer },
       clearTimeout: (id: number) => timers.delete(id) },
   })
-  return { sockets, timers, audioOpened: () => audioOpened,
+  return { sockets, timers, document, listeners, runEffects: () => effects.splice(0).forEach(effect => effect()), audioOpened: () => audioOpened,
     render: () => { cursor = 0; return exports.useVoiceSession!() } }
 }
 
@@ -83,6 +89,17 @@ test('cancelling combat during health lookup leaves the session restartable', as
   assert.equal(app.audioOpened(), 0)
 })
 
+test('expired server login is reported before microphone capture starts', async () => {
+  const app = session(async () => Response.json({ detail: '请先登录' }, { status: 401 }))
+  let expired = 0
+  app.listeners['medvisit:unauthorized'] = () => { expired++ }
+  await app.render().start('assisted', 'practice')
+  assert.equal(expired, 1)
+  assert.equal(app.audioOpened(), 0)
+  assert.equal(app.sockets.length, 0)
+  assert.equal(app.render().status, 'error')
+})
+
 test('medical checks follow corrected trainee text and unresolved checks never pass on end', async () => {
   const app = session()
   await app.render().start('independent', 'combat')
@@ -97,6 +114,30 @@ test('medical checks follow corrected trainee text and unresolved checks never p
   assert.equal(app.render().medicalChecks[0].status, 'checking')
   ws.receive({ type: 'ended', session_id: 'one', saved: true })
   assert.equal(app.render().medicalChecks[0].status, 'unavailable')
+})
+
+test('only confirmed high-risk pause rules mute capture until explicit continuation', async () => {
+  const app = session()
+  await app.render().start('assisted', 'combat')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'one' })
+  ws.receive({ type: 'transcript', id: 'u1', role: 'trainee', text: '原话', final: true })
+  ws.receive({type:'policy_check', message_id:'u1', text:'旧原话', findings:[{status:'risk', risk:'high', action:'pause'}]})
+  assert.equal(app.render().policyPaused, false)
+  ws.receive({type:'policy_check', message_id:'u1', text:'原话', findings:[{status:'uncertain', risk:'high', action:'pause'}]})
+  assert.equal(app.render().policyPaused, false)
+  ws.receive({type:'policy_check', message_id:'u1', text:'原话', findings:[{status:'risk', risk:'high', action:'pause'}]})
+  assert.equal(app.render().policyPaused, true)
+  assert.equal(app.render().muted, true)
+  assert.ok(ws.sent.some((item: any) => item.type === 'mute' && item.muted === true))
+  app.render().toggleMute()
+  assert.equal(app.render().policyPaused, true)
+  app.render().resumePolicy()
+  assert.equal(app.render().policyPaused, false)
+  assert.equal(app.render().muted, false)
+  assert.ok(ws.sent.some((item: any) => item.type === 'mute' && item.muted === false))
+  ws.receive({type:'policy_check', message_id:'u1', text:'原话', status:'unavailable', findings:[]})
+  assert.equal(app.render().policyUnavailable.length, 1)
 })
 
 test('trained practice disconnect during final review clears waiting and keeps transcript', async () => {
@@ -177,4 +218,53 @@ test('failed persistence without a recovery copy warns to preserve the displayed
   assert.equal(app.render().status, 'error')
   assert.match(app.render().error, /保留当前页面的原话/)
   assert.doesNotMatch(app.render().error, /恢复副本/)
+})
+
+
+test('backgrounding and offline stop capture without resuming it silently', async () => {
+  for (const reason of ['background', 'offline']) {
+    const app = session()
+    const voice = app.render()
+    app.runEffects()
+    await voice.start('independent', 'combat')
+    const ws = app.sockets[0]
+    ws.open(); ws.receive({ type: 'ready', session_id: reason })
+    if (reason === 'background') { app.document.visibilityState = 'hidden'; app.listeners.visibilitychange() }
+    else app.listeners.offline()
+    assert.equal(app.render().status, 'ended')
+    assert.equal((ws.sent.at(-1) as {type: string}).type, 'stop')
+    assert.match(app.render().error, /录音已停止/)
+    ws.receive({ type: 'ended', session_id: reason, saved: true })
+    assert.equal(app.render().saved, true)
+  }
+})
+
+
+test('free practice sends the selected pair and uses the confirmed snapshot without changing scored sessions', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice', {scenario_id:'',stage:'full',drug_id:'drug one',doctor_id:'doctor/two'})
+  const ws = app.sockets[0]
+  const url = new URL(ws.url)
+  assert.equal(url.searchParams.get('drug_id'), 'drug one')
+  assert.equal(url.searchParams.get('doctor_id'), 'doctor/two')
+  assert.equal(url.searchParams.has('scenario_id'), false)
+  const context = {drug:{id:'drug one',version:1,name:'训练药品',brand:'商品名'},doctor:{id:'doctor/two',display_name:'训练医生'}}
+  ws.open(); ws.receive({type:'ready',session_id:'free-one',free_context:context})
+  assert.equal(app.render().training, null)
+  assert.equal(JSON.stringify(app.render().freeContext), JSON.stringify(context))
+  app.render().stop()
+  assert.equal(app.render().analysisStatus, 'thinking')
+  ws.receive({type:'ended',session_id:'free-one',saved:true,analysis_status:'completed'})
+  assert.equal(app.render().analysisStatus, 'completed')
+  await app.render().start('assisted', 'practice', {scenario_id:'scene',stage:'full',drug_id:'stale-drug',doctor_id:'stale-doctor'})
+  const sceneUrl = new URL(app.sockets[1].url)
+  assert.equal(sceneUrl.searchParams.get('scenario_id'), 'scene')
+  assert.equal(sceneUrl.searchParams.has('drug_id'), false)
+  assert.equal(sceneUrl.searchParams.has('doctor_id'), false)
+  assert.equal(app.render().freeContext, null)
+  await app.render().start('independent', 'combat', {scenario_id:'',stage:'full',remediation_id:'remediation',drug_id:'stale-drug',doctor_id:'stale-doctor'})
+  const retryUrl = new URL(app.sockets[2].url)
+  assert.equal(retryUrl.searchParams.get('remediation_id'), 'remediation')
+  assert.equal(retryUrl.searchParams.has('drug_id'), false)
+  assert.equal(retryUrl.searchParams.has('doctor_id'), false)
 })

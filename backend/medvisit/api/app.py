@@ -24,23 +24,27 @@ from ..services.visit_summary import build_visit_summary
 from ..services.service_status import check_services
 from ..voice.protocol import BridgeError, DUPLEX_MODEL, GREETING, MAX_MESSAGE_BYTES, event, parse_client_message, session_config
 from ..storage.records import FileRecords, SessionRecord
+from ..storage.checkpoints import SessionCheckpoint, read_checkpoint
 from ..storage.postgres import PostgresRecords
 
 from ..core.config import Settings
-from ..core.identity import current_actor
+from ..core.identity import current_actor, current_role
 from ..agents.doctor import DOCTOR_PROFILE
 from ..platform.store import PlatformStore, Conflict
 from ..platform.api import platform_router
-from ..platform.training import prepare_training, snapshot, check_materials, doctor_instructions, opening as training_opening
+from ..platform.training import prepare_training, prepare_free_context, snapshot, check_materials, check_free_context, doctor_instructions, opening as training_opening
 from ..platform.progress import capture_prices
+from ..platform.compliance import assess_policy
 from ..research.api import research_router
 from ..research.service import ResearchService
-from ..knowledge.corpus import MedicalCorpus
+from ..knowledge.corpus import MedicalCorpus, platform_approved_documents
 from ..knowledge.verify import MedicalVerifier
 from ..knowledge.api import medical_router
 from ..knowledge.live import LiveMedicalChecks
 from .middleware import ApiMiddleware
 from .auth import Authentication, AuthenticationMiddleware
+from .admin_records import admin_records_router
+from ..visits.api import visits_router
 
 logger = logging.getLogger("medvisit")
 MEDICAL_SNAPSHOT = Path(__file__).resolve().parents[1] / 'knowledge/snapshot'
@@ -52,8 +56,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     platform = PlatformStore(settings.records / 'platform.sqlite3', pool=getattr(store, 'pool', None))
     router, initialize, current_user, operations = platform_router(platform, settings, store)
     research = ResearchService(platform, settings, current_user)
-    medical_corpus = MedicalCorpus(settings.records / 'medical-wiki', seed=MEDICAL_SNAPSHOT)
+    medical_corpus = MedicalCorpus(settings.records / 'medical-wiki', seed=MEDICAL_SNAPSHOT, approved_documents=platform_approved_documents(platform, current_user))
     medical_verifier = MedicalVerifier(settings, medical_corpus)
+    visits = visits_router(platform, settings, current_user)
     service_check_task = None
     readiness_task = None
 
@@ -65,6 +70,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await asyncio.to_thread(store.open)
             await asyncio.to_thread(platform.open)
             await asyncio.to_thread(initialize)
+            await asyncio.to_thread(visits.visit_cleanup, current_user()['workspace'])
+            visits.visit_recover(current_user()['workspace'])
+            cleanup.push_async_callback(visits.visit_close)
+            async def cleanup_visits():
+                while True:
+                    await asyncio.sleep(3600)
+                    await asyncio.to_thread(visits.visit_cleanup, current_user()['workspace'])
+            visit_cleanup_task = asyncio.create_task(cleanup_visits())
+            async def close_visit_cleanup():
+                visit_cleanup_task.cancel()
+                await asyncio.gather(visit_cleanup_task, return_exceptions=True)
+            cleanup.push_async_callback(close_visit_cleanup)
             cleanup.push_async_callback(research.close)
             await research.start_scheduler()
             async def close_checks():
@@ -109,8 +126,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     app.include_router(research_router(research))
     app.include_router(medical_router(medical_corpus, medical_verifier))
+    app.include_router(admin_records_router(store, platform, current_user))
+    app.include_router(visits)
     active: dict[str, asyncio.Task] = {}
     active_users: set[str] = set()
+    finishing: set[str] = set()
 
     app.add_middleware(AuthenticationMiddleware, auth=auth)
     app.add_middleware(ApiMiddleware, origins=settings.origins)
@@ -192,11 +212,54 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def get_sessions():
         user = current_user()
         scope = {'workspace':user['workspace'], 'owner_id':user['id']} if current_actor.get() else {}
-        return await asyncio.to_thread(store.list, **scope)
+        def collect():
+            rows = store.list(**scope)
+            count = len(rows)
+            for path in (settings.records / 'checkpoints').glob('*.json'):
+                try:
+                    session_id = UUID(path.stem)
+                except ValueError:
+                    continue
+                item = read_checkpoint(settings.records, session_id)
+                if (not item or item.get('workspace') != user['workspace'] or
+                        current_actor.get() and item.get('owner_id') != user['id'] or
+                        any(row['id'] == item['id'] for row in rows)):
+                    continue
+                rows.append({**{key:item.get(key) for key in ('id','experience','mode','started_at','ended_at','status')},
+                    'message_count':len(item.get('messages', [])),
+                    'scenario_title':(item.get('training') or {}).get('scenario', {}).get('title')})
+            return sorted(rows, key=lambda row:row.get('started_at') or '', reverse=True)[:50] if len(rows) != count else rows
+        return await asyncio.to_thread(collect)
 
     @app.get("/api/sessions/{session_id}")
     async def get_session(session_id: UUID):
-        return await asyncio.to_thread(operations.record, current_user(), str(session_id))
+        user = current_user()
+        try:
+            return await asyncio.to_thread(operations.record, user, str(session_id))
+        except HTTPException as exc:
+            record = await asyncio.to_thread(read_checkpoint, settings.records, session_id)
+            if (exc.status_code != 404 or not record or record.get('workspace') != user['workspace']
+                    or current_actor.get() and record.get('owner_id') != user['id']):
+                raise
+            return record
+
+    @app.get('/api/sessions/{session_id}/status')
+    async def session_status(session_id: UUID):
+        user = current_user()
+        record = await asyncio.to_thread(store.get, session_id)
+        if not record:
+            record = await asyncio.to_thread(read_checkpoint, settings.records, session_id)
+        if (not record or record.get('workspace') != user['workspace']
+                or current_actor.get() and current_role.get() != 'admin' and record.get('owner_id') != user['id']):
+            raise HTTPException(404, '记录不存在。')
+        if current_role.get() == 'admin' and record.get('owner_id') != user['id']:
+            def audit_status():
+                with platform.transaction(user['workspace']) as tx:
+                    tx.audit(user['workspace'], user['id'], 'session.status', 'session', str(session_id))
+            await asyncio.to_thread(audit_status)
+        identifier = str(session_id)
+        state = 'finalizing' if identifier in finishing else 'active' if identifier in active else 'saved' if record.get('ended_at') else 'interrupted'
+        return {'session_id': identifier, 'state': state, 'status':record.get('status')}
 
     @app.websocket("/api/realtime")
     async def realtime(client: WebSocket):
@@ -213,6 +276,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await client.close(code=1008)
             return
         training = None
+        free_context = None
         remediation = None
         scenario_id = client.query_params.get('scenario_id')
         stage = client.query_params.get('stage', 'full')
@@ -220,6 +284,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await send_client({'type':'error','code':'unsupported_task','message':'课程任务功能已移除，请直接选择场景演练。'})
             await client.close(code=1008)
             return
+        if any(key in client.query_params for key in ('drug_id', 'doctor_id')):
+            try:
+                if scenario_id or client.query_params.get('remediation_id'):
+                    raise HTTPException(422, '已发布场景和针对性重练不能更换绑定的药品或医生。')
+                free_context = await asyncio.to_thread(prepare_free_context, platform, user,
+                    client.query_params.get('drug_id'), client.query_params.get('doctor_id'))
+            except HTTPException as exc:
+                await send_client({'type':'error', 'code':'invalid_practice', 'message':exc.detail})
+                await client.close(code=1008)
+                return
         try:
             if client.query_params.get('remediation_id'):
                 remediation = await asyncio.to_thread(operations.remediation_choice, user, client.query_params['remediation_id'])
@@ -258,14 +332,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         record.medical_checks = LiveMedicalChecks(client, record, medical_verifier)
         record.data["experience"] = experience
         record.data.update(workspace=user['workspace'], owner_id=user['id'], team=user['team'])
+        record.checkpoint = SessionCheckpoint(settings.records, record)
         record.data["doctor"] = {key: DOCTOR_PROFILE[key] for key in ("id", "version", "display_name")}
         if training:
+            record.policy_assess = lambda text, context: assess_policy(settings, platform, user['workspace'], text, [p['id'] for p in training.get('policies', [])], context)
             if remediation:
                 training['focus_dimensions'] = [remediation['focus_key']] if remediation['focus_key'] else []
             record.training = training
             record.validate_training = lambda: check_materials(platform, user['workspace'], training)
             record.data['training'] = snapshot(training)
             record.data['doctor'] = {key: training['doctor'][key] for key in ('id','version','display_name')}
+        if free_context:
+            record.data['free_context'] = free_context
+            record.data['doctor'] = {key: free_context['doctor'][key] for key in ('id', 'version', 'display_name')}
+            record.validate_training = lambda: check_free_context(platform, user['workspace'], free_context)
         if remediation:
             record.data['remediation_id'] = remediation['id']
         status = "interrupted"
@@ -274,6 +354,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         active[session_id] = asyncio.current_task()
         active_users.add(user['id'])
         try:
+            await record.checkpoint.save()
             record.data['pricing'] = await asyncio.to_thread(capture_prices, platform, user)
             async with asyncio.timeout(settings.handshake_seconds):
                 first = await client.receive_text()
@@ -304,7 +385,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     async with send_lock:
                         await asyncio.wait_for(upstream.send(json.dumps(payload, ensure_ascii=False)), 5)
 
-                await send_upstream(session_config(session_id, settings.voice, instructions=doctor_instructions(training)))
+                await send_upstream(session_config(session_id, settings.voice, instructions=doctor_instructions(training, free_context=free_context)))
                 async with asyncio.timeout(settings.handshake_seconds):
                     while True:
                         ack = json.loads(await upstream.recv())
@@ -314,8 +395,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             break
                 record.data["provider_session_id"] = ack.get("session", {}).get("id")
                 record.data["status"] = "active"
-                await send_client({"type": "ready", "session_id": session_id, "input_rate": 16000, "output_rate": 24000, 'doctor':record.data['doctor'], 'training':record.data.get('training'), 'mode':record.data['mode']})
-                greeting = '你好，这是训练模拟。' + training_opening(training) if training else GREETING
+                await send_client({"type": "ready", "session_id": session_id, "input_rate": 16000, "output_rate": 24000, 'doctor':record.data['doctor'], 'training':record.data.get('training'), 'free_context':free_context, 'mode':record.data['mode']})
+                greeting = '你好，这是训练模拟。' + training_opening(training) if training else training_opening(free_context=free_context) if free_context else GREETING
                 await send_upstream(event("speech_text_buffer.commit", speech_id=str(uuid4()), text=greeting))
 
                 async def from_client():
@@ -382,6 +463,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                                 previous = next((m for m in record.data["messages"] if m["id"] == item_id), None)
                                 text = previous["text"] if previous else ""
                             record.transcript(item_id, role, text, final=final)
+                            if final:
+                                await record.checkpoint.save()
                             await send_client({"type": "transcript", "id": item_id, "role": role, "text": text, "final": final})
                         elif kind == "response.output_audio.delta":
                             audio = data.get("delta", "")
@@ -424,7 +507,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 record.data["capture_status"] = status
-                if not training:
+                if not training and not free_context:
                     await dialogue.finish_combat()
         except WebSocketDisconnect:
             pass
@@ -446,6 +529,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             with contextlib.suppress(Exception):
                 await send_client({"type": "error", "code": "internal_error", "message": "语音会话异常，请重新开始"})
         finally:
+            finishing.add(session_id)
             try:
                 finalization_cancelled = False
                 try:
@@ -456,7 +540,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     if dialogue:
                         await dialogue.close()
                     await record.medical_checks.finish()
-                    if training:
+                    if training or free_context:
                         record.data['capture_status'] = status
                         try:
                             with contextlib.suppress(Exception):
@@ -473,11 +557,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                             record.data['analysis_status'] = 'error'
                             logger.error('final training review failed: %s', session_id)
                 except asyncio.CancelledError:
-                    if training and record.data.get('analysis_status') not in ('completed', 'error'):
+                    if (training or free_context) and record.data.get('analysis_status') not in ('completed', 'error'):
                         record.data['analysis_status'] = 'interrupted'
                     finalization_cancelled = True
                 except Exception:
-                    if training:
+                    if training or free_context:
                         record.data['analysis_status'] = 'error'
                     logger.error('session cleanup failed: %s', session_id)
                 try:
@@ -517,6 +601,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     except asyncio.CancelledError:
                         finalization_cancelled = True
                 saved, recovery_saved = saving.result()
+                if saved or recovery_saved:
+                    with contextlib.suppress(OSError):
+                        await record.checkpoint.remove()
                 with contextlib.suppress(Exception):
                     await send_client({"type": "ended", "session_id": session_id, "status": status, "saved": saved, "recovery_saved": recovery_saved, "analysis_status": record.data.get("analysis_status")})
                 with contextlib.suppress(Exception):
@@ -524,6 +611,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if finalization_cancelled:
                     raise asyncio.CancelledError
             finally:
+                finishing.discard(session_id)
                 active.pop(session_id, None)
                 active_users.discard(user['id'])
 

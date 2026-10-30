@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { presetFor, recommendedScenario } from '../src/lib/training-setup.ts'
+import { presetFor, recommendedScenario, trainingPresets } from '../src/lib/training-setup.ts'
 import type { Scenario } from '../src/lib/catalog-types.ts'
 
 const scene = (id: string, changes: Partial<Scenario> = {}) => ({ id, status: 'published', difficulty: 'basic', situation: 'first_visit', ...changes }) as Scenario
@@ -18,9 +18,10 @@ test('quick start preserves a usable published alternative when no introductory 
   assert.equal(recommendedScenario([scene('legacy', { situation: undefined })])?.id, 'legacy')
 })
 
-test('three presets cover supported combinations and combat always hides live coaching', () => {
+test('only assisted and combat practice are offered and combat always hides live coaching', () => {
+  assert.deepEqual(trainingPresets.map(preset=>preset.label), ['辅助练习','实战练习'])
   assert.equal(presetFor('practice', 'assisted').id, 'coached')
-  assert.equal(presetFor('practice', 'independent').id, 'independent')
+  assert.equal(presetFor('practice', 'independent').id, 'coached')
   for (const previousMode of ['assisted', 'independent', 'unknown']) {
     const preset = presetFor('combat', previousMode)
     assert.equal(preset.id, 'combat')

@@ -1,11 +1,13 @@
 export type Kind = 'content' | 'doctor' | 'rubric' | 'scenario'
 export type Entity = { id: string; version: number; status: string; created_at: string; updated_at: string; created_by: string }
 export type Content = Entity & { asset_id?: string | null; usable?:boolean; title: string; version_label: string; scope: string; source_url: string; publication_date: string | null; expires_at: string | null; pages: { number: number; text: string }[]; review_reason?: string; approved_by?: string; series_id: string }
-export type Doctor = Entity & { name: string; display_name: string; specialty: string; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
+export type ManagedDrug = Entity & {name:string;brand:string;ownership:'company'|'competitor'|'unknown'}
+export type Policy = Content & { legal_status: string }
+export type Doctor = Entity & { name: string; display_name: string; specialty: string; hospital?: string; professional_title?: string; research_evidence_review_required?: boolean; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
 export type DoctorDraft = Omit<Doctor, keyof Entity | 'display_name'>
 export type Dimension = { key: string; label: string; weight: number; anchors: string[]; requires_content: boolean }
 export type Rubric = Entity & { name: string; dimensions: Dimension[]; calibration_status: string }
-export type Scenario = Entity & { title: string; product: string; disease: string; objective: string; doctor_id: string; rubric_id: string; content_ids: string[]; stages: string[]; duration_seconds: number; difficulty: string; situation?:string; background?:string; opening?:string; objections?:string[]; success_criteria?:string[]; generation?:{model:string;elapsed_seconds:number;usage:{total_tokens?:number};cost?:{totals:Record<string,string>;status:string};citations:{document_id:string;title:string;version_label:string;page:number;quote:string}[]} }
+export type Scenario = Entity & { title: string; product: string; disease: string; objective: string; doctor_id: string; rubric_id: string; content_ids: string[]; policy_ids?: string[]; drug_id?: string | null; competitor_id?: string | null; stages: string[]; duration_seconds: number; difficulty: string; situation?:string; background?:string; opening?:string; objections?:string[]; success_criteria?:string[]; generation?:{model:string;elapsed_seconds:number;usage:{total_tokens?:number};cost?:{totals:Record<string,string>;status:string};citations:{document_id:string;title:string;version_label:string;page:number;quote:string}[]} }
 export type CatalogRecord = Content | Doctor | Rubric | Scenario
 export type TrainingCase = Entity & { title:string;situation:string;approach:string;rationale:string;limitations:string;origin_verified:boolean;origin_record_id?:string;quotes:{role:string;text:string}[] }
 export const kindLabels: Record<Kind, string> = { content: '训练资料', doctor: '医生角色', rubric: '评分标准', scenario: '训练场景' }
@@ -19,6 +21,10 @@ export type TrainingSnapshot = {
   rubric: { id:string; name:string; calibration_status:string }
   documents: { id:string; title:string; version_label:string }[]
   stage:string
+}
+export type FreePracticeContext = {
+  doctor: Pick<Doctor, 'id' | 'version' | 'name' | 'display_name' | 'specialty' | 'background_type' | 'public_facts' | 'population' | 'focus' | 'training_style' | 'mood' | 'sources' | 'opening'>
+  drug: Pick<ManagedDrug, 'id' | 'version' | 'name' | 'brand'>
 }
 export type Assessment = {
   evaluator_version:string; model:string; rubric_id:string; rubric_name:string; rubric_fingerprint:string; calibration_status:string

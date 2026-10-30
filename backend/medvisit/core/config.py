@@ -32,12 +32,20 @@ def login_users_env():
         raise ValueError('LOGIN_USERS_JSON must contain an object of usernames and password hashes') from None
 
 
+def admin_users_env():
+    try:
+        return json.loads(os.getenv('ADMIN_USERS_JSON', '[]'))
+    except ValueError:
+        raise ValueError('ADMIN_USERS_JSON must contain a JSON list of usernames') from None
+
+
 @dataclass
 class Settings:
     auth_required: bool = field(default_factory=lambda: os.getenv('AUTH_REQUIRED', 'false').lower() != 'false')
     admin_username: str = field(default_factory=lambda: os.getenv('ADMIN_USERNAME', 'admin'))
     admin_password_hash: str = field(default_factory=lambda: os.getenv('ADMIN_PASSWORD_HASH', ''), repr=False)
     login_users: dict[str, str] = field(default_factory=login_users_env, repr=False)
+    admin_users: list[str] = field(default_factory=admin_users_env)
     api_key: str = field(default_factory=lambda: os.getenv("DOUBAO_API_KEY", ""), repr=False)
     voice: str = field(default_factory=lambda: os.getenv("DOUBAO_VOICE", "zh_male_xiaotian_jupiter_bigtts"))
     origins: tuple[str, ...] = field(default_factory=lambda: tuple(
@@ -61,7 +69,7 @@ class Settings:
     tts_endpoint: str = TTS_URL
     asr_endpoint: str = ASR_URL
     endpoint: str = UPSTREAM_URL
-    max_sessions: int = 2
+    max_sessions: int = field(default_factory=lambda: integer_env('VOICE_MAX_SESSIONS', '10'))
     session_seconds: float = 600
     handshake_seconds: float = 15
 
@@ -106,6 +114,12 @@ class Settings:
                 if not isinstance(username, str) or not username.strip() or len(username) > 100:
                     raise ValueError('Account usernames must contain 1 to 100 characters')
                 password_parts(password_hash)
+            if not isinstance(self.admin_users, list) or any(not isinstance(name, str) or not name for name in self.admin_users):
+                raise ValueError('ADMIN_USERS_JSON must contain a JSON list of usernames')
+            if not self.admin_users and self.admin_username in self.login_users:
+                self.admin_users = [self.admin_username]
+            if not self.admin_users or any(name not in self.login_users for name in self.admin_users):
+                raise ValueError('ADMIN_USERS_JSON must identify existing administrator accounts')
             if any(urlsplit(origin).scheme != 'https' and urlsplit(origin).hostname not in ('localhost', '127.0.0.1', '::1') for origin in self.origins):
                 raise ValueError('Authentication requires HTTPS for public ALLOWED_ORIGINS')
         self.records = Path(self.records).expanduser()

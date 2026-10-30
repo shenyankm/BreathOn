@@ -28,6 +28,7 @@ jobs:
       - run: npm --prefix frontend test
       - run: npm --prefix frontend run lint
       - run: npm --prefix frontend run build
+      - run: npm --prefix frontend run build:android
 
   backend:
     runs-on: ubuntu-latest

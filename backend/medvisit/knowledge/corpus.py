@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 from threading import Lock
+from ..platform.models import content_usable
 
 
 def compact(value):
@@ -18,10 +19,19 @@ def sentences(text):
     return [part.strip() for part in re.split(r'(?<=[。！？!?；;])\s*|\n+', text) if part.strip()]
 
 
+def platform_approved_documents(store, current_user):
+    def documents():
+        workspace = current_user()['workspace']
+        with store.transaction(workspace, write=False) as tx:
+            return tx.list(workspace, 'content')
+    return documents
+
+
 class MedicalCorpus:
-    def __init__(self, root, *, seed=None):
+    def __init__(self, root, *, seed=None, approved_documents=None):
         self.root = Path(root)
         self.seed = Path(seed) if seed is not None else None
+        self.approved_documents = approved_documents
         self._stamp = None
         self._data = None
         self._lock = Lock()
@@ -72,8 +82,76 @@ class MedicalCorpus:
             'integration':{'project':'https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f', 'mode':'source_wiki' ,
                 'note':'按 Karpathy LLM Wiki 方法管理原始资料、知识条目、索引和日志；不依赖桌面应用。'}}
 
-    def search(self, text, context='', limit=12, *, data=None):
+    def reviewed_documents(self):
+        if self.approved_documents is None:
+            return []
+        result = []
+        for doc in self.approved_documents():
+            try:
+                valid = (content_usable(doc) and isinstance(doc['id'], str) and isinstance(doc['title'], str)
+                         and isinstance(doc['version_label'], str) and type(doc['version']) is int
+                         and isinstance(doc['pages'], list) and all(
+                             isinstance(page, dict) and type(page.get('number')) is int
+                             and isinstance(page.get('text'), str) for page in doc['pages']))
+                if valid:
+                    result.append(doc)
+            except (TypeError, KeyError, ValueError):
+                continue
+        return result
+
+    def approval_snapshot(self, data=None):
         data = self.load() if data is None else data
+        if self.approved_documents is None:
+            return {}
+        approved = self.reviewed_documents()
+        matches = {}
+        for doc in approved:
+            receipt = {'document_id':doc['id'], 'document_version':doc['version'],
+                       'version_label':doc['version_label'], 'document_sha256':hashlib.sha256(
+                           json.dumps(doc.get('pages', []), ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
+            for page in doc.get('pages', []):
+                matches[(f"platform-document-{doc['id']}", page['number'])] = receipt
+        for source in data['sources']:
+            for doc in approved:
+                if not doc.get('source_url') or source.get('url') != doc['source_url']:
+                    continue
+                pages = {p['number']: quotation_text(p['text']) for p in doc.get('pages', [])}
+                for page in source.get('pages', []):
+                    if pages.get(page['number']) == quotation_text(page['text']) and pages.get(page['number']):
+                        key = (source['id'], page['number'])
+                        receipt = {'document_id':doc['id'], 'document_version':doc['version'],
+                                   'version_label':doc['version_label'], 'document_sha256':hashlib.sha256(
+                                       json.dumps(doc.get('pages', []), ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
+                        if key not in matches or (receipt['document_id'], receipt['document_version']) < (matches[key]['document_id'], matches[key]['document_version']):
+                            matches[key] = receipt
+        return matches
+
+    def approved_sources(self):
+        if self.approved_documents is None:
+            return []
+        result = []
+        for doc in self.reviewed_documents():
+            pages = doc.get('pages', [])
+            digest = hashlib.sha256(json.dumps(pages, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            result.append({'id':f"platform-document-{doc['id']}", 'title':doc['title'],
+                'url':doc.get('source_url', ''), 'sha256':digest, 'published_at':doc.get('publication_date'),
+                'retrieved_at':doc.get('approved_at') or '', 'kind':'reviewed_content', 'quality':'original',
+                'jurisdiction':doc.get('scope',''), 'product_ids':[], 'trials':[], 'pages':pages,
+                'original_path':'', 'document_id':doc['id'], 'document_version':doc['version']})
+        return result
+
+    def search(self, text, context='', limit=12, *, data=None, approvals=None):
+        data = self.load() if data is None else data
+        approvals = self.approval_snapshot(data) if approvals is None else approvals
+        derived = self.approved_sources()
+        sources_data = [*data['sources'], *derived]
+        derived_chunks = []
+        for source in derived:
+            for page in source['pages']:
+                for offset in range(0, len(page['text']), 1000):
+                    derived_chunks.append({'id':f"{source['id']}:p{page['number']}:{offset}",
+                        'source_id':source['id'], 'page':page['number'],
+                        'text':page['text'][max(0, offset-200):offset+1200]})
         query, background = compact(text), compact(context)
         explicit = [p['id'] for p in data['products'] if any(compact(alias) in query for alias in
             (p['id'], p['name'], p['brand'], *p.get('aliases', [])) if alias)]
@@ -81,17 +159,23 @@ class MedicalCorpus:
             (p['id'], p['name'], p['brand'], *p.get('aliases', [])) if alias)]
         tokens = set(re.findall(r'[a-z][a-z0-9-]{2,}|\d+(?:\.\d+)?', query))
         tokens.update(query[i:i+2] for i in range(len(query)-1) if all('\u4e00' <= c <= '\u9fff' for c in query[i:i+2]))
-        sources = {source['id']:source for source in data['sources']}
+        sources = {source['id']:source for source in sources_data}
         ranked = []
         compiled_sources = set()
         for pid in products:
             for fact in data.get('compiled',{}).get(pid,{}).get('facts',[]):
                 if sum(token in compact(fact['claim']) for token in tokens)>=2:
                     compiled_sources.add((fact['source_id'],fact['page']))
-        for chunk in data['chunks']:
+        for chunk in [*data['chunks'], *derived_chunks]:
+            approval = approvals.get((chunk['source_id'], chunk['page']))
+            if not approval:
+                continue
             source = sources[chunk['source_id']]
+            if source.get('document_version') and (source['document_version'] != approval['document_version']
+                                                    or source['sha256'] != approval['document_sha256']):
+                continue
             related = bool(set(products) & set(source['product_ids']))
-            if products and not related and source['kind'] not in ('reimbursement', 'policy'):
+            if products and not related and source['kind'] not in ('reimbursement', 'policy', 'reviewed_content'):
                 continue
             body = compact(chunk['text'])
             score = sum(1 + min(len(token), 12)/12 for token in tokens if token in body)
@@ -118,7 +202,7 @@ class MedicalCorpus:
             if count >= 4:
                 continue
             per_source[source['id']] = count+1
-            found.append({**chunk, 'score':round(score,2), 'source':{key:value for key,value in source.items()
+            found.append({**chunk, **approvals[(chunk['source_id'],chunk['page'])], 'score':round(score,2), 'source':{key:value for key,value in source.items()
                 if key not in ('pages','original_path')}})
             if len(found) >= limit:
                 break
@@ -127,14 +211,17 @@ class MedicalCorpus:
     def source(self, source_id, version=None):
         if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,120}',source_id):
             return None
-        current=next((source for source in self.load()['sources'] if source['id'] == source_id), None)
-        if version is None or current and current['sha256']==version:
+        if source_id.startswith('platform-document-'):
+            current = next((source for source in self.approved_sources() if source['id'] == source_id), None)
+            return current if version is None or current and current['sha256'] == version else None
+        current = next((source for source in self.load()['sources'] if source['id'] == source_id), None)
+        if version is None or current and current['sha256'] == version:
             return current
         if not re.fullmatch(r'[a-f0-9]{64}',version):
             return None
         try:
-            archived=json.loads((self.root/'versions'/source_id/f'{version}.json').read_text())
-            return archived if archived['id']==source_id and archived['sha256']==version else None
+            archived = json.loads((self.root/'versions'/source_id/f'{version}.json').read_text())
+            return archived if archived['id'] == source_id and archived['sha256'] == version else None
         except (OSError,ValueError,KeyError,TypeError):
             return None
 

@@ -1,0 +1,456 @@
+{
+  "drugs": [
+    {
+      "id": "sintilimab",
+      "sourceId": 1,
+      "name": "信迪利单抗注射液",
+      "brand": "达伯舒",
+      "category": "肿瘤",
+      "target": "PD-1",
+      "image": "sintilimab.jpg",
+      "overview": "以 PD-1 为靶点的单克隆抗体，属于肿瘤免疫治疗药物。具体适用肿瘤、联合治疗方案及人群见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/PackageInsert/sintilimab.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "bevacizumab",
+      "sourceId": 4,
+      "name": "贝伐珠单抗注射液",
+      "brand": "达攸同",
+      "category": "肿瘤",
+      "target": "VEGF-A",
+      "image": "bevacizumab.jpg",
+      "overview": "靶向 VEGF-A 的抗体类药品，为贝伐珠单抗生物类似药。通过影响血管生成相关信号发挥作用。",
+      "document": {
+        "url": "https://img.innoventbio.com/7.4/new2.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "adalimumab",
+      "sourceId": 3,
+      "name": "阿达木单抗注射液",
+      "brand": "苏立信",
+      "category": "自身免疫",
+      "target": "TNF-α",
+      "image": "adalimumab.jpg",
+      "overview": "阿达木单抗生物类似药，靶向 TNF-α，用于相关自身免疫疾病的治疗。各疾病的适用条件见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/adm3.22.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "rituximab",
+      "sourceId": 16,
+      "name": "利妥昔单抗注射液",
+      "brand": "达伯华",
+      "category": "肿瘤",
+      "target": "CD20",
+      "image": "rituximab.jpg",
+      "overview": "靶向 CD20 的利妥昔单抗生物类似药，相关治疗涉及 B 细胞疾病。具体适应症与联合方案见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/product/HALPRYZAInstructions.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "pemigatinib",
+      "sourceId": 14,
+      "name": "佩米替尼片",
+      "brand": "达伯坦",
+      "category": "肿瘤",
+      "target": "FGFR1/2/3",
+      "image": "pemigatinib.png",
+      "overview": "小分子 FGFR1/2/3 抑制剂，通过抑制相关信号通路发挥作用。用药前的分子检测及适用人群见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/pmtn3.22.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "olverembatinib",
+      "sourceId": 40,
+      "name": "奥雷巴替尼片",
+      "brand": "耐立克",
+      "category": "肿瘤",
+      "target": "BCR-ABL/KIT",
+      "image": "olverembatinib.png",
+      "overview": "口服 BCR-ABL 酪氨酸激酶抑制剂，相关治疗涉及慢性髓细胞白血病。耐药、突变及既往治疗要求见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/5c89f09e539a25191.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "ramucirumab",
+      "sourceId": 82,
+      "name": "雷莫西尤单抗注射液",
+      "brand": "希冉择",
+      "category": "肿瘤",
+      "target": "VEGFR-2",
+      "image": "ramucirumab.png",
+      "overview": "靶向 VEGFR-2 的单克隆抗体，可阻断相关血管生成信号。适用肿瘤和既往治疗条件见中国版说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/xrz11.231.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "selpercatinib",
+      "sourceId": 83,
+      "name": "塞普替尼胶囊",
+      "brand": "睿妥",
+      "category": "肿瘤",
+      "target": "RET",
+      "image": "selpercatinib.png",
+      "overview": "选择性 RET 酪氨酸激酶抑制剂。相关肿瘤治疗须区分 RET 融合或突变类型，并核对说明书规定的人群。",
+      "document": {
+        "url": "https://img.innoventbio.com/rt.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "equecabtagene",
+      "sourceId": 17,
+      "name": "伊基奥仑赛注射液",
+      "brand": "福可苏",
+      "category": "肿瘤",
+      "target": "BCMA CAR-T",
+      "image": "equecabtagene.png",
+      "overview": "靶向 BCMA 的 CAR-T 细胞治疗产品，相关治疗涉及复发或难治性多发性骨髓瘤。此处提供官方患者手册，不能替代说明书。",
+      "document": {
+        "url": "https://images.qingtv.com/%E6%82%A3%E8%80%85%E6%89%8B%E5%86%8C%E4%B8%AD%E6%96%87%E7%89%88.pdf",
+        "label": "患者手册（非说明书）",
+        "sourceName": "驯鹿生物官方患者平台",
+        "sourceUrl": "https://i-connection.iasobio.com/"
+      }
+    },
+    {
+      "id": "tafolecimab",
+      "sourceId": 31,
+      "name": "托莱西单抗注射液",
+      "brand": "信必乐",
+      "category": "新陈代谢",
+      "target": "PCSK9",
+      "image": "tafolecimab.png",
+      "overview": "靶向 PCSK9 的单克隆抗体，通过影响 LDL 受体相关过程降低低密度脂蛋白胆固醇。适用人群和联合用药要求见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/tlx3.22.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "fulzerasib",
+      "sourceId": 42,
+      "name": "氟泽雷塞片",
+      "brand": "达伯特",
+      "category": "肿瘤",
+      "target": "KRAS G12C",
+      "image": "fulzerasib.png",
+      "overview": "口服 KRAS G12C 小分子抑制剂，针对相应突变发挥作用。检测要求、适用肿瘤及既往治疗条件见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/fzlsp.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "pirtobrutinib",
+      "sourceId": 107,
+      "name": "匹妥布替尼片",
+      "brand": "捷帕力",
+      "category": "肿瘤",
+      "target": "BTK",
+      "image": "pirtobrutinib.png",
+      "overview": "非共价 BTK 抑制剂，相关治疗涉及 B 细胞恶性肿瘤。不同疾病的获批范围须按中国版说明书核对。",
+      "document": {
+        "url": "https://img.innoventbio.com/product/pirtobrutinib.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "taletrectinib",
+      "sourceId": 37,
+      "name": "己二酸他雷替尼胶囊",
+      "brand": "达伯乐",
+      "category": "肿瘤",
+      "target": "ROS1",
+      "image": "taletrectinib.png",
+      "overview": "口服 ROS1 抑制剂，相关治疗涉及 ROS1 阳性非小细胞肺癌。适用突变、既往治疗及患者条件见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/2024.12/dbl.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "limertinib",
+      "sourceId": 104,
+      "name": "利厄替尼片",
+      "brand": "奥壹新",
+      "category": "肿瘤",
+      "target": "EGFR",
+      "image": "limertinib.png",
+      "overview": "口服 EGFR 酪氨酸激酶抑制剂，相关治疗涉及 EGFR 突变阳性非小细胞肺癌。须区分具体突变与治疗线次。",
+      "document": {
+        "url": "https://img.innoventbio.com/25.02/Limertinib.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "teprotumumab",
+      "sourceId": 88,
+      "name": "替妥尤单抗N01注射液",
+      "brand": "信必敏",
+      "category": "眼科",
+      "target": "IGF-1R",
+      "image": "teprotumumab.png",
+      "overview": "靶向 IGF-1R 的单克隆抗体，用于甲状腺眼病相关治疗。厂家当前入口提供图片版说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/25.03/teprotumumabN01.jpg",
+        "label": "说明书（图片）"
+      }
+    },
+    {
+      "id": "mazdutide",
+      "sourceId": 30,
+      "name": "玛仕度肽注射液",
+      "brand": "信尔美",
+      "category": "新陈代谢",
+      "target": "GCG/GLP-1",
+      "image": "mazdutide.png",
+      "overview": "同时激动 GCG 和 GLP-1 受体的药物。相关资料涵盖成人体重管理及血糖控制，具体适用条件应分别核对对应说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/product/S5LGV8EM_SMS_24mg.pdf",
+        "label": "说明书（PDF）",
+        "note": "当前官网文件的修订日期含占位文本，版本仍待核对。训练使用的成人体重管理基线另行保留。"
+      }
+    },
+    {
+      "id": "picankibart",
+      "sourceId": 13,
+      "name": "匹康奇拜单抗注射液",
+      "brand": "信美悦",
+      "category": "自身免疫",
+      "target": "IL-23p19",
+      "image": "picankibart.png",
+      "overview": "靶向 IL-23p19 的单克隆抗体，相关治疗涉及中重度斑块状银屑病成人患者。系统治疗条件与注意事项见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/product/PECONDLE.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "ipilimumab",
+      "sourceId": 2,
+      "name": "伊匹木单抗N01注射液",
+      "brand": "达伯欣",
+      "category": "肿瘤",
+      "target": "CTLA-4",
+      "image": "ipilimumab.jpg",
+      "overview": "靶向 CTLA-4 的单克隆抗体。与信迪利单抗联合的新辅助治疗涉及特定 MSI-H/dMMR 结肠癌人群，具体范围见说明书。",
+      "document": {
+        "url": "https://img.innoventbio.com/product/Ipilimumab.pdf",
+        "label": "说明书（PDF）"
+      }
+    },
+    {
+      "id": "abemaciclib",
+      "sourceId": 121,
+      "name": "阿贝西利片",
+      "brand": "唯择",
+      "category": "肿瘤",
+      "target": "CDK4/6",
+      "image": "abemaciclib.png",
+      "imageLabel": "官方品牌标识",
+      "imageSourceUrl": "https://resource.lilly.com.cn/media/1787292663651-唯择.svg",
+      "overview": "CDK4/6 抑制剂。中国版说明书涉及特定 HR 阳性、HER2 阴性乳腺癌人群的联合内分泌治疗，包含辅助治疗及晚期治疗的不同条件。",
+      "document": {
+        "url": "https://www.lillymedical.cn/file/raw/f4e09dab-5cac-445c-91f1-1222ec5bbb93/阿贝西利片说明书.pdf",
+        "label": "说明书（PDF）",
+        "sourceName": "礼来医学网",
+        "sourceUrl": "https://www.lillymedical.cn/zh-cn/oncology/Verzenios"
+      }
+    },
+    {
+      "id": "quizartinib",
+      "sourceId": 122,
+      "name": "盐酸奎扎替尼片",
+      "brand": "维复泰",
+      "category": "肿瘤",
+      "target": "FLT3",
+      "image": "quizartinib-label-preview.png",
+      "imageLabel": "说明书首页（局部）",
+      "overview": "FLT3 抑制剂。中国版说明书用于 FLT3-ITD 突变的新诊断急性髓系白血病成人患者，包含联合化疗及后续维持治疗的规定。",
+      "document": {
+        "url": "https://www.daiichisankyo.com.cn/Portals/0/344_0_奎扎替尼说明书.pdf",
+        "label": "说明书（PDF）",
+        "sourceName": "第一三共中国官网",
+        "sourceUrl": "https://www.daiichisankyo.com.cn/search"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "title": "医药代表管理办法",
+      "level": "国家级",
+      "category": "医药代表与拜访",
+      "source": "国家药监局等七部门 · 2026年第42号公告",
+      "effectiveDate": "2026-08-01 起施行",
+      "scope": "全国境内药品学术推广相关的医药代表、药品上市许可持有人和医疗卫生机构。",
+      "summary": "规定从业条件、备案和学术推广行为；旧版备案办法同时废止，已备案信息继续有效。医疗器械相关人员另行规定。",
+      "url": "https://www.nmpa.gov.cn/directory/web/nmpa/xxgk/fgwj/xzhgfxwj/20260507180422166.html"
+    },
+    {
+      "title": "医药企业防范商业贿赂风险合规指引",
+      "level": "国家级",
+      "category": "廉洁从业与反贿赂",
+      "source": "国家市场监督管理总局 · 2025年第3号公告",
+      "effectiveDate": "2025-01-14 发布并施行",
+      "scope": "医药企业及相关经营活动的商业贿赂风险合规管理。",
+      "summary": "覆盖学术拜访交流等风险场景，是合规参考；不应将每条建议都视作独立的法定强制条款。",
+      "url": "https://www.samr.gov.cn/zw/zfxxgk/fdzdgknr/jjjzs/art/2025/art_0cee28b1eba84820addc024b351b7bac.html"
+    },
+    {
+      "title": "医疗机构工作人员廉洁从业九项准则",
+      "level": "国家级",
+      "category": "廉洁从业与反贿赂",
+      "source": "国家卫生健康委、国家医保局、国家中医药局 · 国卫医发〔2021〕37号",
+      "effectiveDate": "2021-11-12 印发；未单列施行日期",
+      "scope": "全国医疗机构内工作人员，包含接受医疗机构管理的其他社会从业人员。",
+      "summary": "规范医疗机构工作人员廉洁从业，可用于医生侧的合规沟通场景。",
+      "url": "https://www.nhc.gov.cn/yzygj/c100067/202111/0c7f21b59d064cfaa49b35fe970cffdd.shtml"
+    },
+    {
+      "title": "2026年纠正医药购销领域和医疗服务中不正之风工作要点",
+      "level": "国家级",
+      "category": "廉洁从业与反贿赂",
+      "source": "国家卫生健康委等部门 · 国卫医急函〔2026〕123号；信用苏州转载",
+      "effectiveDate": "2026年度工作部署；转载页 2026-06-11 发布",
+      "scope": "全国医药购销领域和医疗服务相关部门及机构的年度治理工作。",
+      "summary": "涉及商业贿赂、采购和违规营销等年度治理重点；属于年度部署。",
+      "url": "https://credit.suzhou.gov.cn/news/show/394309.html"
+    },
+    {
+      "title": "江苏省医疗机构及其工作人员廉洁从业行动计划实施方案（2021—2024年）",
+      "level": "省级",
+      "category": "廉洁从业与反贿赂",
+      "source": "江苏省卫生健康委、江苏省中医药管理局 · 苏卫行风〔2021〕3号",
+      "effectiveDate": "2021-11-15 印发；计划期 2021—2024 年，已结束",
+      "scope": "江苏省医疗机构及其工作人员；作为历史工作部署参考。",
+      "summary": "提出医药代表接待“三定三有”。实际拜访应核对现行省文件和目标医院制度。",
+      "url": "https://wjw.jiangsu.gov.cn/art/2021/11/18/art_7316_10117915.html"
+    },
+    {
+      "title": "苏州高新区人民医院规范医疗机构工作人员接待医药代表管理制度",
+      "level": "机构制度",
+      "category": "医药代表与拜访",
+      "source": "苏州高新区人民医院 · 院务公开",
+      "effectiveDate": "2024-09-12 页面发布；施行日期和现行状态待院方确认",
+      "scope": "该院接待医药代表的院内制度，并非苏州市统一规定。",
+      "summary": "页面提供来访备案预约、接待登记及廉洁承诺表；制度正文为图片，实际执行请向医院核实。",
+      "url": "https://www.snd-yy.com/publicAnnouncement/detail/ff80808191e1d05e0191e4f996a30051"
+    },
+    {
+      "title": "苏州市“双通道”管理及单独支付药品待遇备案指南",
+      "level": "市级",
+      "category": "医保与支付",
+      "source": "苏州市医疗保障局 · 办事指南",
+      "effectiveDate": "2026-01-14 页面发布；未单列施行日期",
+      "scope": "苏州基本医疗保险参保人员及相关定点医药机构的待遇备案。",
+      "summary": "介绍申请及备案流程；药品是否纳入及支付限制须核查最新目录和当地规定。",
+      "url": "https://ybj.suzhou.gov.cn/szybj/zgylbxdy/202601/adf3d4fc853949aa980195b29663a498.shtml"
+    },
+    {
+      "title": "2025年版国家医保药品目录在苏州落地",
+      "level": "市级",
+      "category": "医保与支付",
+      "source": "苏州市人民政府网站 · 部门工作信息",
+      "effectiveDate": "2025年版目录自 2026-01-01 在苏州执行",
+      "scope": "苏州医保药品目录实施情况介绍；非独立规范性文件。",
+      "summary": "作为本地医保目录信息入口，具体药品及支付条件应以最新正式目录为准。",
+      "url": "https://www.suzhou.gov.cn/szsrmzf/bmdt/202601/30cf1d3bd29e4a728ec909dd1588383a.shtml"
+    },
+    {
+      "title": "关于加强药品追溯码在医疗保障和工伤保险领域采集应用的通知",
+      "level": "国家级",
+      "category": "药品监管与追溯",
+      "source": "国家医保局、人力资源社会保障部、国家卫生健康委、国家药监局 · 苏州市医保局转载",
+      "effectiveDate": "苏州市医保局页面 2025-04-30 发布；文中规定自 2026-01-01 全量采集上传",
+      "scope": "医疗保障和工伤保险领域药品追溯码采集与应用。",
+      "summary": "涉及药品追溯、医保和工伤保险管理；并非单独针对本项目的义务。",
+      "url": "https://ybj.suzhou.gov.cn/szybj/zcfgjj/202504/c4cd006fb0e542849fafe3daab2ad86d.shtml"
+    },
+    {
+      "title": "中华人民共和国药品管理法实施条例",
+      "level": "国家级",
+      "category": "药品监管与追溯",
+      "source": "国务院 · 国务院令第828号",
+      "effectiveDate": "2026-05-15 起施行（2026年修订）",
+      "scope": "中华人民共和国境内药品研制、生产、经营、使用及监督管理。",
+      "summary": "药品监管基础行政法规；项目中的产品资料应核对获批说明书并经医学审核。",
+      "url": "https://www.nmpa.gov.cn/xxgk/fgwj/flxzhfg/20260127172639127.html"
+    },
+    {
+      "title": "中华人民共和国个人信息保护法",
+      "level": "国家级",
+      "category": "个人信息保护",
+      "source": "全国人民代表大会常务委员会 · 主席令第91号",
+      "effectiveDate": "2021-11-01 起施行",
+      "scope": "在中华人民共和国境内处理自然人个人信息等法定情形。",
+      "summary": "学员身份、录音及复盘可能涉及个人信息；健康和生物识别信息可能属于敏感个人信息。",
+      "url": "https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm"
+    },
+    {
+      "title": "生成式人工智能服务管理暂行办法",
+      "level": "国家级",
+      "category": "人工智能",
+      "source": "国家互联网信息办公室等七部门 · 国家互联网信息办公室令第15号",
+      "effectiveDate": "2023-08-15 起施行",
+      "scope": "利用生成式人工智能技术向中华人民共和国境内公众提供生成文本、图片、音频、视频等内容的服务。",
+      "summary": "研发、应用但未向境内公众提供服务的不适用本办法；是否适用须按实际服务判断。",
+      "url": "https://www.cac.gov.cn/2023-07/13/c_1690898327029107.htm"
+    },
+    {
+      "title": "人工智能生成合成内容标识办法",
+      "level": "国家级",
+      "category": "人工智能",
+      "source": "国家互联网信息办公室等四部门 · 国家互联网信息办公室令第20号",
+      "effectiveDate": "2025-09-01 起施行",
+      "scope": "在境内提供人工智能生成合成内容相关服务，且符合办法第二条规定情形的网络信息服务提供者。",
+      "summary": "按服务、内容和传播场景核验标识义务；训练产品应清楚标注模拟医生和AI生成内容。",
+      "url": "https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm"
+    },
+    {
+      "title": "互联网诊疗监管细则（试行）",
+      "level": "国家级",
+      "category": "互联网诊疗",
+      "source": "国家卫生健康委办公厅、国家中医药局办公室 · 国卫办医发〔2022〕2号",
+      "effectiveDate": "2022-02-08 印发并施行",
+      "scope": "医疗机构开展互联网诊疗及其监管。",
+      "summary": "当前培训模拟不等同互联网诊疗；若扩展到真实患者诊疗，应重新评估适用要求。",
+      "url": "https://www.nhc.gov.cn/yzygj/c100068/202203/2072f0e8988249e59d942e1b2a933916.shtml"
+    },
+    {
+      "title": "苏州市加快建设“人工智能+”城市行动方案（2025—2026年）",
+      "level": "市级",
+      "category": "产业支持",
+      "source": "苏州市人民政府办公室 · 苏府办〔2025〕102号",
+      "effectiveDate": "2025-09-15 印发；行动期 2025—2026 年",
+      "scope": "苏州市人工智能产业发展及健康医疗、教育等应用方向。",
+      "summary": "为场景合作与产业方向提供参考；文件不直接赋予项目资助资格。",
+      "url": "https://www.suzhou.gov.cn/szsrmzf/zfbgswj/202509/95a8e52a6db5414db93a1fbc2d559e39.shtml"
+    },
+    {
+      "title": "苏州市进一步加快建设“人工智能+”城市的若干措施（2026年版）",
+      "level": "市级",
+      "category": "产业支持",
+      "source": "苏州市人民政府 · 苏府规字〔2025〕18号",
+      "effectiveDate": "2026-01-31 起施行，有效至 2027-01-30",
+      "scope": "符合规定条件的苏州市人工智能相关主体及项目。",
+      "summary": "包括算力、模型和应用等支持；是否可申报需核验主体条件和具体通知。",
+      "url": "https://www.suzhou.gov.cn/szsrmzf/zfwj/202512/81ccb2edeec5426990646da3f59dfc4b.shtml"
+    }
+  ]
+}

@@ -1,84 +1,91 @@
-# Android 打包（Tauri 2）
+# Android 打包与本机 AVD 验收
 
-Android 客户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.medvisit`，调试版追加 `.debug`，可与发布版并存。Android Studio 工程已纳入版本控制，通常不必重新执行 `android:init`；重新生成时须保留 Manifest 中的麦克风权限与禁用备份设置。
+Android 用户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.medvisit`，调试版追加 `.debug`。Web 构建只包含管理后台；用户端页面与底部标签栏只打入 APK，不再通过 Web 服务分发。
 
-## 运行方式
+## 页面与 API
 
-安装版在线加载 `https://openwook.cloud`（`tauri.conf.json` 的 `build.frontendDist`），沿用站点的登录 Cookie、HTTP API、WebSocket 和文件地址。Python 后端、数据库和服务密钥不打入 APK，网页更新通过现有服务器发布流程生效。离线或服务器不可达时无法使用。
+`npm run build:android` 将用户端编译到 `frontend/dist-android`。Android Gradle 工程把该目录作为 APK assets，`MainActivity` 使用已有的 AndroidX `WebViewAssetLoader` 读取资源。生产 WebView 的地址为 `https://openwook.cloud/_android/index.html`，其中 `/_android/` 只从 APK 加载；Web 服务器对该路径返回 404。
 
-没有授予远程网页 Tauri 原生 IPC 权限。麦克风使用现有 `getUserMedia`，由 Android WebView 请求系统录音权限；Manifest 声明 `RECORD_AUDIO` 和 `MODIFY_AUDIO_SETTINGS`，无需另装录音插件。发布版不允许明文 HTTP。
+`/api`、WebSocket、附件和登录 Cookie 仍使用 `https://openwook.cloud`，保持同源。没有放宽 SameSite Cookie、CORS 或来源校验，也没有给远程页面增加 Tauri IPC 权限。原有 Tauri WebViewClient 的导航、加载和安全回调均保留，WebChromeClient 的麦克风和文件选择处理保持不变。 WebView 的四边范围按 Android 系统栏与屏幕缺口的实际 Insets 调整，避免状态栏或导航栏遮挡标题和底部标签。
+
+首次打开时会在原生 WebView 初始化后重新载入一次，确保资源拦截器包在 Tauri 已安装的客户端外层。页面资源可随 APK 离线读取；登录、资料与语音功能仍依赖后端网络。更新用户页面需要重新构建并安装 APK，发布 Web 管理页不会更新用户端。
+
+Python 后端、数据库和服务密钥不打入 APK。Manifest 保留 `RECORD_AUDIO` 与 `MODIFY_AUDIO_SETTINGS`，麦克风由现有 WebView 请求系统权限，无需新增录音插件。
+
+调试版额外允许 `localhost` 与 `127.0.0.1` 的 HTTP 同源地址，供 `adb reverse` 使用；发布版资源拦截只接受生产域名的 HTTPS。
 
 ## 构建环境
 
-沿用项目的 Node.js 环境，另外安装 [Rust](https://rustup.rs/) 和 [Android Studio](https://developer.android.com/studio)。按 [Tauri Android 前置要求](https://v2.tauri.app/start/prerequisites/#android) 安装 SDK Platform、Build-Tools、Platform-Tools、Command-line Tools 和 NDK（Side by side）。当前生成工程使用 Android SDK 37、Gradle 9.6.1 和 Android Gradle Plugin 9.3.1；首次构建需要下载 Maven、Gradle 与 Cargo 依赖。
+需要 Node.js、[Rust](https://rustup.rs/) 和 [Android Studio](https://developer.android.com/studio) 的 SDK、Build-Tools、Platform-Tools、NDK，安装要求见 [Tauri Android 前置要求](https://v2.tauri.app/start/prerequisites/#android)。当前工程使用 SDK 37、Gradle 9.6.1 和 Android Gradle Plugin 9.3.1，最低 API 24。旧系统能够安装，不代表其 WebView 支持语音所需的 AudioWorklet。
 
-macOS 示例，NDK 版本改为本机安装的版本；其他系统使用各自 SDK 路径：
+macOS 示例，NDK 版本以本机安装为准：
 
 ```sh
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
-export PATH="$ANDROID_HOME/platform-tools:$PATH"
-
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 npm --prefix frontend ci
 ```
 
-最低安装版本为 Android 7（API 24），但语音功能还需要支持 AudioWorklet 等 API 的新版 Android System WebView；旧系统能安装不代表能完成语音演练。
+Android Studio 工程已保留在 `frontend/src-tauri/gen/android`，通常无需再次执行 `android:init`。重新生成时必须保留 Manifest 的录音权限、禁用备份设置、MainActivity 的资源拦截器，以及 Gradle 的 `dist-android` assets 来源。
 
-## 生成可安装的调试 APK
+## 构建 APK
 
 在项目根目录执行：
 
 ```sh
-# ARM64 手机；使用调试签名，但加载正式 HTTPS 站点。
+# ARM64 手机或 ARM64 AVD；自动先构建 Android 用户页面。
 npm run android:build -- --debug --apk --target aarch64
 ```
 
-APK 输出在 `frontend/src-tauri/gen/android/app/build/outputs/apk/` 下。`--debug` 的构建产物仍加载 `frontendDist`；只有 `android:dev` 才使用本地 Vite 的 `devUrl`。
+APK 位于 `frontend/src-tauri/gen/android/app/build/outputs/apk/`。调试签名只供安装验收，不是正式发布签名。默认 APK 连接真实服务器 `https://openwook.cloud`，不需要 `adb reverse` 或本机代理。连接真实服务器的可安装验收包使用上面的命令，**不要附加本机验收用的 `--config` 覆盖**。调试签名不改变 API 地址，也不关闭 HTTPS 校验；正式 release 则需要自己的发布签名。
+
+生产服务器启用了账号认证：匿名 `/api/auth/session` 返回 `enabled: true`、`authenticated: false`；`/api/health` 返回 401，`/api/live` 和 `/api/ready` 是可匿名读取的存活与就绪探针。App 使用服务器预配置的已有账号登录，没有公开注册。页面由 APK 提供，登录 Cookie、API 和 WebSocket 同源连接服务器，不需要放宽 Cookie 或 CORS。构建不会创建账号、修改生产数据或部署后端。
+
+需要隔离数据验收时，才使用下面的本机覆盖配置；不要将该覆盖包当作连接真实服务器的交付包。
+
+## 使用本机 AVD 验收
+
+先用 `emulator -list-avds` 和 `adb devices` 选择本机 AVD；未启动时用 `emulator -avd AVD_NAME` 启动。每个 adb 命令都应指定实际模拟器序列号。
+
+本机 Android 验收后端也必须设置 `AUTH_REQUIRED=true`，并配置仅用于隔离验收的一次性账号。使用 `uv run --directory backend python -m medvisit.api.auth` 交互生成密码哈希，再通过后端环境配置指定账号；凭据不要写进源码或提交 Git。Android 检测到 `enabled: false` 会显示“服务器未启用账号登录”，不会沿用 Web 的本机免登录入口。
+
+启动已启用认证的本机后端与一个前端 API 代理。例如前端监听 `127.0.0.1:5176`，Vite 的 `API_TARGET` 指向本机后端：
 
 ```sh
-# 查看产物
-find frontend/src-tauri/gen/android/app/build/outputs/apk -name '*.apk'
-# 用上一步的实际路径安装
-adb install -r /absolute/path/to/app-debug.apk
+# 前端目录；API_TARGET 可指向隔离测试后端，避免修改真实数据。
+API_TARGET=http://127.0.0.1:8001 npm run dev -- --host 127.0.0.1 --port 5176
+
+# 项目根目录；此地址的 /_android/ 仍由 APK 读取，只有 /api 发给本机代理。
+adb -s emulator-5554 reverse tcp:5176 tcp:5176
+npm run android:build -- --debug --apk --target aarch64 --config '{"build":{"frontendDist":"http://127.0.0.1:5176/_android/index.html"}}'
 ```
 
-其他部署地址可以通过 Tauri 配置覆盖，必须是启用现有账号登录的 HTTPS 站点，且同站点提供前端和 `/api`：
+选择构建日志中的实际 APK 路径安装并启动：
 
 ```sh
-npm run android:build -- --debug --apk --target aarch64 --config '{"build":{"frontendDist":"https://your-domain.example"}}'
+adb -s emulator-5554 install -r /absolute/path/to/app-debug.apk
+adb -s emulator-5554 shell cmd package resolve-activity --brief cloud.openwook.medvisit.debug
+adb -s emulator-5554 shell am start -n cloud.openwook.medvisit.debug/cloud.openwook.medvisit.MainActivity
+adb -s emulator-5554 exec-out uiautomator dump /dev/tty > /tmp/breathon-ui.xml
+adb -s emulator-5554 exec-out screencap -p > /tmp/breathon-avd.png
+adb -s emulator-5554 logcat -b crash -d
 ```
 
-## 本机 USB 调试
+验收底部“练习、学习、我的”三个标签页、药品与医生独立选择、空数据与加载失败、场景切换、复盘弹窗和前后台切换。 Android 系统返回键先收起键盘，再交由打开的对话框或下拉选择框处理 Escape；忙碌中的弹窗可以阻止关闭。带查询参数的详情页先返回所属列表；日记、复盘列表返回“我的”，学习、“我的”和当前演练返回练习首页；首页再按返回键才将 App 放到后台，不清空页面或直接停止演练。普通浏览器访问 `/_android/index.html` 必须返回 404，APK 应能显示同一路径的用户页面，从而确认页面来自安装包。只有明确需要实际语音验收时才开始录音或调用外部服务；服务状态刷新和语音调用会产生用量。
 
-手机打开 USB 调试并授权电脑，确认 `adb devices` 显示设备。通过 USB 端口反向转发使用回环地址，Vite 和免登录后端均无需暴露到局域网：
+`android:dev` 也先构建用户资源，再启动本机 Vite 代理；其 `devUrl` 为 `http://localhost:5173/_android/index.html`。它不使用网页热更新，页面改动后仍需重新构建和安装。已有 5173 服务时不要直接停止他人的进程，应使用独立端口和覆盖配置。
+
+结束隔离测试后可移除该次反向转发：
 
 ```sh
-# 终端 1
-npm run dev:api
-
-# 终端 2；android:dev 会启动 Vite，不必另外运行 npm run dev。
-adb reverse tcp:5173 tcp:5173
-npm run android:dev
+adb -s emulator-5554 reverse --remove tcp:5176
 ```
 
-模拟器也可采用相同方式；多设备时，用 `adb -s DEVICE_SERIAL reverse ...` 并将目标设备名传给 `npm run android:dev -- DEVICE_NAME`。若 5173 已被已有 Vite 占用，先停掉该进程。断开后可用 `adb reverse --remove tcp:5173` 清理转发。
+## 发布与验证边界
 
-## 发布与签名
+正式构建使用 `npm run android:build -- --apk` 或 `--aab`，按所需 ABI 添加 `--target`。APK 和 AAB 分别位于 Android 工程的 `app/build/outputs/apk/` 与 `app/build/outputs/bundle/`。按 [Tauri Android 签名说明](https://v2.tauri.app/distribute/sign/android/) 配置自己的签名密钥、`gen/android/keystore.properties` 和 Gradle `signingConfig`；升级保持应用标识与签名一致，并提高版本号。密钥、密码和 `keystore.properties` 不得提交。
 
-```sh
-# 默认编译所有 ABI；可加 --target aarch64 限定设备。
-npm run android:build -- --apk
-npm run android:build -- --aab
-```
-
-APK 和 AAB 分别输出在 Android 工程的 `app/build/outputs/apk/` 与 `app/build/outputs/bundle/`。仓库未配置发布密钥，release 产物需要使用自己的密钥签名后才能分发或上传；debug 签名只用于开发验收。按 [Tauri Android 签名说明](https://v2.tauri.app/distribute/sign/android/) 在本机创建密钥与 `gen/android/keystore.properties`，并在 `app/build.gradle.kts` 配置 release 的 signingConfig 后，继续使用上述 CLI 命令构建。
-
-签名密钥、密码与 `keystore.properties` 不得提交。升级发行时保持同一签名密钥，并提高 `tauri.conf.json` 的 `version`（Android versionCode 从版本号推导）；应用标识发布后不要随意更换。
-
-## 验收
-
-每次发布前在真实设备检查：登录/退出与会话过期；首次允许、拒绝录音权限及重新授权；练习和实战的收音、外放、打断、结束复盘；断网与切换前后台；PDF/JSON 下载和资料上传。外部网页、附件下载的 Android WebView 行为需要单独验收。不要用模拟测试代替麦克风、扬声器或蓝牙耳机验收，也不要在无意调用收费服务时执行服务状态刷新。
-
-常规前端检查仍为 `npm test`、`npm run lint` 和 `npm run build`；Android 编译使用上面的 APK 命令，现有 Web CI 不会构建 Android。
+APK 构建不会部署远程后端或 Web 管理页面。AVD 安装和界面验收也不能代替真实麦克风、扬声器、蓝牙耳机、权限拒绝后的恢复与实际弱网验收。前端基础检查为 `npm test`、`npm run lint`、`npm run build`、`npm run build:android`；Android 编译与安装需另外执行。

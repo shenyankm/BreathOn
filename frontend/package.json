@@ -12,7 +12,8 @@
     "android:init": "tauri android init",
     "android:dev": "tauri android dev --host 127.0.0.1",
     "android:build": "tauri android build",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "build:android": "tsc -b && vite build --mode android"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

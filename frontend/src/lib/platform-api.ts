@@ -7,10 +7,11 @@ export async function api<T>(path: string, options: RequestInit & { timeoutMs?: 
   const { timeoutMs = 30000, ...request } = options
   const deadline = AbortSignal.timeout(timeoutMs)
   const response = await fetch(`/api${path}`, {
-    ...request, signal: options.signal ? AbortSignal.any([options.signal, deadline]) : deadline,
+    credentials: 'same-origin', ...request, signal: options.signal ? AbortSignal.any([options.signal, deadline]) : deadline,
     headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
   })
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new Event('medvisit:unauthorized'))
     const error = await response.json().catch(() => ({}))
     const message = typeof error.detail === 'string' ? error.detail : Array.isArray(error.detail)
       ? error.detail.map((item: { loc?: string[]; msg?: string }) => `${item.loc?.join('.') ?? ''} ${item.msg ?? ''}`).join('；') : '操作未完成，请重试。'

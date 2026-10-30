@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "identifier": "cloud.openwook.medvisit",
   "build": {
-    "frontendDist": "https://openwook.cloud",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev"
+    "frontendDist": "https://openwook.cloud/_android/index.html",
+    "devUrl": "http://localhost:5173/_android/index.html",
+    "beforeDevCommand": "npm run build:android && npm run dev",
+    "beforeBuildCommand": "npm run build:android"
   },
   "app": {
     "windows": [

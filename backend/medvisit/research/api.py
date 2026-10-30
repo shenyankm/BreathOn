@@ -1,12 +1,13 @@
 from typing import Literal
 from uuid import UUID
+import asyncio
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 
 from .agents import PROFILES
 from .archive import read_source
-from .models import DoctorResearchRequest, ResearchRequest, WatchRequest
+from .models import DoctorResearchRequest, DoctorDraftRequest, PolicyDraftRequest, ResearchRequest, WatchRequest
 
 
 def research_router(service):
@@ -32,6 +33,25 @@ def research_router(service):
     @router.get('/jobs/{job_id}')
     def research_job(job_id: UUID):
         return service.get_job(str(job_id))
+
+    @router.post('/jobs/{job_id}/doctor-draft', status_code=201)
+    def doctor_draft(job_id: UUID, body: DoctorDraftRequest):
+        return service.doctor_draft(str(job_id), body)
+
+    @router.post('/jobs/{job_id}/policy-draft', status_code=201)
+    def policy_draft(job_id: UUID, body: PolicyDraftRequest):
+        return service.policy_draft(str(job_id), body)
+
+    @router.post('/policy-file', status_code=201)
+    async def policy_file(request: Request, title: str):
+        return await asyncio.to_thread(service.policy_file, title, await request.body())
+
+    @router.get('/policy-file/{item_id}/original')
+    def policy_file_original(item_id: UUID):
+        item, data = service.policy_file_original(str(item_id))
+        return Response(data, media_type='application/octet-stream', headers={
+            'Content-Disposition':f'attachment; filename="policy-{item_id}.{item["format"]}"',
+            'X-Content-Type-Options':'nosniff'})
 
     @router.post('/jobs/{job_id}/cancel')
     async def cancel_research(job_id: UUID):

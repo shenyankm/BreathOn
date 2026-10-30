@@ -10,6 +10,7 @@ from psycopg import Error as DatabaseError
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 from ..agents.coach import OPENING, generate_reply
+from ..knowledge.live import checked_snapshot, validate_snapshot
 from ..voice.protocol import BridgeError
 from ..voice.speech import SpeechEvidence
 from ..voice.tts import synthesize
@@ -29,6 +30,8 @@ class PracticeDialogue:
         self.segmented = False
         self.combat = record.data.get("experience") == "combat"
         self.speech = SpeechEvidence()
+        self.policy_tasks: dict[str, asyncio.Task] = {}
+        record.data['policy_checks'] = []
         record.data["coaching"] = []
         record.data["interaction_events"] = []
         if self.combat:
@@ -40,8 +43,10 @@ class PracticeDialogue:
     async def open(self):
         if self.combat:
             return
-        text = opening(self.record.training) or OPENING
+        text = opening(self.record.training, free_context=self.record.data.get('free_context')) or OPENING
         self.record.transcript("practice-opening", "doctor", text, final=True)
+        if getattr(self.record, 'checkpoint', None):
+            await self.record.checkpoint.save()
         await self.send_client({"type": "transcript", "id": "practice-opening", "role": "doctor", "text": text, "final": True})
         self.start_speech(text, "practice-opening")
 
@@ -60,8 +65,11 @@ class PracticeDialogue:
             async def send_audio(pcm):
                 if not self.stopping:
                     await self.send_client({"type": "audio", "response_id": response_id, "audio": base64.b64encode(pcm).decode()})
+            speech_context = self.record.training
+            if not speech_context and self.record.data.get('free_context'):
+                speech_context = {'doctor': self.record.data['free_context']['doctor'], 'scenario': {}}
             usage = await synthesize(self.settings, text, self.record.data["id"], send_audio,
-                                     instruction=speech_instructions(self.record.training))
+                                     instruction=speech_instructions(speech_context))
             message["speech_status"] = "completed"
             if usage:
                 self.record.data["usage"].append({"provider": "doubao-tts", **usage})
@@ -113,6 +121,7 @@ class PracticeDialogue:
             item_id = f"{'combat' if self.combat else 'practice'}-u-{index}"
             complete = utterance.get("definite") is True or final
             previous = messages.get(item_id)
+            was_final = bool(previous and previous.get('final'))
             latest = {"id": item_id, "role": "trainee", "text": text, "final": complete}
             if previous and previous["text"] == text and previous["final"] == complete:
                 continue
@@ -134,7 +143,10 @@ class PracticeDialogue:
             stored["speech"] = self.speech.describe(start, utterance.get("end_time"))
             if isinstance(start, int) and isinstance(utterance.get("end_time"), int):
                 stored["speech"].update(start_ms=start, end_ms=utterance["end_time"])
+            if (complete or was_final) and getattr(self.record, 'checkpoint', None):
+                await self.record.checkpoint.save()
             await self.send_client({"type": "transcript", **latest, "replace": True})
+            await self.schedule_policy_check(item_id, text, complete)
             if getattr(self.record, 'medical_checks', None):
                 self.record.medical_checks.observe(item_id, text, complete)
         if final:
@@ -145,9 +157,17 @@ class PracticeDialogue:
                         self.revision += 1
                     changed = True
                     latest = dict(message)
+                    if getattr(self.record, 'checkpoint', None):
+                        await self.record.checkpoint.save()
                     await self.send_client({"type": "transcript", **message, "replace": True})
+                    await self.schedule_policy_check(message['id'], message['text'], True)
                     if getattr(self.record, 'medical_checks', None):
                         self.record.medical_checks.observe(message['id'], message['text'], True)
+        if changed and latest and latest['final'] and self.record.data.get('free_context') and self.record.validate_training:
+            try:
+                await asyncio.to_thread(self.record.validate_training)
+            except HTTPException as exc:
+                raise BridgeError('training_material_changed', exc.detail) from exc
         if changed:
             if self.combat:
                 return
@@ -161,6 +181,36 @@ class PracticeDialogue:
                     self.pending = asyncio.create_task(self.respond(self.revision, latest["id"]))
                 else:
                     await self.state("listening")
+
+    async def schedule_policy_check(self, item_id, text, final):
+        old = self.policy_tasks.pop(item_id, None)
+        if old:
+            old.cancel()
+        self.record.data['policy_checks'] = [row for row in self.record.data['policy_checks'] if row['message_id'] != item_id]
+        if not final or not getattr(self.record, 'policy_assess', None):
+            return
+        self.policy_tasks[item_id] = asyncio.create_task(self.check_policy(item_id, text))
+
+    async def check_policy(self, item_id, text):
+        try:
+            context = '\n'.join(message['text'] for message in self.record.data['messages'][-8:])
+            result = await self.record.policy_assess(text, context)
+            findings = result.get('findings', []) if isinstance(result, dict) else result
+            status = result.get('status', 'complete') if isinstance(result, dict) else 'complete'
+            if isinstance(result, dict) and result.get('usage'):
+                self.record.data['usage'].append(result['usage'])
+            message = next((row for row in self.record.data['messages'] if row['id'] == item_id), None)
+            if not message or not message['final'] or message['text'] != text:
+                return
+            rows = [{**finding, 'message_id':item_id, 'text':text} for finding in findings]
+            self.record.data['policy_checks'] = [row for row in self.record.data['policy_checks'] if row['message_id'] != item_id] + rows
+            await self.send_client({'type':'policy_check', 'message_id':item_id, 'text':text, 'status':status, 'findings':rows})
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            message = next((row for row in self.record.data['messages'] if row['id'] == item_id), None)
+            if message and message['final'] and message['text'] == text:
+                await self.send_client({'type':'policy_check', 'message_id':item_id, 'text':text, 'status':'unavailable', 'findings':[]})
 
     async def state(self, state: str):
         await self.send_client({"type": "practice_state", "state": state})
@@ -186,12 +236,16 @@ class PracticeDialogue:
                     await asyncio.to_thread(self.record.validate_training)
                 except HTTPException as exc:
                     raise BridgeError('training_material_changed', exc.detail) from exc
+            checks = await checked_snapshot(self.record)
             options = {'training': self.record.training} if self.record.training else {}
+            if self.record.data.get('free_context'):
+                options['free_context'] = self.record.data['free_context']
             if self.record.data.get('medical_checks'):
-                options['medical_checks'] = self.record.data['medical_checks']
+                options['medical_checks'] = checks
             result, usage = await generate_reply(self.settings, history, speak=not self.combat, interactions=list(self.record.data["interaction_events"]), **options)
             if usage:
                 self.record.data["usage"].append({"provider": "deepseek", **usage})
+            await validate_snapshot(self.record, checks)
             if self.record.validate_training:
                 try:
                     await asyncio.to_thread(self.record.validate_training)
@@ -223,6 +277,8 @@ class PracticeDialogue:
         await self.send_client({"type": "practice_turn", "message": {
             "id": item_id, "role": "doctor", "text": result["doctor_reply"], "final": True,
         }, "coach": coaching if self.record.data["mode"] == "assisted" else None})
+        if getattr(self.record, 'checkpoint', None):
+            await self.record.checkpoint.save()
         self.start_speech(result["doctor_reply"], item_id)
         await self.state("listening")
 
@@ -239,6 +295,9 @@ class PracticeDialogue:
             await self.cancel_pending()
         finally:
             await self.cancel_speech()
+            for task in self.policy_tasks.values():
+                task.cancel()
+            await asyncio.gather(*self.policy_tasks.values(), return_exceptions=True)
 
     async def retry_speech(self):
         if self.stopping or self.combat or not self.voice_failed or (self.pending and not self.pending.done()):

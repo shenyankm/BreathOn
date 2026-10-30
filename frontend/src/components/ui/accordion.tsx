@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { cn } from "cn"
 import { Accordion as AccordionPrimitive } from "radix-ui"
@@ -63,7 +65,7 @@ function AccordionContent({
   return (
     <AccordionPrimitive.Content
       data-slot="accordion-content"
-      className="overflow-hidden px-4 text-sm data-open:animate-accordion-down data-closed:animate-accordion-up"
+      className={cn("overflow-hidden px-4 text-sm data-open:animate-accordion-down data-closed:animate-accordion-up", props.forceMount && "data-[state=closed]:hidden")}
       {...props}
     >
       <div

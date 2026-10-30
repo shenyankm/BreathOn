@@ -16,6 +16,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       return [slots[index], (value: any) => { slots[index] = typeof value === 'function' ? value(slots[index]) : value }]
     },
     useRef(initial: unknown) { return slots[cursor++] ??= { current: initial } },
+    useId() { const index = cursor++; return slots[index] ??= `control-${index}` },
     useEffect(callback: () => void, dependencies: unknown[]) {
       const index = cursor++
       if (!slots[index] || dependencies.some((value, i) => value !== slots[index][i])) {
@@ -211,7 +212,7 @@ test('a pending catalog read cannot resurrect a doctor deleted after creation', 
   assert.equal(find(view, 'DoctorForm').length, 0)
 })
 
-const doctorDraft = { name: '陈明', specialty: '内分泌科', background_type: 'public', public_facts: '医院：教学大学附属医院',
+const doctorDraft = { name: '陈明', specialty: '内分泌科', hospital: '教学大学附属医院', professional_title: '', background_type: 'public', public_facts: '医院：教学大学附属医院',
   sources: ['https://hospital.example.edu/chen'], population: '训练人群', focus: '证据局限', training_style: '每轮追问一个问题', mood: 'neutral', opening: '今天讨论什么？', research_job_id: 'research-1' }
 const doctorJob = { id: 'research-1', kind: 'doctor', query: '陈明 教学大学附属医院 内分泌科', status: 'running',
   doctor_identity: { name: '陈明', hospital: '教学大学附属医院', department: '内分泌科' }, result: null }
@@ -250,7 +251,7 @@ test('generated doctor form requires explicit review and preserves source fields
   submit()
   assert.equal(saves.length, 0)
   assert.equal(find(view, 'Button')[0].props.disabled, true)
-  find(view, 'input').find(input => input.props.type === 'checkbox').props.onChange({ target: { checked: true } })
+  find(view, 'Checkbox')[0].props.onCheckedChange(true)
   view = app.render(props)
   assert.equal(find(view, 'Button')[0].props.disabled, false)
   submit()
@@ -348,4 +349,39 @@ test('source review links load the requested job even outside the recent history
   const view = app.render()
   assert.equal(find(view, 'h3')[0].props.children, older.query)
   assert.deepEqual(reads, ['/research', '/research/jobs/older'])
+})
+
+test('published doctor changes require a draft and publishing returns to stable identity', async () => {
+  const original = { id: 'doctor-1', version: 1, status: 'published', name: 'Doctor', updated_at: '2026-10-30T00:00:00Z' }
+  const draft = { ...original, id: 'revision-1', status: 'draft' }
+  const calls: string[] = []
+  const app = page('platform-page.tsx', 'CatalogPage', async (path, options) => {
+    calls.push(path)
+    if (path === '/catalog/doctor') return [original]
+    if (path === '/catalog/doctor/doctor-1' && !options?.method) return original
+    if (path === '/catalog/doctor/doctor-1/revision') return draft
+    if (path === '/catalog/doctor/revision-1/publish') return { ...original, version: 2 }
+    throw new Error(`Unexpected path ${path}`)
+  })
+  app.render({kind:'doctor'}); await settle()
+  find(app.render({kind:'doctor'}), 'button')[0].props.onClick(); await settle()
+  let view=app.render({kind:'doctor'})
+  assert.equal(find(view,'DoctorForm')[0].props.disabled,true)
+  find(view,'Button').find(button=>button.props.children==='创建新版本').props.onClick(); await settle()
+  view=app.render({kind:'doctor'})
+  assert.equal(find(view,'DoctorForm')[0].props.disabled,false)
+  find(view,'Button').find(button=>button.props.children==='发布医生').props.onClick(); await settle()
+  view=app.render({kind:'doctor'})
+  assert.equal(find(view,'DoctorForm')[0].key,'doctor-1-2')
+  assert.equal(find(view,'DoctorForm')[0].props.disabled,true)
+  assert.equal(find(view,'button').length,1)
+  assert.deepEqual(calls,['/catalog/doctor','/catalog/doctor/doctor-1','/catalog/doctor/doctor-1/revision','/catalog/doctor/revision-1/publish'])
+})
+
+test('doctor draft deep link opens the reviewed draft', async () => {
+  const draft = { id: 'draft-1', version: 1, status: 'draft', name: '医生草稿', updated_at: '2026-10-30T00:00:00Z' }
+  const app = page('platform-page.tsx','CatalogPage',async path=>path==='/catalog/doctor'?[draft]:draft,'#workspace?tab=doctor&doctor=draft-1')
+  app.render({kind:'doctor'});await settle()
+  const view=app.render({kind:'doctor'})
+  assert.equal(find(view,'DoctorForm')[0].key,'draft-1-1')
 })

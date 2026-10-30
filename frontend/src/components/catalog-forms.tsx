@@ -2,10 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/platform-api'
-import { Field, inputClass } from './ui/form-field'
-import { stages, type Content, type Doctor, type DoctorDraft, type Rubric, type Scenario, type Dimension } from '@/lib/catalog-types'
+import { Field } from './ui/form-field'
+import { stages, type Content, type Policy, type ManagedDrug, type Doctor, type DoctorDraft, type Rubric, type Scenario, type Dimension } from '@/lib/catalog-types'
 
 
 function text(data: FormData, name: string) { return String(data.get(name) ?? '') }
@@ -57,14 +58,14 @@ export function DoctorForm({ item, initial, busy, disabled, save }: Submit & { i
     event.preventDefault()
     if (initial && !reviewed) return
     const data=new FormData(event.currentTarget)
-    save({...Object.fromEntries(['name','specialty','background_type','public_facts','population','focus','training_style','mood','opening'].map(key=>[key,text(data,key)])), sources:text(data,'sources').split('\n').map(s=>s.trim()).filter(Boolean), ...(values?.research_job_id ? {research_job_id:values.research_job_id} : {})})
+    save({...Object.fromEntries(['name','specialty','hospital','professional_title','background_type','public_facts','population','focus','training_style','mood','opening'].map(key=>[key,text(data,key)])), sources:text(data,'sources').split('\n').map(s=>s.trim()).filter(Boolean), ...(values?.research_job_id ? {research_job_id:values.research_job_id} : {})})
   }
   return <form aria-label="医生资料" onSubmit={submit}><fieldset disabled={disabled || busy} className="min-w-0 space-y-6 [&_label]:min-w-0 [&_textarea]:bg-background [&_textarea]:font-normal [&_textarea]:leading-6">
     <section aria-labelledby="doctor-basic" className="space-y-4">
       <h4 id="doctor-basic" className="text-sm font-semibold">基本信息</h4>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="医生姓名" name="name" value={values?.name} maxLength={60} />
-        <Field label="专科" name="specialty" value={values?.specialty} maxLength={80} />
+        <Field label="专科" name="specialty" value={values?.specialty} maxLength={80} /><Field label="医院" name="hospital" value={values?.hospital} required={false} maxLength={200}/><Field label="职称" name="professional_title" value={values?.professional_title} required={false} maxLength={100}/>
         <div className="min-w-0 sm:col-span-2 xl:col-span-1"><Field label="背景类型" htmlFor="doctor-background-type"><Select name="background_type" defaultValue={values?.background_type ?? 'fictional'} disabled={disabled || busy}><SelectTrigger id="doctor-background-type" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="fictional">虚构训练角色</SelectItem><SelectItem value="public">依据公开人物背景的训练模拟</SelectItem></SelectContent></Select></Field></div>
       </div>
     </section>
@@ -88,8 +89,8 @@ export function DoctorForm({ item, initial, busy, disabled, save }: Submit & { i
         </div>
       </section>
     </div>
-    {initial && <label className="flex min-h-11 items-start gap-3 text-sm leading-7"><input type="checkbox" className="mt-2" required checked={reviewed} onChange={event => setReviewed(event.target.checked)}/><span>我已核对医生身份、公开事实与来源，并确认训练设定的适用范围。</span></label>}
-    {!disabled && <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t bg-background px-5 py-4 sm:-mx-6 sm:px-6"><p className="text-xs leading-6 text-muted-foreground">{item?'修改将覆盖当前医生资料。':'保存草稿后可发布医生。'}</p><Button className="h-11" type="submit" disabled={busy || Boolean(initial && !reviewed)}>{busy?'正在保存…':item?'保存修改':initial?'确认核对并保存草稿':'保存草稿'}</Button></div>}
+    {initial && <label className="flex min-h-11 items-start gap-3 text-sm leading-7"><Checkbox className="mt-2" required checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)}/><span>我已核对医生身份、公开事实与来源，并确认训练设定的适用范围。</span></label>}
+    {!disabled && <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t bg-background px-5 py-4 sm:-mx-6 sm:px-6"><p className="text-xs leading-6 text-muted-foreground">{item?'修改保存在草稿，发布后影响新演练。':'保存草稿后可发布医生。'}</p><Button className="h-11" type="submit" disabled={busy || Boolean(initial && !reviewed)}>{busy?'正在保存…':item?'保存修改':initial?'确认核对并保存草稿':'保存草稿'}</Button></div>}
   </fieldset></form>
 }
 
@@ -103,7 +104,7 @@ export function RubricForm({ item,busy,disabled,save }: Submit & { item?: Rubric
     <Field label="量表名称" name="name" value={item?.name} maxLength={100} />
     <p className="text-sm">权重合计：<span className="tabular-nums">{total}%</span>，应为 100%。</p>
     {dimensions.map((dimension,index)=><section key={index} className="space-y-4 rounded-xl border p-4"><div className="grid gap-3 sm:grid-cols-3"><Field label="维度标识"><Input className="min-h-11 font-normal" pattern="[a-z][a-z_]{1,40}" required value={dimension.key} onChange={e=>change(index,{key:e.target.value})}/></Field><Field label="维度名称"><Input className="min-h-11 font-normal" required maxLength={60} value={dimension.label} onChange={e=>change(index,{label:e.target.value})}/></Field><Field label="权重（%）"><Input type="number" className="min-h-11 font-normal" min={1} max={100} required value={dimension.weight} onChange={e=>change(index,{weight:Number(e.target.value)})}/></Field></div>
-      <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={dimension.requires_content} onChange={e=>change(index,{requires_content:e.target.checked})}/>该维度必须有有效训练资料才能评价</label>
+      <label className="flex min-h-11 items-center gap-2 text-sm"><Checkbox disabled={disabled || busy} checked={dimension.requires_content} onCheckedChange={checked=>change(index,{requires_content:checked===true})}/>该维度必须有有效训练资料才能评价</label>
       {dimension.anchors.map((anchor,i)=><Field key={i} label={`${i} 分锚点`}><Input className="min-h-11 font-normal" required maxLength={500} value={anchor} onChange={e=>change(index,{anchors:dimension.anchors.map((a,j)=>i===j?e.target.value:a)})}/></Field>)}
       {!disabled && dimensions.length>1 && <Button type="button" variant="ghost" onClick={()=>setDimensions(dimensions.filter((_,i)=>i!==index))}>移除维度</Button>}
     </section>)}
@@ -112,26 +113,31 @@ export function RubricForm({ item,busy,disabled,save }: Submit & { item?: Rubric
   </fieldset></form>
 }
 
-export function ScenarioForm({ item,busy,disabled,save,doctors,rubrics,contents }: Submit & {item?:Scenario;doctors:Doctor[];rubrics:Rubric[];contents:Content[]}) {
+export function ScenarioForm({ item,busy,disabled,save,doctors,rubrics,contents,policies=[],drugs=[] }: Submit & {item?:Scenario;doctors:Doctor[];rubrics:Rubric[];contents:Content[];policies?:Policy[];drugs?:ManagedDrug[]}) {
   const [selectedStages,setStages]=useState(item?.stages ?? Object.keys(stages))
   const [selectedContent,setContent]=useState(item?.content_ids ?? [])
+  const [selectedPolicies,setPolicies]=useState(item?.policy_ids ?? [])
+  const [drugId,setDrugId]=useState(item?.drug_id ?? '')
+  const [competitorId,setCompetitorId]=useState(item?.competitor_id ?? '')
   function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();const data=new FormData(event.currentTarget)
-    save({...Object.fromEntries(['title','product','disease','objective','doctor_id','rubric_id','difficulty','situation','background','opening'].map(key=>[key,text(data,key)])),objections:text(data,'objections').split('\n').map(value=>value.trim()).filter(Boolean),success_criteria:text(data,'success_criteria').split('\n').map(value=>value.trim()).filter(Boolean),duration_seconds:Number(data.get('duration_seconds')),stages:selectedStages,content_ids:selectedContent})
+    save({...Object.fromEntries(['title','product','disease','objective','doctor_id','rubric_id','difficulty','situation','background','opening'].map(key=>[key,text(data,key)])),objections:text(data,'objections').split('\n').map(value=>value.trim()).filter(Boolean),success_criteria:text(data,'success_criteria').split('\n').map(value=>value.trim()).filter(Boolean),duration_seconds:Number(data.get('duration_seconds')),stages:selectedStages,content_ids:selectedContent,policy_ids:selectedPolicies,drug_id:drugId||null,competitor_id:competitorId||null})
   }
   return <form onSubmit={submit}><fieldset disabled={disabled || busy} className="space-y-5">
     <Field label="场景名称" name="title" value={item?.title} maxLength={160}/>
     <div className="grid gap-4 sm:grid-cols-2"><Field label="产品" name="product" value={item?.product} maxLength={120}/><Field label="疾病／治疗领域" name="disease" value={item?.disease} maxLength={120}/></div>
+    <div className="grid gap-4 sm:grid-cols-2">{([{id:'drug_id',label:'绑定本公司药品（可选）',value:drugId,update:setDrugId,ownership:'company'},{id:'competitor_id',label:'绑定同类竞品（可选）',value:competitorId,update:setCompetitorId,ownership:'competitor'}] as const).map(({id,label,value,update,ownership})=>{const options=drugs.filter(drug=>drug.status==='published'&&drug.ownership===ownership);const current=drugs.find(drug=>drug.id===value);return <Field key={id} label={label} htmlFor={`scenario-${id}`}><Select name={id} value={value} disabled={disabled || busy} onValueChange={next=>update(next==='__none__'?'':next)}><SelectTrigger id={`scenario-${id}`} className="w-full font-normal"><SelectValue placeholder="不绑定（保留产品文字）" /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="__none__">不绑定（保留产品文字）</SelectItem>{value&&!options.some(drug=>drug.id===value)&&<SelectItem value={value}>{current?.name||value} · 不可用，请更换</SelectItem>}{options.map(drug=><SelectItem key={drug.id} value={drug.id}>{drug.name}{drug.brand?` · ${drug.brand}`:''}</SelectItem>)}</SelectContent></Select></Field>})}</div>
     <Field label="训练目标"><Textarea name="objective" required maxLength={1500} defaultValue={item?.objective} /></Field>
     <Field label="模拟拜访背景"><Textarea name="background" maxLength={2000} defaultValue={item?.background}/></Field>
-    <Field label="情境类型"><select name="situation" className={inputClass} defaultValue={item?.situation??'first_visit'}><option value="first_visit">首次拜访</option><option value="time_pressure">时间紧张</option><option value="evidence_challenge">证据质疑</option></select></Field>
+    <Field label="情境类型" htmlFor="scenario-situation"><Select name="situation" defaultValue={item?.situation??'first_visit'} disabled={disabled || busy}><SelectTrigger id="scenario-situation" className="w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="first_visit">首次拜访</SelectItem><SelectItem value="time_pressure">时间紧张</SelectItem><SelectItem value="evidence_challenge">证据质疑</SelectItem></SelectContent></Select></Field>
     <Field label="医生开场白" name="opening" value={item?.opening} required={false} maxLength={400}/>
     <Field label="核心异议与追问（每行一项）"><Textarea name="objections" defaultValue={item?.objections?.join('\n')} maxLength={4007}/></Field>
     <Field label="可观察的完成标准（每行一项）"><Textarea name="success_criteria" defaultValue={item?.success_criteria?.join('\n')} maxLength={4007}/></Field>
     <div className="grid gap-4 sm:grid-cols-2"><Field label="医生角色" htmlFor="scenario-doctor"><Select name="doctor_id" required defaultValue={item?.doctor_id} disabled={disabled || busy}><SelectTrigger id="scenario-doctor" className="min-h-11 w-full font-normal"><SelectValue placeholder="选择医生角色" /></SelectTrigger><SelectContent position="popper" align="start">{doctors.map(d=><SelectItem key={d.id} value={d.id}>{d.display_name} · {d.status==='published'?'已发布':'草稿'}</SelectItem>)}</SelectContent></Select></Field><Field label="评价量表" htmlFor="scenario-rubric"><Select name="rubric_id" required defaultValue={item?.rubric_id} disabled={disabled || busy}><SelectTrigger id="scenario-rubric" className="min-h-11 w-full font-normal"><SelectValue placeholder="选择量表版本" /></SelectTrigger><SelectContent position="popper" align="start">{rubrics.map(r=><SelectItem key={r.id} value={r.id}>{r.name} · {r.status==='published'?'已发布':'草稿'}</SelectItem>)}</SelectContent></Select></Field></div>
     <div className="grid gap-4 sm:grid-cols-2"><Field label="建议时长（秒）"><Input type="number" name="duration_seconds" min={30} max={600} required defaultValue={item?.duration_seconds??300} className="min-h-11 font-normal"/></Field><Field label="难度" htmlFor="scenario-difficulty"><Select name="difficulty" defaultValue={item?.difficulty??'basic'} disabled={disabled || busy}><SelectTrigger id="scenario-difficulty" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="basic">基础</SelectItem><SelectItem value="intermediate">中等</SelectItem><SelectItem value="advanced">进阶</SelectItem></SelectContent></Select></Field></div>
-    <section className="space-y-3"><h3 className="text-sm font-medium">包含的训练环节</h3><div className="grid gap-2 sm:grid-cols-2">{Object.entries(stages).map(([key,label])=><label key={key} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={selectedStages.includes(key)} onChange={e=>setStages(e.target.checked?[...selectedStages,key]:selectedStages.filter(s=>s!==key))}/>{label}</label>)}</div></section>
-    <section className="space-y-3"><h3 className="text-sm font-medium">绑定资料版本</h3>{contents.length?contents.map(c=><label key={c.id} className="flex min-h-11 items-start gap-2 py-2 text-sm"><input type="checkbox" className="mt-1" checked={selectedContent.includes(c.id)} onChange={e=>setContent(e.target.checked?[...selectedContent,c.id]:selectedContent.filter(id=>id!==c.id))}/><span>{c.title} · {c.version_label}<span className="block text-xs leading-6 text-muted-foreground">{c.status==='approved'?'已核对':c.status==='submitted'?'待核对':'尚未核对或已停用'}</span></span></label>):<p className="text-sm leading-6 text-muted-foreground">暂无资料。可先保存沟通训练场景；没有有效训练资料时，医学准确性不得作为已核实结论。</p>}</section>
+    <section className="space-y-3"><h3 className="text-sm font-medium">包含的训练环节</h3><div className="grid gap-2 sm:grid-cols-2">{Object.entries(stages).map(([key,label])=><label key={key} className="flex min-h-11 items-center gap-2 text-sm"><Checkbox disabled={disabled || busy} checked={selectedStages.includes(key)} onCheckedChange={checked=>setStages(checked===true?[...selectedStages,key]:selectedStages.filter(s=>s!==key))}/>{label}</label>)}</div></section>
+    <section className="space-y-3"><h3 className="text-sm font-medium">绑定资料版本</h3>{contents.length?contents.map(c=><label key={c.id} className="flex min-h-11 items-start gap-2 py-2 text-sm"><Checkbox disabled={disabled || busy} className="mt-1" checked={selectedContent.includes(c.id)} onCheckedChange={checked=>setContent(checked===true?[...selectedContent,c.id]:selectedContent.filter(id=>id!==c.id))}/><span>{c.title} · {c.version_label}<span className="block text-xs leading-6 text-muted-foreground">{c.status==='approved'?'已核对':c.status==='submitted'?'待核对':'尚未核对或已停用'}</span></span></label>):<p className="text-sm leading-6 text-muted-foreground">暂无资料。可先保存沟通训练场景；没有有效训练资料时，医学准确性不得作为已核实结论。</p>}</section>
+    <section className="space-y-3"><h3 className="text-sm font-medium">绑定政策版本</h3><p className="text-xs leading-6 text-muted-foreground">绑定已审核且有效的政策后，其已发布规则可用于风险初筛；高风险暂停规则发现疑似风险时会暂停收音，可手动继续。提示不构成法律定性。</p>{policies.filter(policy=>policy.usable||selectedPolicies.includes(policy.id)).map(policy=><label key={policy.id} className="flex min-h-11 items-start gap-2 py-2 text-sm"><Checkbox disabled={disabled || busy} className="mt-1" checked={selectedPolicies.includes(policy.id)} onCheckedChange={checked=>setPolicies(checked===true?[...selectedPolicies,policy.id]:selectedPolicies.filter(id=>id!==policy.id))}/><span>{policy.title} · {policy.version_label}<span className="block text-xs leading-6 text-muted-foreground">{policy.usable?'已审核且有效':'已失效，请移除或更换'}</span></span></label>)}{selectedPolicies.filter(id=>!policies.some(policy=>policy.id===id)).map(id=><label key={id} className="flex min-h-11 items-center gap-2 text-sm"><Checkbox disabled={disabled || busy} checked onCheckedChange={()=>setPolicies(selectedPolicies.filter(value=>value!==id))}/>政策 {id} 已不可用，取消勾选以移除</label>)}{!policies.some(policy=>policy.usable)&&!selectedPolicies.length&&<p className="text-sm text-muted-foreground">暂无已审核且有效的政策。</p>}</section>
     {!disabled && <Button type="submit" disabled={busy || !selectedStages.length}>{busy?'正在保存…':'保存草稿'}</Button>}
   </fieldset></form>
 }

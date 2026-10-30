@@ -25,6 +25,7 @@ test('records defer progress work until first expansion and retain it on reopen'
     require: (name: string) => {
       if (name === 'react') return react
       if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
+      if (name === '@/lib/platform-api') return { api() {} }
       assert.ok(name === 'lucide-react' || name.startsWith('@/components/'), name)
       return new Proxy({}, { get: (_, key) => String(key) })
     },
@@ -37,11 +38,11 @@ test('records defer progress work until first expansion and retain it on reopen'
   }
   let page = render()
   assert.equal(find(page, 'TrainingProgress').length, 0)
-  const section = find(page, 'details')[0]
-  section.props.onToggle({ currentTarget: { open: true } })
+  const section = find(page, 'Accordion')[0]
+  section.props.onValueChange('progress')
   page = render()
   assert.equal(find(page, 'TrainingProgress').length, 1)
-  find(page, 'details')[0].props.onToggle({ currentTarget: { open: false } })
+  find(page, 'Accordion')[0].props.onValueChange('')
   page = render()
   assert.equal(find(page, 'TrainingProgress').length, 1)
 })

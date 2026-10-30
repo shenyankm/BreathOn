@@ -115,7 +115,7 @@ class AsrStream:
 
 async def run_practice(client, settings, record):
     session_id = record.data["id"]
-    record.data.update(provider="seedasr-streaming", speech_provider="doubao-tts-2.0", question=opening(record.training) if record.training else PRACTICE_QUESTION)
+    record.data.update(provider="seedasr-streaming", speech_provider="doubao-tts-2.0", question=opening(record.training, free_context=record.data.get('free_context')) if record.training or record.data.get('free_context') else PRACTICE_QUESTION)
     tasks = []
     dialogue = PracticeDialogue(client, settings, record)
     async with asr_connection(settings, session_id) as upstream:
@@ -123,7 +123,7 @@ async def run_practice(client, settings, record):
         await recognition.send(request_packet(session_id))
         # The optimized API may send nothing until speech changes; WebSocket handshake establishes readiness.
         record.data["status"] = "active"
-        await dialogue.send_client({"type": "ready", "session_id": session_id, "input_rate": 16000, "output_rate": 24000, 'doctor': record.data.get('doctor'), 'training':record.data.get('training'), 'mode':record.data['mode']})
+        await dialogue.send_client({"type": "ready", "session_id": session_id, "input_rate": 16000, "output_rate": 24000, 'doctor': record.data.get('doctor'), 'training':record.data.get('training'), 'free_context':record.data.get('free_context'), 'mode':record.data['mode']})
 
         await dialogue.open()
 

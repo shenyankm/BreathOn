@@ -2,12 +2,14 @@
 import asyncio
 import json
 import logging
+import re
 from time import monotonic
 import traceback
 from uuid import uuid4
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 logger = logging.getLogger('medvisit.http')
 JSON_LIMIT = 8_000_000
@@ -47,9 +49,31 @@ class ApiMiddleware:
                 content_type = headers.get('content-type', '').split(';')[0].strip().lower()
                 if len(headers.getlist('content-length')) > 1:
                     return await reject(400, '请求长度不明确。')
+                if scope['method'] == 'POST' and re.fullmatch(r'/api/visits/[^/]+/audio', scope['path']):
+                    if headers.get('transfer-encoding') or not size or not size.isdecimal():
+                        return await reject(411, '请使用包含 Content-Length 的请求。')
+                    if int(size) > 100_000_000:
+                        return await reject(413, '录音超过100MB。')
+                    count = 0
+                    deadline = monotonic() + 900
+                    async def audio_receive():
+                        nonlocal count
+                        remaining = deadline - monotonic()
+                        if remaining <= 0:
+                            raise HTTPException(408, '录音上传超时。')
+                        try:
+                            message = await asyncio.wait_for(receive(), min(60, remaining))
+                        except TimeoutError:
+                            raise HTTPException(408, '录音上传超时。') from None
+                        count += len(message.get('body', b''))
+                        if count > 100_000_000:
+                            raise HTTPException(413, '录音超过100MB。')
+                        return message
+                    await self.app(scope, audio_receive, response_send)
+                    return
                 if headers.get('transfer-encoding') or (not size and content_type in ('application/json', 'application/pdf')):
                     return await reject(411, '请使用包含 Content-Length 的请求。')
-                limit = PDF_LIMIT if content_type == 'application/pdf' else JSON_LIMIT
+                limit = PDF_LIMIT if content_type == 'application/pdf' or scope['path'] == '/api/research/policy-file' else JSON_LIMIT
                 if size and (not size.isdecimal() or int(size) > limit):
                     return await reject(413, '请求内容过大。')
                 # Count actual bytes before parsing, including an understated Content-Length.

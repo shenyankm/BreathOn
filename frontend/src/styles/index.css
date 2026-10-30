@@ -122,9 +122,26 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply m-0 bg-background text-foreground antialiased;
     }
   html {
     @apply font-sans;
     }
+}
+@layer base {
+  button:not(:disabled), a[href], [role="combobox"]:not(:disabled), summary { cursor: pointer; }
+  [data-slot="scroll-area-viewport"] { overscroll-behavior: contain; scroll-padding-block: 1.5rem; }
+  h1, h2, h3 { text-wrap: balance; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  [data-slot="button"] { min-height: 2.75rem; }
 }

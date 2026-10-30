@@ -39,6 +39,19 @@ class WatchRequest(BaseModel):
     enabled: bool
 
 
+class DoctorDraftRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    finding_index: int = Field(ge=0, le=4)
+    confirmed_name: str = Field(min_length=1, max_length=60)
+    confirmed_identity: Literal[True]
+
+
+class PolicyDraftRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    source_id: str = Field(pattern=r'^[a-f0-9]{24}$')
+    source_version: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
 class FindingDetail(BaseModel):
     model_config = ConfigDict(extra='forbid')
     label: str = Field(min_length=1, max_length=40)

@@ -4,11 +4,12 @@
 
 - **练习模式**：医生语音与文字回应，可开启实时教练建议。
 - **实战模式**：双向语音对话，结束后统一复盘。
-- **训练管理**：维护医生、场景、审核资料与评分标准，查看记录和重练进展。
+- **管理后台**：维护药品、医生、政策、场景和审核资料；审核拜访反馈并查看代表记录。
+- **拜访日记**：记录访后观察或导入已获授权的录音，确认脱敏后提交审核。
 
 技术栈：React / Vite / shadcn/ui、FastAPI、AgentScope；支持本地 JSON 或 PostgreSQL 存储。
 
-Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。安装版在线加载现有 HTTPS 站点，后端仍由服务器运行。
+Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。用户界面内置于 APK，Web 只提供管理后台；后端仍由服务器运行。
 
 ## 本地运行
 
@@ -29,7 +30,7 @@ cp -n backend/.env.example backend/.env
 
 默认模型、音色及资源要求见 [`backend/.env.example`](backend/.env.example)。密钥仅由后端读取，不要使用 `VITE_` 前缀或提交 `.env`。
 
-本机开发默认免登录。启用登录时，运行 `uv run --directory backend python -m medvisit.api.auth` 生成密码哈希，在 `backend/.env` 设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`。多账号使用 `LOGIN_USERS_JSON` 配置“账号 → 密码哈希”对象，覆盖单账号配置；不提供公开注册。
+Web 本机开发默认免登录。Android 用户端始终要求服务器启用账号登录；服务器关闭登录时，App 会拒绝进入用户页面。启用登录时，运行 `uv run --directory backend python -m medvisit.api.auth` 生成密码哈希，在 `backend/.env` 设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`。多账号使用 `LOGIN_USERS_JSON` 配置“账号 → 密码哈希”对象，`ADMIN_USERS_JSON` 配置管理员账号列表；不提供公开注册。
 
 在两个终端分别启动：
 
@@ -41,7 +42,7 @@ npm run dev:api
 npm run dev -- --host 127.0.0.1
 ```
 
-打开 <http://127.0.0.1:5173>。未配置密钥也可浏览页面；语音演练需要对应服务权限和麦克风。修改密钥后重启后端。
+管理员打开 <http://127.0.0.1:5173/admin>；代表端仅在 Android 客户端提供，不再提供 Web `/app` 页面。未配置密钥也可浏览后台；语音演练需要对应服务权限和麦克风。修改密钥后重启后端。
 
 ## Docker 部署
 
@@ -70,8 +71,8 @@ CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建�
 
 ## 使用边界
 
-- 账号登录；训练资料共享，个人记录、点评、重练、案例和统计隔离。本机免登录模式不可对外开放。公网部署须启用登录并使用 HTTPS，配置见[服务器与 CI/CD](docs/server-deployment.md)。
-- 不保存原始音频；演练音频和文本会发送给配置的语音、模型服务。请勿输入真实患者信息。
+- 代表之间的记录隔离，管理员可查看所有代表的演练及拜访记录并留下访问审计。本机免登录模式不可对外开放。公网部署须启用登录并使用 HTTPS，配置见[服务器与 CI/CD](docs/server-deployment.md)。
+- 演练音频和文本会发送给配置的语音、模型服务。拜访录音及未脱敏转写保存在独立私有卷，首次确认后 7 天且不超过上传后 30 天清理；该卷不纳入长期备份。请勿输入未经授权的患者信息。
 - 模型输出需专业复核；语气分析仅覆盖措辞，不代表声音语调或情绪评估。资料来源核对不等于医学审核。
 
 ## 文档

@@ -83,7 +83,7 @@ def test_existing_records_are_accessible_without_login(client):
         assert client.get('/api/sessions/' + record_id + '/reviews').status_code == 200
 
 
-def test_doctor_updates_overwrite_published_profile_and_preserve_history(client):
+def test_doctor_updates_require_published_revision_and_preserve_history(client):
     doctor = client.post('/api/catalog/doctor', json=DOCTOR).json()
     path = '/api/catalog/doctor/' + doctor['id']
     doctor = client.post(path+'/publish', json={'version':doctor['version']}).json()
@@ -100,9 +100,13 @@ def test_doctor_updates_overwrite_published_profile_and_preserve_history(client)
     record.data.update(workspace='local', owner_id='local', training=captured)
     client.app.state.records.save(record, 'completed')
 
-    response = client.put(path, json={**DOCTOR, 'name':'更新后的训练医生', 'focus':'平衡沟通获益与风险', 'version':doctor['version']})
+    assert client.put(path, json={**DOCTOR, 'version':doctor['version']}).status_code == 409
+    draft = client.post(path+'/revision').json()
+    draft_path = '/api/catalog/doctor/'+draft['id']
+    response = client.put(draft_path, json={**DOCTOR, 'name':'更新后的训练医生', 'focus':'平衡沟通获益与风险', 'version':draft['version']})
     assert response.status_code == 200, response.text
-    changed = response.json()
+    assert client.get(preview).json()['doctor']['focus'] == DOCTOR['focus']
+    changed = client.post(draft_path+'/publish', json={'version':response.json()['version']}).json()
     assert changed['id'] == doctor['id'] and changed['version'] == doctor['version']+1
     assert changed['status'] == 'published' and changed['created_at'] == doctor['created_at']
     assert changed['display_name'] == '更新后的训练医生（训练模拟）'
@@ -111,8 +115,71 @@ def test_doctor_updates_overwrite_published_profile_and_preserve_history(client)
     assert client.get('/api/sessions/'+record.data['id']).json()['training'] == captured
     assert client.put(path, json={**DOCTOR, 'version':doctor['version']}).status_code == 409
     assert client.get(path).json() == changed
-    assert client.post(path+'/revision').status_code == 409
     assert {row['id'] for row in client.get('/api/catalog/doctor').json()} == ids
+
+
+def test_drug_and_policy_review_and_scenario_bindings(client):
+    drug = client.post('/api/catalog/drug', json={'name':'示例药品','ownership':'company'}).json()
+    path = '/api/catalog/drug/'+drug['id']
+    published = client.post(path+'/publish', json={'version':drug['version']}).json()
+    assert published['status'] == 'published'
+    draft = client.post(path+'/revision').json()
+    edited = client.put('/api/catalog/drug/'+draft['id'], json={'name':'更新药品','ownership':'company', 'version':draft['version']}).json()
+    assert client.get(path).json()['name'] == '示例药品'
+    revised = client.post('/api/catalog/drug/'+draft['id']+'/publish', json={'version':edited['version']}).json()
+    assert revised['id'] == drug['id'] and revised['name'] == '更新药品'
+    assert client.post(path+'/retire', json={'version':revised['version']}).json()['status'] == 'retired'
+
+    policy = client.post('/api/catalog/policy', json={**DOC,'issuer':'示例机关','legal_status':'effective', 'effective_date':'2020-01-01'}).json()
+    policy_path = '/api/catalog/policy/'+policy['id']
+    submitted = client.post(policy_path+'/review', json={'version':policy['version'],'action':'submit','reason':'核对'}).json()
+    approved = client.post(policy_path+'/review', json={'version':submitted['version'],'action':'approve','reason':'已核对'}).json()
+    assert approved['status'] == 'approved'
+    assert client.get('/api/catalog/policy').json()[0]['usable'] is True
+    rule = client.post('/api/catalog/policy_rule', json={'name':'教学规则', 'policy_id':policy['id'],
+        'article':'第一条', 'quote':'不存在的原文', 'scope':'演练', 'risk':'high', 'action':'pause'}).json()
+    rule_path = '/api/catalog/policy_rule/'+rule['id']
+    assert client.post(rule_path+'/publish', json={'version':rule['version']}).status_code == 409
+    rule = client.put(rule_path, json={'name':'教学规则', 'policy_id':policy['id'],
+        'article':'第一条', 'quote':'合成教学材料', 'scope':'演练', 'risk':'high', 'action':'pause', 'version':rule['version']}).json()
+    published_rule = client.post(rule_path+'/publish', json={'version':rule['version']}).json()
+    assert published_rule['policy_version'] == approved['version']
+    assert published_rule['runtime_enforced'] is True
+
+
+def test_static_catalog_seeding_is_idempotent_and_unreviewed(client):
+    app = client.app
+    tenant = app.state.local_user['workspace']
+    before = {row['id'] for row in client.get('/api/catalog/drug').json()}
+    Catalog(app.state.platform).seed(tenant, 'local')
+    after = client.get('/api/catalog/drug').json()
+    assert before == {row['id'] for row in after}
+    assert all(row['status'] == 'draft' and row['ownership'] == 'unknown' for row in after if row['id'].startswith('seed-drug-'))
+    seeded = next(row for row in client.get('/api/catalog/policy').json() if row['id'].startswith('seed-policy-'))
+    path = '/api/catalog/policy/'+seeded['id']+'/review'
+    submitted = client.post(path, json={'version':seeded['version'], 'action':'submit', 'reason':'核对'}).json()
+    assert client.post(path, json={'version':submitted['version'], 'action':'approve', 'reason':'核对'}).status_code == 409
+
+
+def test_taxonomy_requires_review_and_protects_published_drugs(client):
+    taxonomies = client.get('/api/catalog/taxonomy').json()
+    category = next(row for row in taxonomies if row['kind'] == 'category')
+    pending = category['terms'][0]['value']
+    seed = next(row for row in client.get('/api/catalog/drug').json() if row['category'] == pending)
+    path = '/api/catalog/drug/' + seed['id']
+    draft_fields = {key:value for key,value in seed.items() if key in ('name','brand','aliases','company','manufacturer','overview','source_url','ownership','category','diseases','mechanism','dosage_form','regions','indications','content_ids','comparisons')}
+    assert client.put(path, json={**draft_fields, 'version':seed['version']}).status_code == 200
+    changed = client.get(path).json()
+    assert client.post(path+'/publish', json={'version':changed['version']}).status_code == 422
+    assert client.post('/api/catalog/drug', json={'name':'测试药', 'category':pending}).status_code == 422
+    terms = [{**term, 'status':'active' if term['value'] == pending else term['status']} for term in category['terms']]
+    response = client.put('/api/catalog/taxonomy/category', json={'version':category['version'], 'terms':terms})
+    assert response.status_code == 200
+    assert client.put('/api/catalog/taxonomy/category', json={'version':category['version'], 'terms':terms}).status_code == 409
+    drug = client.post('/api/catalog/drug', json={'name':'测试药', 'category':pending, 'ownership':'company'}).json()
+    assert client.post('/api/catalog/drug/'+drug['id']+'/publish', json={'version':drug['version']}).status_code == 200
+    current = response.json()
+    assert client.put('/api/catalog/taxonomy/category', json={'version':current['version'], 'terms':[term for term in terms if term['value'] != pending]}).status_code == 409
 
 
 def test_doctor_deletion_checks_version_and_stays_deleted_after_seeding(client):

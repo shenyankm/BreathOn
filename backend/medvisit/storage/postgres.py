@@ -49,13 +49,16 @@ class PostgresRecords:
                 (UUID(record.data["id"]), Jsonb(record.data)),
             )
 
-    def list(self, *, workspace=None, owner_id=None, team=None):
+    def list(self, *, workspace=None, owner_id=None, team=None, limit=50):
         where, params = scope_sql(workspace, owner_id, team)
+        limit_sql = ' LIMIT %s' if limit is not None else ''
+        if limit is not None:
+            params.append(limit)
         with self.pool.connection() as connection:
             rows = connection.execute(
                 "SELECT id, document->>'experience', document->>'mode', document->>'started_at', "
                 "document->>'ended_at', document->>'status', jsonb_array_length(document->'messages'), document->'training'->'scenario'->>'title' "
-                "FROM sessions" + where + " ORDER BY saved_at DESC, id DESC LIMIT 50", params,
+                "FROM sessions" + where + " ORDER BY saved_at DESC, id DESC" + limit_sql, params,
             ).fetchall()
         return [dict(zip(("id", "experience", "mode", "started_at", "ended_at", "status", "message_count", "scenario_title"),
                          (str(row[0]), *row[1:]))) for row in rows]

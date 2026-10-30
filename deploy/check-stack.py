@@ -35,6 +35,12 @@ status, headers, _ = request('/api/live')
 assert status == 200 and headers.get('X-Request-ID')
 status, headers, index = request('/')
 assert status == 200 and headers.get('Cache-Control') == 'no-cache'
+status, headers, admin = request('/admin')
+assert status == 200 and headers.get('Cache-Control') == 'no-cache' and admin == index
+for path in ('/app', '/app/records', '/preview-visit.html'):
+    assert request(path)[0] == 410, 'Removed user page must not be served: '+path
+for path in ('/_android/index.html', '/_android/assets/does-not-exist.js'):
+    assert request(path)[0] == 404, 'Android assets must only come from the APK: '+path
 asset = re.search(r'src="(/assets/[^\"]+\.js)"', index.decode())
 assert asset, 'Built entry module is missing'
 status, headers, _ = request(asset.group(1))
@@ -46,4 +52,4 @@ assert request('/api/research/jobs', payload)[0] == 422
 unknown_key = 'unknown-key-'+'x'*10_000
 status, _, body = request('/api/research/jobs', json.dumps({'kind':'policy', 'query':'public-topic', unknown_key:'synthetic'}).encode())
 assert status == 422 and len(body) < 4_000 and unknown_key.encode() not in body
-print('Compose HTTP checks passed: readiness, liveness, cache policy, missing asset, >1 MB body')
+print('Compose HTTP checks passed: readiness, management routes, APK-only assets, cache policy, >1 MB body')

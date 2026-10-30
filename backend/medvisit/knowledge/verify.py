@@ -82,6 +82,8 @@ def validate_result(raw, text, evidence):
                 valid = False
                 continue
             citations.append({'chunk_id':chunk['id'], 'source_id':chunk['source_id'], 'page':chunk['page'],
+                'document_id':chunk['document_id'], 'document_version':chunk['document_version'],
+                'version_label':chunk['version_label'], 'document_sha256':chunk['document_sha256'],
                 'quote':quote, **{key:chunk['source'].get(key) for key in
                     ('title','url','sha256','retrieved_at','published_at','kind','jurisdiction','quality')}})
         status, reason, correction = row['status'], row['reason'], row['correction']
@@ -111,7 +113,12 @@ class MedicalVerifier:
         if len(text) > 6000 or len(sentences(text)) > 24:
             result.update(status='unavailable', reason='本段过长，未完成逐句核验；不能视为准确。')
             return result
-        evidence = await asyncio.to_thread(self.corpus.search, text, context, data=data)
+        try:
+            approvals = await asyncio.to_thread(self.corpus.approval_snapshot, data)
+            evidence = await asyncio.to_thread(self.corpus.search, text, context, data=data, approvals=approvals)
+        except Exception:
+            result.update(status='unavailable', reason='审核资料暂不可读取，不能确认该句。')
+            return result
         if not evidence:
             result['reason'] = data.get('error') or '未检索到足够的适用依据，暂不能判断。'
             return result
@@ -147,7 +154,8 @@ class MedicalVerifier:
                     result['statements']=apply_review(result['statements'],review_data)
                 statuses = {row['status'] for row in result['statements']}
                 result['status'] = next(status for status in ('contradicted','insufficient','supported','not_medical') if status in statuses)
-                if (await asyncio.to_thread(self.corpus.load))['version'] != data['version']:
+                if ((await asyncio.to_thread(self.corpus.load))['version'] != data['version']
+                    or await asyncio.to_thread(self.corpus.approval_snapshot, data) != approvals):
                     result.update(status='insufficient', reason='核验期间资料版本已更新，请重新核验本句。', statements=[])
         except (APIError, TimeoutError, ValueError, TypeError, KeyError, StopIteration):
             result.update(status='unavailable', reason='医学核验暂未完成；原话已保留，请核对资料后再使用。', statements=[])
@@ -155,3 +163,21 @@ class MedicalVerifier:
             await client.close()
         result['elapsed_seconds'] = round(monotonic()-started,3)
         return result
+
+    async def invalidate_revoked(self, checks):
+        try:
+            data = await asyncio.to_thread(self.corpus.load)
+            approvals = await asyncio.to_thread(self.corpus.approval_snapshot, data)
+        except Exception:
+            data, approvals = {'version':None}, {}
+        for row in checks:
+            if row.get('status') not in ('supported', 'contradicted'):
+                continue
+            citations = [c for statement in row.get('statements', []) for c in statement.get('citations', [])]
+            valid = row.get('corpus_version') == data['version'] and bool(citations)
+            for citation in citations:
+                receipt = approvals.get((citation.get('source_id'), citation.get('page')))
+                if not receipt or any(receipt.get(k) != citation.get(k) for k in ('document_id','document_version','version_label','document_sha256')):
+                    valid = False
+            if not valid:
+                row.update(status='insufficient', reason='原依据已停用或变更，请重新核验。', statements=[])
