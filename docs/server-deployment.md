@@ -1,10 +1,10 @@
 # 服务器与 CI/CD
 
-`https://openwook.cloud` 由主机 Caddy 终止 TLS，再转发到 `127.0.0.1:8080`。`www` 重定向到主域名，IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
+`https://openwook.cloud` 由主机 Caddy 终止 TLS，再转发到 `127.0.0.1:8080`。主域名和 `www` 均直接提供应用，避免旧站点的永久重定向缓存形成循环，IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
 
 ## 管理员登录
 
-服务保持单管理员，不提供注册、成员管理或多租户。公网配置必须设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME`、`ADMIN_PASSWORD_HASH`，允许来源为 `https://openwook.cloud`。使用下列命令交互生成 scrypt 哈希，原始密码不写入服务配置：
+服务保持单管理员，不提供注册、成员管理或多租户。公网配置必须设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME`、`ADMIN_PASSWORD_HASH`，允许来源为 `https://openwook.cloud,https://www.openwook.cloud`。使用下列命令交互生成 scrypt 哈希，原始密码不写入服务配置：
 
 ```sh
 uv run --directory backend python -m medvisit.api.auth

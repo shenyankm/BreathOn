@@ -64,7 +64,7 @@ cp /etc/medvisit-coach/compose.env "$release/.env"
 printf '\nRELEASE_SHA=%s\n' "$revision" >> "$release/.env"
 ln -s /etc/medvisit-coach/backend.env "$release/backend/.env"
 grep -qx 'AUTH_REQUIRED=true' "$release/.env"
-grep -qx 'ALLOWED_ORIGINS=https://openwook.cloud' "$release/.env"
+grep -qx 'ALLOWED_ORIGINS=https://openwook.cloud,https://www.openwook.cloud' "$release/.env"
 compose "$release" config --quiet
 caddy validate --config "$release/deploy/Caddyfile" --adapter caddyfile
 # Send source only: large cross-border SSH image transfers are too slow on this host.

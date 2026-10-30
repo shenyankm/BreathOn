@@ -11,7 +11,7 @@
 	}
 }
 
-openwook.cloud {
+openwook.cloud, www.openwook.cloud {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8080
 	header {
@@ -19,10 +19,6 @@ openwook.cloud {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 	}
-}
-
-www.openwook.cloud {
-	redir https://openwook.cloud{uri} permanent
 }
 
 http://122.51.255.108 {
