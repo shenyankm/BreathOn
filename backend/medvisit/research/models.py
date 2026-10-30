@@ -2,7 +2,23 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from ..platform.input import Input
+
 ResearchKind = Literal['policy', 'doctor', 'drug']
+
+
+class DoctorResearchRequest(Input):
+    name: str = Field(min_length=1, max_length=60)
+    hospital: str = Field(min_length=1, max_length=80)
+    department: str = Field(min_length=1, max_length=50)
+
+    @property
+    def kind(self):
+        return 'doctor'
+
+    @property
+    def query(self):
+        return f'{self.name} {self.hospital} {self.department}'
 
 
 class ResearchRequest(BaseModel):

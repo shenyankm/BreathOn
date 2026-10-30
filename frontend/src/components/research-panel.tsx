@@ -4,13 +4,15 @@ import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { api } from '@/lib/platform-api'
+import type { DoctorDraft } from '@/lib/catalog-types'
 
 type Kind = 'policy' | 'doctor' | 'drug'
 type Profile = { kind: Kind; label: string; description: string }
 type Version = { raw_sha256: string; retrieved_at: string; kind: 'html' | 'pdf' | 'doc' | 'docx' }
 type Source = { id: string; title: string; url: string; latest: Version; versions: Version[]; last_checked_at: string; last_check_error: string }
 type Detail = { label: string; value: string; source_id: string; source_version?: string; quote: string }
-type Job = { id: string; kind: Kind; query: string; status: string; created_at: string; finished_at?: string; error: string; source_ids: string[];
+export type Job = { id: string; kind: Kind; query: string; status: string; created_at: string; finished_at?: string; error: string; source_ids: string[];
+  doctor_identity?: { name: string; hospital: string; department: string }; doctor_draft?: DoctorDraft; doctor_draft_error?: string; doctor_id?: string;
   progress?: { searches: number; archives: number }; search_queries?: string[]; currency_notice?: string;
   source_errors?: { operation: string; url?: string; message: string }[];
   changes: { source_id: string; status: string; version: string }[];
@@ -23,12 +25,19 @@ const examples: Record<Kind, string> = { policy: '例如：医药代表管理办
 const date = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
 const archiveUrl = (id: string, version: string, format = 'html') => `/api/research/sources/${id}/${version}/${format}`
 
+export function ResearchFindings({ job }: { job: Job }) {
+  return <>
+    {job.result?.findings.map((finding, index) => <article className="space-y-4 rounded-xl border bg-background p-5" key={index}><h4 className="text-base font-medium">{finding.title}</h4><dl className="space-y-3 text-sm leading-7">{finding.details.map((detail, i) => <div key={i} className="grid gap-1 sm:grid-cols-[140px_minmax(0,1fr)]"><dt className="text-muted-foreground">{detail.label}</dt><dd className="break-words">{detail.value}</dd></div>)}</dl>{finding.caveats.length > 0 && <ul className="list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{finding.caveats.map((text, i) => <li key={i}>{text}</li>)}</ul>}<details className="border-t pt-4 text-sm"><summary className="cursor-pointer font-medium">查看原文引文</summary><div className="mt-4 space-y-4">{finding.details.map((detail, i) => { const change = job.changes.find(change => change.source_id === detail.source_id); return <blockquote className="border-l-2 pl-3 leading-7" key={i}><p className="whitespace-pre-wrap">{detail.quote}</p>{change && <a className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4" href={archiveUrl(detail.source_id, detail.source_version ?? change.version)} target="_blank" rel="noreferrer">{detail.label} · 查看归档原文</a>}</blockquote> })}</div></details></article>)}
+    {job.result && job.result.further_checks.length > 0 && <section><h4 className="text-sm font-medium">还需核对</h4><ul className="mt-2 list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{job.result.further_checks.map((text, i) => <li key={i}>{text}</li>)}</ul></section>}
+  </>
+}
+
 export function ResearchPanel() {
   const initial = new URLSearchParams(location.hash.split('?')[1]).get('agent')
   const [kind, setKind] = useState<Kind>(initial === 'doctor' || initial === 'drug' ? initial : 'policy')
   const [query, setQuery] = useState('')
   const [data, setData] = useState<ResearchState>()
-  const [selected, setSelected] = useState('')
+  const [selected, setSelected] = useState(() => new URLSearchParams(location.hash.split('?')[1]).get('job') ?? '')
   const [refresh, setRefresh] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -38,6 +47,10 @@ export function ResearchPanel() {
     async function load() {
       try {
         const state = await api<ResearchState>('/research', { signal: controller.signal })
+        if (selected && !state.jobs.some(job => job.id === selected)) {
+          const sourceJob = await api<Job>(`/research/jobs/${encodeURIComponent(selected)}`, { signal: controller.signal })
+          state.jobs = [sourceJob, ...state.jobs]
+        }
         setData(state)
         if (state.jobs.some(job => job.status === 'running')) timer = setTimeout(() => void load(), 2000)
       } catch (cause) {
@@ -46,7 +59,7 @@ export function ResearchPanel() {
     }
     void load()
     return () => { controller.abort(); clearTimeout(timer) }
-  }, [refresh])
+  }, [refresh, selected])
   const running = data?.jobs.find(job => job.status === 'running')
   const job = data?.jobs.find(job => job.id === selected) ?? data?.jobs[0]
   const profile = data?.profiles.find(profile => profile.kind === kind)
@@ -74,12 +87,11 @@ export function ResearchPanel() {
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm"><p className="text-destructive">{error}</p><Button variant="outline" className="h-11" onClick={() => { setError(''); setRefresh(value => value + 1) }}>重新读取</Button></div>}
     {!data && !error && <p role="status" className="text-sm text-muted-foreground">正在读取检索记录…</p>}
     {job ? <section className="space-y-5" aria-label="检索结果">
-      <div className="space-y-2"><label htmlFor="research-history" className="text-sm font-medium">最近 20 次检索</label><Select value={job.id} onValueChange={setSelected}><SelectTrigger id="research-history" className="min-h-11 w-full"><SelectValue/></SelectTrigger><SelectContent>{data?.jobs.map(item => <SelectItem key={item.id} value={item.id}>{item.query} · {statuses[item.status]} · {date(item.created_at)}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-2"><label htmlFor="research-history" className="text-sm font-medium">检索记录（最近 20 次及当前来源）</label><Select value={job.id} onValueChange={setSelected}><SelectTrigger id="research-history" className="min-h-11 w-full"><SelectValue/></SelectTrigger><SelectContent>{data?.jobs.map(item => <SelectItem key={item.id} value={item.id}>{item.query} · {statuses[item.status]} · {date(item.created_at)}</SelectItem>)}</SelectContent></Select></div>
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-medium">{job.query}</h3><p className="mt-2 text-sm text-muted-foreground" role="status">{statuses[job.status]}{job.finished_at ? ` · 核验时间 ${date(job.finished_at)}` : ` · 已搜索 ${job.progress?.searches ?? 0} 次，已归档 ${job.progress?.archives ?? 0} 份`}</p></div>{job.status === 'running' ? <Button variant="outline" className="h-11" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/cancel`)}><Square/>停止检索</Button> : job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && <Button variant="outline" className="h-11" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/watch`, {enabled:!watch?.enabled}, 'PUT')}><Clock3/>{watch?.enabled ? '暂停每日追踪' : '开启每日追踪'}</Button>}</div>
       {job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && <p className="text-sm leading-7 text-muted-foreground">每日重搜并复查最多 5 份来源；需本机后端运行，会产生模型与搜索用量。</p>}
       {job.error && <p role="alert" className="text-sm leading-7 text-destructive">{job.error}</p>}
-      {job.result?.findings.map((finding, index) => <article className="space-y-4 rounded-xl border bg-background p-5" key={index}><h4 className="text-base font-medium">{finding.title}</h4><dl className="space-y-3 text-sm leading-7">{finding.details.map((detail, i) => <div key={i} className="grid gap-1 sm:grid-cols-[140px_minmax(0,1fr)]"><dt className="text-muted-foreground">{detail.label}</dt><dd className="break-words">{detail.value}</dd></div>)}</dl>{finding.caveats.length > 0 && <ul className="list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{finding.caveats.map((text, i) => <li key={i}>{text}</li>)}</ul>}<details className="border-t pt-4 text-sm"><summary className="cursor-pointer font-medium">查看原文引文</summary><div className="mt-4 space-y-4">{finding.details.map((detail, i) => { const change = job.changes.find(change => change.source_id === detail.source_id); return <blockquote className="border-l-2 pl-3 leading-7" key={i}><p className="whitespace-pre-wrap">{detail.quote}</p>{change && <a className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4" href={archiveUrl(detail.source_id, detail.source_version ?? change.version)} target="_blank" rel="noreferrer">{detail.label} · 查看归档原文</a>}</blockquote> })}</div></details></article>)}
-      {job.result && job.result.further_checks.length > 0 && <section><h4 className="text-sm font-medium">还需核对</h4><ul className="mt-2 list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{job.result.further_checks.map((text, i) => <li key={i}>{text}</li>)}</ul></section>}
+      <ResearchFindings job={job}/>
       {job.source_ids.length > 0 && <section className="space-y-3"><h4 className="text-sm font-medium">已归档原文</h4>{job.source_ids.map(id => { const source = data?.sources.find(source => source.id === id); const change = job.changes.find(change => change.source_id === id); if (!source || !change) return null; return <article className="min-w-0 space-y-3 rounded-xl border p-4" key={id}><h5 className="break-words text-sm font-medium">{source.title}</h5><p className="text-sm text-muted-foreground">{changes[change.status]} · 保留 {source.versions.length} 个版本</p><div className="flex flex-wrap gap-3"><Button asChild variant="outline" className="h-11"><a href={archiveUrl(id, change.version)} target="_blank" rel="noreferrer">阅读 HTML</a></Button><Button asChild variant="outline" className="h-11"><a href={archiveUrl(id, change.version, 'original')}>下载原件</a></Button><Button asChild variant="ghost" className="h-11"><a href={source.url} target="_blank" rel="noreferrer"><ExternalLink/>来源网页</a></Button></div>{source.last_check_error && <p className="text-sm leading-7 text-destructive">最近复查未完成：{source.last_check_error}，上次成功副本保留。</p>}{source.versions.length > 1 && <details className="text-sm"><summary className="cursor-pointer">历史原文版本</summary><ul className="mt-2 space-y-2">{source.versions.map(version => <li key={version.raw_sha256}><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={archiveUrl(id, version.raw_sha256)} target="_blank" rel="noreferrer">{date(version.retrieved_at)}</a></li>)}</ul></details>}</article> })}</section>}
       {job.source_errors && job.source_errors.length > 0 && <details className="text-sm"><summary className="cursor-pointer font-medium">未完成的来源检查（{job.source_errors.length}）</summary><ul className="mt-3 space-y-3">{job.source_errors.map((failure, i) => <li className="break-words leading-7" key={i}>{failure.message}{failure.url && <a className="ml-2 underline underline-offset-4" href={failure.url} target="_blank" rel="noreferrer">查看来源</a>}</li>)}</ul></details>}
       {job.currency_notice && <p className="text-sm leading-7 text-muted-foreground">{job.currency_notice}</p>}

@@ -8,13 +8,14 @@ import { ScenarioTransfer } from '@/components/scenario-transfer'
 import { CasesPage } from '@/pages/cases-page'
 import { PricingPanel } from '@/components/pricing-panel'
 import { ResearchPanel } from '@/components/research-panel'
+import { DoctorGenerator } from '@/components/doctor-generator'
 import { Textarea } from '@/components/ui/textarea'
 import { inputClass } from '@/components/ui/form-field'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ContentForm, DoctorForm, RubricForm, ScenarioForm } from '@/components/catalog-forms'
 import { api } from '@/lib/platform-api'
 import { costLabel } from '@/lib/progress'
-import { kindLabels, statusLabels, titleOf, type Kind, type CatalogRecord, type Content, type Doctor, type Rubric, type Scenario, type TrainingSnapshot, type TrainingCase } from '@/lib/catalog-types'
+import { kindLabels, statusLabels, titleOf, type Kind, type CatalogRecord, type Content, type Doctor, type DoctorDraft, type Rubric, type Scenario, type TrainingSnapshot, type TrainingCase } from '@/lib/catalog-types'
 
 function failure(cause: unknown) { return cause instanceof Error ? cause.message : '操作未完成，请重试。' }
 
@@ -30,6 +31,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
   const [reason,setReason]=useState('')
   const [preview,setPreview]=useState<TrainingSnapshot>()
   const [refresh,setRefresh]=useState(0)
+  const [doctorDraft,setDoctorDraft]=useState<{id:string;fields:DoctorDraft}>()
   const [bindings,setBindings]=useState<{doctors:Doctor[];rubrics:Rubric[];contents:Content[];cases:TrainingCase[]}>({doctors:[],rubrics:[],contents:[],cases:[]})
   const [bindingsLoaded,setBindingsLoaded]=useState(false)
   const detailRequest=useRef<AbortController|null>(null)
@@ -43,7 +45,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
   },[kind,refresh])
   async function select(id:string) {
     detailRequest.current?.abort();const controller=new AbortController();detailRequest.current=controller
-    setSelection(id);setItem(undefined);setPreview(undefined);setError('');setNotice('')
+    setSelection(id);setItem(undefined);setDoctorDraft(undefined);setPreview(undefined);setError('');setNotice('')
     try{setItem(await api<CatalogRecord>(`/catalog/${kind}/${id}`,{signal:controller.signal}))}catch(cause){if(!controller.signal.aborted)setError(failure(cause))}
   }
   async function mutate(path:string,body?:object,method='POST') {
@@ -52,7 +54,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
       const next=await api<CatalogRecord>(path,{method,...(body?{body:JSON.stringify(body)}:{})})
       listChanges.current.add(next.id);setLoading(false)
       setItem(next);setSelection(next.id);setReason('');setPreview(undefined);setRows(rows=>[next,...rows.filter(row=>row.id!==next.id)])
-      if(kind==='doctor')setNotice('医生资料已保存。')
+      if(kind==='doctor'){setDoctorDraft(undefined);setNotice(doctorDraft&&next.status==='draft'?'医生草稿已保存，发布后可绑定训练场景。':'医生资料已保存。')}
     }catch(cause){setError(failure(cause))}finally{setBusy(false)}
   }
   function save(body:object){void mutate(`/catalog/${kind}${item?`/${item.id}`:''}`,item?{...body,version:item.version}:body,item?'PUT':'POST')}
@@ -68,13 +70,15 @@ function CatalogPage({ kind }: { kind: Kind }) {
   function transition(action:string){if(item)void mutate(`/catalog/content/${item.id}/review`,{version:item.version,action,reason})}
   async function showPreview(){if(!item)return;setBusy(true);setError('');try{setPreview(await api<TrainingSnapshot>(`/scenarios/${item.id}/preview`))}catch(cause){setError(failure(cause))}finally{setBusy(false)}}
   const disabled=Boolean(kind!=='doctor' && item && !['draft',...(kind==='content'?['rejected']:[])].includes(item.status))
+  const researchJobId=kind==='doctor'?(doctorDraft?.id??(item as Doctor|undefined)?.research_job_id):undefined
   const missingPreparation=[
     {label:'训练资料',tab:'content',ready:bindings.contents.some(row=>row.status==='approved'&&row.usable!==false)},
     {label:'医生角色',tab:'doctor',ready:bindings.doctors.some(row=>row.status==='published')},
     {label:'评分标准',tab:'rubric',ready:bindings.rubrics.some(row=>row.status==='published')},
   ].filter(step=>!step.ready)
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-medium">{kindLabels[kind]}</h2><p className="mt-1 text-sm text-muted-foreground">{rows.length} 项 · {kind==='content'?'核对后可用于训练':kind==='doctor'?'修改覆盖当前资料':'核对后发布'}</p></div><Button className="h-11" variant={kind==='scenario'?'outline':'default'} disabled={busy} onClick={()=>{detailRequest.current?.abort();setItem(undefined);setSelection(null);setError('');setNotice('')}}>{kind==='scenario'?'手动创建场景':`添加${kindLabels[kind]}`}</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-medium">{kindLabels[kind]}</h2><p className="mt-1 text-sm text-muted-foreground">{rows.length} 项 · {kind==='content'?'核对后可用于训练':kind==='doctor'?'修改覆盖当前资料':'核对后发布'}</p></div><Button className="h-11" variant={kind==='scenario'?'outline':'default'} disabled={busy} onClick={()=>{detailRequest.current?.abort();setItem(undefined);setDoctorDraft(undefined);setSelection(null);setError('');setNotice('')}}>{kind==='scenario'?'手动创建场景':`添加${kindLabels[kind]}`}</Button></div>
+    {kind==='doctor'&&selection===undefined&&<DoctorGenerator onOpen={id=>void select(id)} onGenerated={(id,fields)=>{detailRequest.current?.abort();setDoctorDraft({id,fields});setItem(undefined);setSelection(null);setError('');setNotice('请核对公开事实与来源，并调整训练设定；保存草稿后再发布。')}}/>}
     {kind==='scenario'&&bindingsLoaded&&missingPreparation.length>0&&<section className="space-y-2 border-l-2 pl-4 text-sm" aria-label="场景准备提示"><p className="font-medium">生成场景前，还需要准备</p><div className="flex flex-wrap gap-4">{missingPreparation.map(step=><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`#workspace?tab=${step.tab}`} key={step.tab}>{step.label}<span aria-hidden="true" className="ml-1">→</span></a>)}</div></section>}
     {kind==='scenario'&&<ScenarioGenerator {...bindings} onGenerated={scene=>{listChanges.current.add(scene.id);setLoading(false);setItem(scene);setSelection(scene.id);setRows(rows=>[scene,...rows.filter(row=>row.id!==scene.id)]);setPreview(undefined);setNotice('已生成草稿，请核对背景、异议、完成标准和引用，再发布。')}}/>}
     {notice&&<p role="status" className="text-sm">{notice}</p>}
@@ -86,7 +90,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
       </section>
       <section className={`min-w-0 rounded-xl border bg-background p-5 sm:p-6 ${selection===undefined?'hidden lg:block':''}`}>
         {selection===undefined?<p className="text-sm leading-7 text-muted-foreground">选择{kindLabels[kind]}查看详情</p>:<>
-          <Button className="mb-4 lg:hidden" size="sm" variant="ghost" onClick={()=>{setSelection(undefined);setItem(undefined)}}>返回列表</Button>
+          <Button className={`mb-4 ${kind==='doctor'?'':'lg:hidden'}`} size="sm" variant="ghost" onClick={()=>{setSelection(undefined);setItem(undefined);setDoctorDraft(undefined)}}>返回列表</Button>
           {selection!==null&&!item?<p role="status" className="text-sm text-muted-foreground">正在读取详情…</p>:<>
             <div className={`mb-6 flex flex-wrap items-center justify-between gap-3 ${kind==='doctor'?'border-b pb-5':''}`}>
               <div className="space-y-1"><h3 className="text-base font-medium">{item?titleOf(item):`新建${kindLabels[kind]}`}</h3>{item&&kind==='doctor'&&<p className="text-xs leading-6 text-muted-foreground">更新于 {new Date(item.updated_at).toLocaleString('zh-CN',{hour12:false})}</p>}</div>
@@ -98,7 +102,8 @@ function CatalogPage({ kind }: { kind: Kind }) {
               <p className="text-xs text-muted-foreground">更新于 {new Date(item.updated_at).toLocaleString('zh-CN',{hour12:false})}</p>
             </div>}
             {kind==='content'&&<ContentForm key={item?`${item.id}-${item.version}`:'new'} item={item as Content|undefined} busy={busy} disabled={disabled} save={save}/>}
-            {kind==='doctor'&&<DoctorForm key={item?`${item.id}-${item.version}`:'new'} item={item as Doctor|undefined} busy={busy} disabled={disabled} save={save}/>}
+            {researchJobId&&<p className="mb-5 text-sm leading-7"><a href={`#workspace?tab=research&job=${encodeURIComponent(researchJobId)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">查看本次检索原文与待核对项</a></p>}
+            {kind==='doctor'&&<DoctorForm key={item?`${item.id}-${item.version}`:doctorDraft?.id??'new'} item={item as Doctor|undefined} initial={doctorDraft?.fields} busy={busy} disabled={disabled} save={save}/>}
             {kind==='doctor'&&item&&<section className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-5">
               <h4 className="text-sm font-medium">删除医生角色</h4>
               <Dialog open={deleteOpen} onOpenChange={open=>{if(!busy){setDeleteOpen(open);setError('')}}}>

@@ -58,6 +58,7 @@ class Doctor(Input):
     training_style: str = Field(min_length=1, max_length=1000)
     mood: Literal['neutral', 'busy', 'skeptical', 'friendly'] = 'neutral'
     opening: str = Field(min_length=1, max_length=400)
+    research_job_id: str | None = Field(default=None, min_length=1, max_length=80)
 
     @model_validator(mode='after')
     def sources_valid(self):

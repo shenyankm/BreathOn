@@ -8,11 +8,13 @@ import logging
 import re
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from ..platform.store import now
 from .agents import PROFILES, observations, run_agent, validate_result
 from .archive import canonical_url, write_private
-from .models import ResearchResult
+from .doctor import doctor_draft
+from .models import DoctorResearchRequest, ResearchResult
 
 logger = logging.getLogger('medvisit.research')
 
@@ -88,7 +90,8 @@ class ResearchService:
                         previous.append(source['url'])
                 tx.update(self.workspace, 'research_watch', watch_id,
                     {**watch, 'next_check_at':(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()}, watch['version'])
-            return tx.create(self.workspace, 'research_job', {**request.model_dump(), 'status':'running',
+            identity = {'doctor_identity':request.model_dump()} if isinstance(request, DoctorResearchRequest) else {}
+            return tx.create(self.workspace, 'research_job', {'kind':request.kind, 'query':request.query, **identity, 'status':'running',
                 'watch_id':watch_id, 'seed_urls':list(dict.fromkeys(previous))[:5], 'result':None, 'usage':{}, 'source_ids':[],
                 'changes':[], 'error':'', 'reviewed':False})
 
@@ -201,6 +204,16 @@ class ResearchService:
 
     def _finish(self, job, result, usage, error, interrupted, captured):
         checked_at, source_ids, changes = now(), [], []
+        draft = {}
+        if job.get('doctor_identity') and result and not interrupted:
+            try:
+                draft['doctor_draft'] = doctor_draft(job['doctor_identity'], result, captured['archives'])
+                draft['doctor_draft']['research_job_id'] = job['id']
+                draft['doctor_draft_error'] = ''
+            except ValidationError:
+                draft['doctor_draft_error'] = '资料超出角色字段限制，已保留检索结果；请在医生角色表单中手动精简录入。'
+            except ValueError as exc:
+                draft['doctor_draft_error'] = str(exc)
         archived = {source['id']:source for source in captured['archives']}
         baselines = {}
         with self.store.transaction(self.workspace) as tx:
@@ -238,7 +251,7 @@ class ResearchService:
                         {**old, 'last_checked_at':checked_at, 'last_check_error':failure['message']}, old['version'])
             status = 'interrupted' if interrupted else 'completed' if result and result['findings'] and not captured['errors'] else 'partial' if source_ids else 'failed'
             current = tx.get(self.workspace, 'research_job', job['id'])
-            finished = tx.update(self.workspace, 'research_job', job['id'], {**current, 'status':status,
+            finished = tx.update(self.workspace, 'research_job', job['id'], {**current, **draft, 'status':status,
                 'finished_at':checked_at, 'result':result, 'usage':usage, 'error':error,
                 'source_ids':source_ids, 'changes':changes, 'search_queries':captured['queries'],
                 'search_results':captured['search_results'], 'source_errors':captured['errors'],
