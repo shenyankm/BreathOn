@@ -145,7 +145,7 @@ def parse_reply(content: str, *, speak=True) -> dict:
     }}
 
 
-async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None) -> tuple[dict, dict]:
+async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=()) -> tuple[dict, dict]:
     started = monotonic()
     selected = messages[-16:] if speak else messages
     history = []
@@ -182,6 +182,8 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
         f'学员消息{sum(m["role"] == "trainee" for m in visible)}条；分句不等于轮次，不猜总轮数。'
         f'{interaction_summary(interactions)}未提供可听音频。'
     )
+    if medical_checks:
+        prompt += '\nmedical_checks 是独立原文核验的自动初筛，带原话和可追溯引用。引用有效且范围匹配的纠正应纳入建议；checking/unavailable/insufficient 不能当作已证实准确或错误。它们未经人工医学审核，不得据此宣称临床权威结论。不要用模型记忆补齐缺失证据。'
     training_view = training_context(training, history) if training else None
     if training:
         prompt += """
@@ -239,7 +241,9 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
         ))
     try:
         async with asyncio.timeout(45 if settings.deepseek_search_enabled else 25):
-            record = json.dumps({"transcript": history, "interaction_events": list(interactions[-30:]), **({'training':training_view} if training_view else {})}, ensure_ascii=False)
+            record = json.dumps({"transcript": history, "interaction_events": list(interactions[-30:]),
+                **({'medical_checks':list(medical_checks)[-12:]} if medical_checks else {}),
+                **({'training':training_view} if training_view else {})}, ensure_ascii=False)
             replies = await asyncio.gather(*[
                 agent.reply(Msg(name="practice_record", role="user", content=[TextBlock(text=record)])) for agent in agents
             ], return_exceptions=True)

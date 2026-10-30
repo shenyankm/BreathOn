@@ -23,6 +23,7 @@ const RecordsPage = lazy(() => import('@/pages/records-page').then(module => ({ 
 import { ScenarioPicker, type TrainingChoice } from '@/components/scenario-picker'
 import { AssessmentView } from '@/components/assessment-view'
 import { CoachAnalysis } from '@/components/coach-analysis'
+import { MedicalCheckView } from '@/components/medical-check'
 import drugLabelUrl from '@/assets/library/S5LGV8EM_SMS_24mg.pdf?url'
 
 type DoctorProfile = {
@@ -110,6 +111,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string 
   const unsaved = ended && messages.length > 0 && !voice.saved
   const latestTrainee = voice.messages.filter(message => message.role === 'trainee').at(-1)
   const coachIsPrevious = latestTrainee && latestTrainee.id !== voice.coach?.based_on
+  const latestMedicalConflict = voice.medicalChecks.findLast(check => check.status === 'contradicted')
   const callStatus = { idle: '待开始', connecting: '连接中', active: '通话中', ended: '已结束', error: '连接失败' }[voice.status]
   const healthyServices = serviceChecks.filter(({ key }) => serviceStatus?.[key]?.ok === true).length
 
@@ -176,6 +178,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string 
         <div className="min-w-0 max-w-[85%] sm:max-w-[82%]">
           <div className={`mb-1.5 flex items-center gap-2 text-xs ${message.role === 'trainee' ? 'justify-end' : ''}`}><span className="font-medium">{message.role === 'doctor' ? doctorName : '我'}</span><span className="tabular-nums text-muted-foreground">{message.time}</span>{(message.interrupted || message.partial) && <Badge variant="outline">{message.interrupted ? '已打断' : '转录中'}</Badge>}</div>
           <p className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-7 ${message.role === 'trainee' ? 'rounded-tr-sm bg-primary text-primary-foreground' : 'rounded-tl-sm bg-muted text-foreground'}`}>{message.text}</p>
+          {message.role === 'trainee' && voice.medicalChecks.filter(check => check.message_id === message.id).map(check => <MedicalCheckView key={check.message_id} check={check}/>)}
         </div>
       </div>)}
       {practice && active && voice.practiceState === 'thinking' && <p role="status" className="pb-3 text-sm text-muted-foreground">医生正在回复…</p>}
@@ -254,6 +257,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string 
         </ScrollArea>
       </DialogContent></Dialog><Button variant="outline" className="h-11 sm:h-8" onClick={openSetup}><RotateCcw />重新开始</Button></div></div>
       {voice.error && <Alert className="mb-5" role="alert"><Info /><AlertTitle>语音提示</AlertTitle><AlertDescription>{voice.error}</AlertDescription></Alert>}
+      {latestMedicalConflict && <Alert className="mb-5 border-destructive/40" role="alert"><Info/><AlertTitle>医学表述需要纠正</AlertTitle><AlertDescription><p>{latestMedicalConflict.statements.find(row => row.correction)?.correction}</p><Button variant="outline" size="sm" onClick={() => setView('transcript')}>查看原话与依据</Button></AlertDescription></Alert>}
       {practice && active && voice.speechState === 'error' && <Button variant="outline" size="sm" className="mb-5" onClick={voice.retrySpeech}><RotateCcw />重试医生朗读</Button>}
       {/* The canvas divides 7:5 after one 24px gutter; both cards share the same outer edges. */}
       <Tabs value={view} onValueChange={setView}>

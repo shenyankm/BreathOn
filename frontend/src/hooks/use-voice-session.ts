@@ -3,6 +3,7 @@ import { BrowserAudio, encodeAudio } from '@/lib/audio/browser-audio'
 import { formatTime } from '@/lib/session'
 import type { TrainingSnapshot } from '@/lib/catalog-types'
 import { applyTranscript, type VoiceMessage, type LiveCoach } from '@/lib/voice-events'
+import { invalidateMedicalCheck, updateMedicalChecks, type MedicalCheck } from '@/lib/medical'
 
 type Status = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 type Connection = { ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat' }
@@ -17,6 +18,8 @@ export function useVoiceSession() {
   const [saved, setSaved] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const [coach, setCoach] = useState<LiveCoach | null>(null)
+  const [medicalChecks, setMedicalChecks] = useState<MedicalCheck[]>([])
+  const medicalText = useRef(new Map<string, string>())
   const [practiceState, setPracticeState] = useState<'listening' | 'thinking' | 'error'>('listening')
   const [analysisStatus, setAnalysisStatus] = useState('not_started')
   const [speechState, setSpeechState] = useState('idle')
@@ -31,7 +34,7 @@ export function useVoiceSession() {
     current.audio.stop()
     if (current.ws?.readyState === WebSocket.OPEN) {
       current.ws.send(JSON.stringify({ type: 'stop' }))
-      current.finishTimeout = window.setTimeout(() => current.ws?.close(), current.experience === 'combat' || training ? 60000 : 12000)
+      current.finishTimeout = window.setTimeout(() => current.ws?.close(), 90000)
     } else current.ws?.close()
     setStatus(previous => previous === 'error' ? 'error' : 'ended')
   }, [training])
@@ -41,7 +44,8 @@ export function useVoiceSession() {
     if (old) { old.closing = true; old.audio.stop(); old.ws?.close() }
     const current: Connection = { audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
-    setStatus('connecting'); setMessages([]); setError(''); setMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
+    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setError(''); setMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
+    medicalText.current.clear()
     setAnalysisStatus('not_started')
     setSpeechState('idle'); setTraining(null); setMode(mode)
     function fail(message: string) {
@@ -105,6 +109,7 @@ export function useVoiceSession() {
             // The server still needs to finish saving and send its ended acknowledgement.
             current.finishTimeout ??= window.setTimeout(() => ws.close(), 60000)
           } else if (event.type === 'ended') {
+            setMedicalChecks(previous => previous.map(check => check.status === 'checking' ? { ...check, status: 'unavailable', reason: '结束时本句核验尚未完成，需进一步核实。' } : check))
             window.clearTimeout(handshake)
             window.clearTimeout(current.finishTimeout)
             current.finished = true
@@ -117,6 +122,8 @@ export function useVoiceSession() {
             current.audio.stop()
             current.closing = true
             setStatus(previous => previous === 'error' || event.saved !== true ? 'error' : 'ended')
+          } else if (event.type === 'medical_check') {
+            if (medicalText.current.get(event.check.message_id) === event.check.text) setMedicalChecks(previous => updateMedicalChecks(previous, event.check))
           } else if (event.type === 'coaching') {
             setCoach(event.coach)
             setAnalysisStatus('completed')
@@ -133,6 +140,10 @@ export function useVoiceSession() {
             if (event.role === 'doctor') { current.response = event.id; current.responseMessage = event.id }
             const time = formatTime(Math.max(0, Math.floor((performance.now() - current.started) / 1000)))
             setMessages(previous => applyTranscript(previous, event, time))
+            if (event.role === 'trainee' && event.text && (event.replace || event.final)) {
+              medicalText.current.set(event.id, event.text)
+              setMedicalChecks(previous => invalidateMedicalCheck(previous, event.id, event.text))
+            }
           } else if (!current.closing) {
             if (event.type === 'practice_turn') {
               const time = formatTime(Math.max(0, Math.floor((performance.now() - current.started) / 1000)))
@@ -220,5 +231,5 @@ export function useVoiceSession() {
     if (current) { current.closing = true; current.audio.stop(); current.ws?.close() }
   }, [])
 
-  return { mode, training, status, messages, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, interrupt, retryReply, retrySpeech }
+  return { mode, training, status, messages, medicalChecks, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, interrupt, retryReply, retrySpeech }
 }

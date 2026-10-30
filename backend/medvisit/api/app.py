@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import sqlite3
+from pathlib import Path
 from tempfile import TemporaryFile
 from time import monotonic
 from uuid import UUID, uuid4
@@ -33,10 +34,15 @@ from ..platform.training import prepare_training, snapshot, check_materials, doc
 from ..platform.progress import capture_prices
 from ..research.api import research_router
 from ..research.service import ResearchService
+from ..knowledge.corpus import MedicalCorpus
+from ..knowledge.verify import MedicalVerifier
+from ..knowledge.api import medical_router
+from ..knowledge.live import LiveMedicalChecks
 from .middleware import ApiMiddleware
 from .auth import Authentication, AuthenticationMiddleware
 
 logger = logging.getLogger("medvisit")
+MEDICAL_SNAPSHOT = Path(__file__).resolve().parents[1] / 'knowledge/snapshot'
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,6 +51,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     platform = PlatformStore(settings.records / 'platform.sqlite3', pool=getattr(store, 'pool', None))
     router, initialize, current_user, operations = platform_router(platform, settings, store)
     research = ResearchService(platform, settings, current_user)
+    medical_corpus = MedicalCorpus(settings.records / 'medical-wiki', seed=MEDICAL_SNAPSHOT)
+    medical_verifier = MedicalVerifier(settings, medical_corpus)
     service_check_task = None
     readiness_task = None
 
@@ -92,11 +100,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.platform = platform
     app.state.local_user = current_user()
     app.state.research = research
+    app.state.medical_corpus = medical_corpus
+    app.state.medical_verifier = medical_verifier
     app.state.ready = False
     auth = Authentication(settings)
     app.include_router(auth.router)
     app.include_router(router)
     app.include_router(research_router(research))
+    app.include_router(medical_router(medical_corpus, medical_verifier))
     active: dict[str, asyncio.Task] = {}
     active_users: set[str] = set()
 
@@ -243,6 +254,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return
         session_id = str(uuid4())
         record = SessionRecord(session_id, "assisted")
+        record.medical_checks = LiveMedicalChecks(client, record, medical_verifier)
         record.data["experience"] = experience
         record.data.update(workspace=user['workspace'], owner_id=user['id'], team=user['team'])
         record.data["doctor"] = {key: DOCTOR_PROFILE[key] for key in ("id", "version", "display_name")}
@@ -442,6 +454,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                         await asyncio.gather(*tasks, return_exceptions=True)
                     if dialogue:
                         await dialogue.close()
+                    await record.medical_checks.finish()
                     if training:
                         record.data['capture_status'] = status
                         try:
