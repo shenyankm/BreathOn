@@ -1,5 +1,6 @@
 FROM python:3.13-slim
-RUN apt-get update && apt-get install -y --no-install-recommends antiword && rm -rf /var/lib/apt/lists/*
+ARG DEBIAN_MIRROR=http://deb.debian.org
+RUN sed -i "s|http://deb.debian.org|${DEBIAN_MIRROR}|g" /etc/apt/sources.list.d/debian.sources && apt-get update && apt-get install -y --no-install-recommends antiword && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir uv==0.12.13
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"

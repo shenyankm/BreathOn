@@ -18,7 +18,7 @@ uv run --directory backend python -m medvisit.api.auth
 
 推送 `main` 后，GitHub Actions 依次完成前后端检查、真实 PostgreSQL 回归和独立 Compose 故障恢复测试，再部署生产。Pull Request 不部署。主分支流水线不自动取消正在运行的部署，主机文件锁避免同时更新。
 
-GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器构建镜像并按提交 SHA 标记。主机 Docker 配置腾讯云官方镜像缓存 `https://mirror.ccs.tencentyun.com`，避免大镜像经跨境 SSH 传输；Node 与 Python 依赖仍按锁文件安装。服务器无需 GitHub 令牌。GitHub 仓库配置：
+GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器构建镜像并按提交 SHA 标记。主机 Docker 配置腾讯云官方镜像缓存 `https://mirror.ccs.tencentyun.com`，避免大镜像经跨境 SSH 传输；主机 `compose.env` 同时设置 `DEBIAN_MIRROR=https://mirrors.cloud.tencent.com`；Node 与 Python 依赖仍按锁文件安装。服务器无需 GitHub 令牌。GitHub 仓库配置：
 
 | 类型 | 名称 | 用途 |
 | --- | --- | --- |
