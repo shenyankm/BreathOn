@@ -8,6 +8,7 @@ import sqlite3
 from uuid import uuid4
 
 from psycopg.errors import UniqueViolation
+from ..core.identity import private_entry_visible
 
 
 def now():
@@ -28,12 +29,13 @@ class Transaction:
     def get(self, tenant, kind, item_id):
         row = self.execute('SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? AND id=?',
                            (tenant, kind, item_id)).fetchone()
-        return json.loads(row[0]) if row else None
+        item = json.loads(row[0]) if row else None
+        return item if item is not None and private_entry_visible(kind, item) else None
 
     def list(self, tenant, kind):
         rows = self.execute('SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC, id',
                             (tenant, kind)).fetchall()
-        return [json.loads(row[0]) for row in rows]
+        return [item for row in rows if private_entry_visible(kind, item := json.loads(row[0]))]
 
     def create(self, tenant, kind, data, *, item_id=None):
         item = {**data, 'id': item_id or str(uuid4()), 'version': 1, 'created_at': now(), 'updated_at': now()}

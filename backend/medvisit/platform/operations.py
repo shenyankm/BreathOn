@@ -10,6 +10,7 @@ from .models import STAGES, content_usable
 from .training import prepare_training, snapshot
 from .evaluation import normalize
 from ..storage.records import activity_record, training_fingerprint
+from ..core.identity import current_actor
 
 
 class Citation(Input):
@@ -52,7 +53,7 @@ class Operations:
     def record(self,user,record_id):
         try: record=self.records.get(UUID(record_id))
         except ValueError: record=None
-        if record is None:
+        if record is None or current_actor.get() and (record.get('owner_id') != user['id'] or record.get('workspace') != user['workspace']):
             raise HTTPException(404,'记录不存在。')
         return record
 
@@ -111,7 +112,7 @@ class Operations:
     def remediation_progress(self,user,item_id):
         with self.store.transaction(user['workspace'],write=False) as tx:
             item=require_item(tx,user['workspace'],'remediation',item_id)
-        rows=self.records.activity()
+        rows=self.records.activity(**({'workspace':user['workspace'], 'owner_id':user['id']} if current_actor.get() else {}))
         baseline=next((r for r in rows if r['id']==item['parent_record_id']),None)
         children=distinct_valid([r for r in rows if r.get('remediation_id')==item_id])
         newest=max(children,key=lambda r:r.get('ended_at') or r['started_at']) if children else None

@@ -3,7 +3,7 @@ import { AudioLines, BookOpen, ClipboardList, LogOut, Menu, Play, Settings, Slid
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
-export function AppNavigation({ page, inSession, onLogout, logoutDisabled = inSession }: { page: string; inSession: boolean; onLogout?: () => void; logoutDisabled?: boolean }) {
+export function AppNavigation({ page, inSession, onLogout, logoutDisabled = inSession, username }: { page: string; inSession: boolean; onLogout?: () => void; logoutDisabled?: boolean; username?: string }) {
   const [open, setOpen] = useState(false)
   const main = [
     { page: 'home', label: '开始演练', icon: Play, href: inSession ? '#start' : '#home' },
@@ -19,7 +19,7 @@ export function AppNavigation({ page, inSession, onLogout, logoutDisabled = inSe
   const content = <>
     <a href="#home" className="flex h-16 items-center gap-2.5 px-3 font-semibold" onClick={() => setOpen(false)}><AudioLines className="size-6" />Medcoach</a>
     <nav aria-label="主导航" className="space-y-1 pt-5">{links(main)}</nav>
-    <nav aria-label="训练工具" className="mt-auto space-y-1 border-t pt-4">{links(tools)}{onLogout && <Button variant="ghost" className="h-11 w-full justify-start gap-3 px-3 font-normal" disabled={logoutDisabled} title={logoutDisabled ? '请先结束演练并确认保存' : undefined} onClick={onLogout}><LogOut className="size-4" />退出登录</Button>}</nav>
+    <nav aria-label="训练工具" className="mt-auto space-y-1 border-t pt-4">{links(tools)}{username && <p className="px-3 py-2 text-xs text-muted-foreground">当前账号：{username}</p>}{onLogout && <Button variant="ghost" className="h-11 w-full justify-start gap-3 px-3 font-normal" disabled={logoutDisabled} title={logoutDisabled ? '请先结束演练并确认保存' : undefined} onClick={onLogout}><LogOut className="size-4" />退出登录</Button>}</nav>
   </>
   return <>
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r bg-background px-3 pb-5 lg:flex">{content}</aside>

@@ -1,6 +1,7 @@
 import os
 import asyncio
 import math
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -24,11 +25,19 @@ def integer_env(name, default):
         raise ValueError(f"{name} must be a positive integer") from None
 
 
+def login_users_env():
+    try:
+        return json.loads(os.getenv('LOGIN_USERS_JSON', '{}'))
+    except ValueError:
+        raise ValueError('LOGIN_USERS_JSON must contain an object of usernames and password hashes') from None
+
+
 @dataclass
 class Settings:
     auth_required: bool = field(default_factory=lambda: os.getenv('AUTH_REQUIRED', 'false').lower() != 'false')
     admin_username: str = field(default_factory=lambda: os.getenv('ADMIN_USERNAME', 'admin'))
     admin_password_hash: str = field(default_factory=lambda: os.getenv('ADMIN_PASSWORD_HASH', ''), repr=False)
+    login_users: dict[str, str] = field(default_factory=login_users_env, repr=False)
     api_key: str = field(default_factory=lambda: os.getenv("DOUBAO_API_KEY", ""), repr=False)
     voice: str = field(default_factory=lambda: os.getenv("DOUBAO_VOICE", "zh_male_xiaotian_jupiter_bigtts"))
     origins: tuple[str, ...] = field(default_factory=lambda: tuple(
@@ -89,9 +98,14 @@ class Settings:
             raise ValueError('ALLOWED_ORIGINS must contain exact HTTP(S) origins without credentials, paths, queries or wildcards') from None
         self.origins = tuple(origins)
         if self.auth_required:
-            if not self.admin_username.strip() or len(self.admin_username) > 100:
-                raise ValueError('ADMIN_USERNAME must contain 1 to 100 characters')
-            password_parts(self.admin_password_hash)
+            if not isinstance(self.login_users, dict) or len(self.login_users) > 32:
+                raise ValueError('LOGIN_USERS_JSON must contain at most 32 accounts')
+            if not self.login_users:
+                self.login_users = {self.admin_username:self.admin_password_hash}
+            for username, password_hash in self.login_users.items():
+                if not isinstance(username, str) or not username.strip() or len(username) > 100:
+                    raise ValueError('Account usernames must contain 1 to 100 characters')
+                password_parts(password_hash)
             if any(urlsplit(origin).scheme != 'https' and urlsplit(origin).hostname not in ('localhost', '127.0.0.1', '::1') for origin in self.origins):
                 raise ValueError('Authentication requires HTTPS for public ALLOWED_ORIGINS')
         self.records = Path(self.records).expanduser()

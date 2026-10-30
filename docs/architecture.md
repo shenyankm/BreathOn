@@ -26,11 +26,11 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 当前只有首次建表脚本；后续修改既有字段时新增有版本的迁移，并在部署前执行，不要依赖 `CREATE TABLE IF NOT EXISTS` 修改已有表结构。
 
-## 平台存储与单用户访问
+## 平台存储与账号访问
 
 `platform/`处理版本化目录、医学审核、校准、点评与重练。Compose复用PostgreSQL连接池和`platform_entities`表；未配置数据库时，演练仍存JSON，平台元数据存`records/platform.sqlite3`（权限0600）。写操作使用事务与版本CAS；PostgreSQL用事务锁，SQLite用`BEGIN IMMEDIATE`及WAL，让读取快照不阻塞其他请求提交，保持`FULL`同步。本地备份应停止API后复制整个记录目录，包含尚未合并的WAL文件。PDF原件作为同一库内的资产保存，单文件20MB、最多200页，只解析文字层，不做OCR；解析在限时子进程内执行。大规模资料库需在实测后迁移对象存储与语义索引。
 
-本机开发默认免登录；公网部署启用单管理员 Cookie 会话，HTTP 和 WebSocket 均检查登录，写入继续校验 Origin，详见[服务器与 CI/CD](server-deployment.md)。单用户可自行提交、审核资料和添加点评；医学改分仍须有本次有效资料的逐字依据。资料被标记为审核通过不代表已由独立医学专家审核。仅提供本地上传与批量JSON草稿导入。
+本机开发默认免登录；公网部署启用按账号区分的 Cookie 会话，HTTP 和 WebSocket 均检查登录，写入继续校验 Origin，详见[服务器与 CI/CD](server-deployment.md)。登录账号可提交、审核共享资料；演练记录、点评、重练、案例和统计仅本人可访问；医学改分仍须有本次有效资料的逐字依据。资料被标记为审核通过不代表已由独立医学专家审核。仅提供本地上传与批量JSON草稿导入。
 
 ## 评价与同版本重练
 

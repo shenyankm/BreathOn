@@ -2,6 +2,7 @@ import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from test_storage import database_url
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -86,3 +87,87 @@ def test_public_auth_configuration_fails_closed_and_hash_is_private():
     with pytest.raises(ValueError, match='HTTPS'):
         Settings(auth_required=True, admin_password_hash=encoded, origins=('http://public.example',))
     assert encoded not in repr(Settings(auth_required=True, admin_password_hash=encoded))
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+def test_two_accounts_keep_independent_sessions_and_private_records(tmp_path, request, storage):
+    from uuid import uuid4
+    from medvisit.storage.records import SessionRecord
+    encoded = hash_password(PASSWORD)
+    url = request.getfixturevalue('database_url') if storage == 'postgres' else ''
+    if url:
+        from conftest import clear_test_database
+        clear_test_database(url)
+    app = create_app(Settings(records=tmp_path, database_url=url, auth_required=True, login_users={'admin':encoded, 'coach':encoded}, origins=(ORIGIN,)))
+    with TestClient(app, base_url=ORIGIN, headers={'Origin':ORIGIN}) as client:
+        def sign_in(name):
+            client.cookies.clear()
+            response = login(client, username=name)
+            assert response.status_code == 200
+            return client.cookies.get(COOKIE)
+        first = sign_in('admin')
+        second = sign_in('coach')
+        ids = {}
+        for name in ('admin', 'coach'):
+            record = SessionRecord(str(uuid4()), 'assisted')
+            record.data.update(workspace=app.state.local_user['workspace'], owner_id=name, team='')
+            record.transcript('u1', 'trainee', f'{name} private transcript', final=True)
+            app.state.records.save(record, 'completed')
+            ids[name] = record.data['id']
+        with app.state.platform.transaction(app.state.local_user['workspace']) as tx:
+            case = tx.create(app.state.local_user['workspace'], 'case', {'created_by':'admin', 'status':'draft', 'approach':'private transcript'})
+            plan = tx.create(app.state.local_user['workspace'], 'remediation', {'owner_id':'admin', 'status':'assigned', 'parent_record_id':ids['admin']})
+        for name, token, other in (('admin', first, 'coach'), ('coach', second, 'admin')):
+            client.cookies.clear(); client.cookies.set(COOKIE, token)
+            assert client.get('/api/auth/session').json()['username'] == name
+            assert [item['id'] for item in client.get('/api/sessions').json()] == [ids[name]]
+            assert client.get(f'/api/sessions/{ids[name]}').status_code == 200
+            for suffix in ('', '/reviews', '/remediations'):
+                assert client.get(f'/api/sessions/{ids[other]}{suffix}').status_code == 404
+            assert client.post(f'/api/sessions/{ids[other]}/reviews', json={'comment':'forbidden'}).status_code == 404
+            assert client.post(f'/api/sessions/{ids[other]}/retrain', json={}).status_code == 404
+            assert client.post(f'/api/sessions/{ids[other]}/cases', json={'message_id':'u1'}).status_code == 404
+            assert client.get('/api/catalog/doctor').status_code == 200
+            assert 'private transcript' not in client.get('/api/progress').text
+            assert ids[other] not in client.get('/api/progress').text
+        assert client.get('/api/cases').json() == []
+        assert client.get('/api/remediations').json() == []
+        for path in (f'/api/cases/{case["id"]}', f'/api/cases/{case["id"]}/export', f'/api/remediations/{plan["id"]}/next', f'/api/remediations/{plan["id"]}/progress'):
+            assert client.get(path).status_code == 404
+        assert client.post('/api/auth/logout').status_code == 200
+        client.cookies.clear(); client.cookies.set(COOKIE, first)
+        assert client.get('/api/sessions').status_code == 200
+        assert client.get('/api/auth/session').json()['username'] == 'admin'
+
+
+def test_two_authenticated_voice_sessions_coexist_and_keep_owners(tmp_path):
+    from test_bridge import Provider, receive_until, settings
+    from test_practice import REPLY
+    encoded = hash_password(PASSWORD)
+    config = settings(tmp_path)
+    config.auth_required = True
+    config.login_users = {'admin':encoded, 'coach':encoded}
+    config.origins = (ORIGIN,)
+    app = create_app(config)
+    async def voice(*args, **kwargs):
+        return Provider()
+    with patch('medvisit.api.app.connect', voice), \
+         patch('medvisit.api.app.asr_connection', side_effect=lambda *args, **kwargs: Provider(asr=True)), \
+         patch('medvisit.services.final_review.generate_reply', AsyncMock(return_value=(REPLY, {}))), \
+         TestClient(app, base_url=ORIGIN, headers={'Origin':ORIGIN}) as client:
+        login(client, username='admin'); first = client.cookies.get(COOKIE)
+        client.cookies.clear(); login(client, username='coach'); second = client.cookies.get(COOKIE)
+        with client.websocket_connect('/api/realtime', headers={'Origin':ORIGIN, 'Cookie':f'{COOKIE}={first}'}) as one:
+            one.send_json({'type':'start','mode':'assisted'})
+            a = receive_until(one, 'ready')['session_id']
+            with client.websocket_connect('/api/realtime', headers={'Origin':ORIGIN, 'Cookie':f'{COOKIE}={first}'}) as repeat:
+                assert repeat.receive_json()['code'] == 'busy'
+            with client.websocket_connect('/api/realtime', headers={'Origin':ORIGIN, 'Cookie':f'{COOKIE}={second}'}) as two:
+                two.send_json({'type':'start','mode':'assisted'})
+                b = receive_until(two, 'ready')['session_id']
+                assert a != b
+                two.send_json({'type':'stop'}); receive_until(two, 'ended')
+            one.send_json({'type':'stop'}); receive_until(one, 'ended')
+        from uuid import UUID
+        assert app.state.records.get(UUID(a))['owner_id'] == 'admin'
+        assert app.state.records.get(UUID(b))['owner_id'] == 'coach'

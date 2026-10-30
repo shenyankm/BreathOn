@@ -25,6 +25,7 @@ from ..storage.records import FileRecords, SessionRecord
 from ..storage.postgres import PostgresRecords
 
 from ..core.config import Settings
+from ..core.identity import current_actor
 from ..agents.doctor import DOCTOR_PROFILE
 from ..platform.store import PlatformStore, Conflict
 from ..platform.api import platform_router
@@ -97,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     app.include_router(research_router(research))
     active: dict[str, asyncio.Task] = {}
+    active_users: set[str] = set()
 
     app.add_middleware(AuthenticationMiddleware, auth=auth)
     app.add_middleware(ApiMiddleware, origins=settings.origins)
@@ -176,14 +178,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/sessions")
     async def get_sessions():
-        return await asyncio.to_thread(store.list)
+        user = current_user()
+        scope = {'workspace':user['workspace'], 'owner_id':user['id']} if current_actor.get() else {}
+        return await asyncio.to_thread(store.list, **scope)
 
     @app.get("/api/sessions/{session_id}")
     async def get_session(session_id: UUID):
-        record = await asyncio.to_thread(store.get, session_id)
-        if record is None:
-            raise HTTPException(404, "演练记录不存在")
-        return record
+        return await asyncio.to_thread(operations.record, current_user(), str(session_id))
 
     @app.websocket("/api/realtime")
     async def realtime(client: WebSocket):
@@ -236,7 +237,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await send_client({'type':'error', 'code':'not_ready', 'message':'服务暂未就绪，请稍后重新开始。'})
             await client.close(code=1013)
             return
-        if len(active) >= settings.max_sessions:
+        if len(active) >= settings.max_sessions or current_actor.get() and user['id'] in active_users:
             await send_client({"type": "error", "code": "busy", "message": "当前演练连接已满，请稍后重试"})
             await client.close(code=1013)
             return
@@ -258,6 +259,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tasks = []
         dialogue = None
         active[session_id] = asyncio.current_task()
+        active_users.add(user['id'])
         try:
             record.data['pricing'] = await asyncio.to_thread(capture_prices, platform, user)
             async with asyncio.timeout(settings.handshake_seconds):
@@ -500,6 +502,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     raise asyncio.CancelledError
             finally:
                 active.pop(session_id, None)
+                active_users.discard(user['id'])
 
     return app
 

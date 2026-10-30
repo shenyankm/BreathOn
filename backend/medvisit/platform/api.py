@@ -19,6 +19,7 @@ from .generation import GenerateScenario, generate_scenario
 from .cases import Cases, CaseFromRecord, CaseEdit, CaseImport
 from .progress import Prices, capture_prices, save_prices, personal_progress
 from .sharing import TrainingTemplate, export_template, import_template
+from ..core.identity import current_actor
 
 Kind = Literal['content', 'doctor', 'rubric', 'scenario']
 CREATE_MODELS = {'content': Content, 'doctor': Doctor, 'rubric': Rubric, 'scenario': Scenario}
@@ -49,7 +50,7 @@ def platform_router(store, settings, records):
         catalog.seed(user['workspace'], user['id'])
 
     def current_user():
-        return user
+        return {**user, 'id':current_actor.get() or user['id']}
 
     @router.get('/progress')
     def progress(days: int = Query(default=30, ge=1, le=90), user=Depends(current_user)):

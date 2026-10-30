@@ -5,7 +5,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Field } from './ui/form-field'
 
-type Session = { enabled: boolean; authenticated: boolean; expires_at: number | null }
+type Session = { enabled: boolean; authenticated: boolean; expires_at: number | null; username?: string | null }
 
 async function readSession(response: Response): Promise<Session> {
   if (!response.ok) throw new Error()
@@ -23,12 +23,19 @@ export function AuthGate() {
   const [retry, setRetry] = useState(0)
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/auth/session', { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]) })
-      .then(readSession)
-      .then(setSession)
-      .catch(() => { if (!controller.signal.aborted) setError('无法连接服务，请稍后重试。') })
-    return () => controller.abort()
+    let controller = new AbortController()
+    function load() {
+      controller.abort()
+      controller = new AbortController()
+      const request = controller
+      fetch('/api/auth/session', { signal: AbortSignal.any([request.signal, AbortSignal.timeout(10000)]) })
+        .then(readSession)
+        .then(data => { if (!request.signal.aborted) setSession(data) })
+        .catch(() => { if (!request.signal.aborted) setError('无法连接服务，请稍后重试。') })
+    }
+    load()
+    window.addEventListener('focus', load)
+    return () => { controller.abort(); window.removeEventListener('focus', load) }
   }, [retry])
 
   useEffect(() => {
@@ -75,7 +82,7 @@ export function AuthGate() {
 
   if (session && (!session.enabled || session.authenticated)) return <>
     {error && <p role="alert" className="fixed bottom-4 right-4 z-50 rounded-lg border bg-background p-4 text-sm">{error}</p>}
-    <App onLogout={session.enabled ? logout : undefined} />
+    <App key={session.username ?? 'local'} onLogout={session.enabled ? logout : undefined} username={session.username ?? undefined} />
   </>
 
   return <main className="flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12">

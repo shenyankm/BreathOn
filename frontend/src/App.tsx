@@ -30,7 +30,7 @@ type DoctorProfile = {
   details: [string, string][]; sources: { title: string; url: string }[]
 }
 
-function App({ onLogout }: { onLogout?: () => void }) {
+function App({ onLogout, username }: { onLogout?: () => void; username?: string }) {
   const voice = useVoiceSession()
   const [page, setPage] = useState(() => ['home', 'start', 'library', 'records', 'workspace', 'settings'].includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'home')
   const [preferredSource, setPreferredSource] = useState('practice')
@@ -185,7 +185,7 @@ function App({ onLogout }: { onLogout?: () => void }) {
   </div>
 
   return <div className="flex h-svh flex-col bg-muted/30 pt-16 lg:pl-56 lg:pt-0">
-    <AppNavigation page={page} inSession={inSession} onLogout={onLogout} logoutDisabled={inSession || unsaved}/>
+    <AppNavigation page={page} inSession={inSession} onLogout={onLogout} logoutDisabled={inSession || unsaved} username={username}/>
     <ScrollArea ref={pageScrollRef} className="min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
     <main className="mx-auto max-w-[1296px] px-4 py-4 sm:px-7 sm:py-8">
       {(page === 'home' || page === 'start' && voice.status === 'idle' && !setup) && <PracticeHome initialChoice={nextTraining} initialPreset={presetFor(preferredSource,preferredMode)} sessionState={voice.analysisStatus==='thinking'?'thinking':active?'active':connecting?'connecting':''} seconds={seconds} onStart={startPractice}/>}

@@ -6,6 +6,7 @@ import ts from 'typescript'
 
 function mount(fetcher: typeof fetch) {
   const slots: any[] = [], effects: (() => void)[] = [], timers: (() => void)[] = []
+  const listeners = new Map<string, (() => void)[]>()
   let cursor = 0, now = Date.now()
   const react = {
     useState(initial: any) {
@@ -27,7 +28,7 @@ function mount(fetcher: typeof fetch) {
   }).outputText, {
     exports, fetch: fetcher, AbortController, AbortSignal, Date: { now: () => now },
     FormData: class { get(name: string) { return name === 'username' ? 'admin' : 'a-test-password' } },
-    window: { setTimeout(callback: () => void) { timers.push(callback); return timers.length }, clearTimeout() {}, addEventListener() {}, removeEventListener() {} },
+    window: { setTimeout(callback: () => void) { timers.push(callback); return timers.length }, clearTimeout() {}, addEventListener(name: string, callback: () => void) { listeners.set(name, [...(listeners.get(name) ?? []), callback]) }, removeEventListener() {} },
     localStorage: { removeItem() {} },
     require: (name: string) => {
       if (name === 'react') return react
@@ -39,6 +40,7 @@ function mount(fetcher: typeof fetch) {
   return {
     render() { cursor = 0; const view = exports.AuthGate!(); effects.splice(0).forEach(effect => effect()); return view },
     expire() { now += 9 * 60 * 60 * 1000; timers.forEach(timer => timer()) },
+    focus() { listeners.get('focus')?.forEach(callback => callback()) },
   }
 }
 function find(node: any, type: string): any[] {
@@ -98,4 +100,14 @@ test('session expiry unmounts the private application', async () => {
   assert.equal(find(app.render(), 'App').length, 1)
   app.expire()
   assert.equal(find(app.render(), 'App').length, 0)
+})
+
+test('returning to a tab updates the displayed account after a login switch', async () => {
+  let username = 'admin'
+  const app = mount(async () => Response.json({ ...authenticated(), username }))
+  app.render(); await settle()
+  assert.equal(find(app.render(), 'App')[0].props.username, 'admin')
+  username = 'coach'
+  app.focus(); await settle()
+  assert.equal(find(app.render(), 'App')[0].props.username, 'coach')
 })

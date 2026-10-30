@@ -2,15 +2,15 @@
 
 `https://openwook.cloud` 由主机 Caddy 终止 TLS，再转发到 `127.0.0.1:8080`。主域名和 `www` 均直接提供应用，避免旧站点的永久重定向缓存形成循环，IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
 
-## 管理员登录
+## 账号登录
 
-服务保持单管理员，不提供注册、成员管理或多租户。公网配置必须设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME`、`ADMIN_PASSWORD_HASH`，允许来源为 `https://openwook.cloud,https://www.openwook.cloud`。使用下列命令交互生成 scrypt 哈希，原始密码不写入服务配置：
+服务支持预配置账号，不提供公开注册或成员管理。训练资料、医生角色、场景和量表共享；个人演练记录、点评、重练、经验案例和统计按账号隔离。公网配置必须设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME`、`ADMIN_PASSWORD_HASH`；多账号则通过 `LOGIN_USERS_JSON` 指定“账号 → scrypt 哈希”对象，覆盖单账号配置。允许来源为 `https://openwook.cloud,https://www.openwook.cloud`。使用下列命令交互生成 scrypt 哈希，原始密码不写入服务配置：
 
 ```sh
 uv run --directory backend python -m medvisit.api.auth
 ```
 
-会话使用随机令牌，服务端仅保存令牌摘要；Cookie 为 HttpOnly、SameSite=Strict，HTTPS 下附加 Secure。会话最长 8 小时，退出即撤销当前令牌；重启或部署会清除全部会话，需重新登录。登录限为每分钟 10 次，密码校验串行执行。写入仍检查 Origin，API 和 WebSocket 都检查登录，存活和就绪探针保持匿名但不返回业务数据。
+会话使用随机令牌，服务端仅保存令牌摘要；Cookie 为 HttpOnly、SameSite=Strict，HTTPS 下附加 Secure。会话最长 8 小时，退出即撤销当前令牌；重启或部署会清除全部会话，需重新登录。全站登录限为每分钟 10 次，密码校验串行执行。每个账号同时运行 1 场演练，全站最多 2 场，HTTP 与各账号会话可以并发使用。写入仍检查 Origin，API 和 WebSocket 都检查登录，存活和就绪探针保持匿名但不返回业务数据。
 
 本机开发未配置登录时可沿用免登录方式。它不适合对外开放；生产部署脚本强制检查启用登录、固定的 HTTPS Origin 和匿名业务访问返回 401。
 
@@ -47,4 +47,4 @@ sudo docker compose --project-name medvisit-coach --project-directory /srv/medvi
 sudo journalctl -u caddy --since '15 minutes ago' --no-pager
 ```
 
-重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 后重建 API；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
+重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重建 API；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。

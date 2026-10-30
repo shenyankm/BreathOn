@@ -131,10 +131,11 @@ def duration_seconds(data):
 
 
 def personal_progress(store, records, user, days=30):
+    from ..core.identity import current_actor
     current = datetime.now(timezone.utc)
     since = current-timedelta(days=days)
     rows = []
-    for row in records.activity(workspace=user['workspace']):
+    for row in records.activity(workspace=user['workspace'], **({'owner_id':user['id']} if current_actor.get() else {})):
         try:
             started = datetime.fromisoformat(row.get('started_at') or '')
             if started.tzinfo and since <= started <= current:
