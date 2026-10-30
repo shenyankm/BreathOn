@@ -3,7 +3,29 @@ from pathlib import Path
 import subprocess
 import sys
 from threading import Thread
+import io
+import tarfile
 import pytest
+
+
+def test_deployment_receiver_accepts_compressed_source_with_legacy_filename(tmp_path):
+    source = io.BytesIO()
+    with tarfile.open(fileobj=source, mode='w:gz') as archive:
+        member = tarfile.TarInfo('README.md')
+        member.size = len(b'synthetic deployment source')
+        archive.addfile(member, io.BytesIO(b'synthetic deployment source'))
+    transport = io.BytesIO()
+    with tarfile.open(fileobj=transport, mode='w') as archive:
+        for name, data in [('REVISION', b'a' * 40), ('source.tar', source.getvalue())]:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            archive.addfile(member, io.BytesIO(data))
+    script = (Path(__file__).resolve().parents[2]/'deploy/server-deploy.sh').read_text()
+    receiver = script.split("python3 -c '\n", 1)[1].split("\n' \"$stage\"", 1)[0]
+    result = subprocess.run([sys.executable, '-c', receiver, str(tmp_path)], input=transport.getvalue(), capture_output=True)
+    assert result.returncode == 0, result.stderr.decode()
+    with tarfile.open(tmp_path/'source.tar') as archive:
+        assert archive.extractfile('README.md').read() == b'synthetic deployment source'
 
 
 @pytest.mark.parametrize('leaked_route', [None, '/app', '/_android/index.html'])

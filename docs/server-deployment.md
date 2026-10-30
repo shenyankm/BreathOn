@@ -16,16 +16,17 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 
 ## 自动部署
 
-`.github/workflows/ci.yml` 同时用于 Pull Request 和推送检查，分为四个任务：
+`.github/workflows/ci.yml` 同时用于 Pull Request 和推送检查，分为五个任务：
 
 - `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入。
 - `backend`：运行完整 Python 测试与真实 PostgreSQL 回归，并要求测试报告中没有跳过项。
 - `android`：在固定的 Ubuntu 24.04 环境中使用 Node 24、JDK 25、Rust 1.98.1、SDK 37.0、Build-Tools 36.0.0 与 NDK 28.2.13676358，按 `Cargo.lock` 编译真正的 ARM64 debug APK。检查包内原生库、用户资源和签名文件边界后，上传 `BreathOn-android-arm64-debug-<commit>` 工件，保留 14 天；不上传私钥或发布 keystore。
 - `deployment`：等待以上三个任务全部成功，运行隔离 Compose 栈的路由、缓存、上传边界、容器重建持久化及数据库故障恢复检查，再启用认证，验证管理员和两个普通代表的 Cookie 登录、角色限制、记录读写隔离、跨账号拒绝与退出后的旧 Cookie 撤销。
+- `production`：等待前面四个任务全部成功，仅在推送 `main` 时进入串行部署队列；读取 GitHub 当前 `main` 的 SHA，只有仍为最新提交时才执行原有 SSH 部署，过时提交跳过部署。
 
 认证 smoke 只在显式标记的可丢弃本机栈运行。三个临时账号使用随机密码，凭据和哈希只写入私有临时文件，检查后删除，不使用生产账号或调用模型服务。临时数据库和音频卷在任务结束时清除。`deploy/check-stack.py` 要求旧 Web 用户入口为 410、Android 资源路径为 404；`deploy/check-auth.py` 验证实际 HTTP 与登录 Cookie，而非只检查配置开关。
 
-仅当 `deployment` 内的所有检查也通过，且事件为推送 `main` 时，才执行后续生产部署步骤。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。主分支流水线不自动取消正在运行的部署，主机文件锁避免同时更新。
+不同 `main` 提交的检查可并行运行，不会被正在执行的生产部署阻塞；Pull Request 和其他分支仍按分支取消旧检查。只有 `production` 使用固定并发组串行执行，且不自动取消正在运行的部署，主机文件锁继续避免同时更新。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。
 
 GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器构建镜像并按提交 SHA 标记。主机 Docker 配置腾讯云官方镜像缓存 `https://mirror.ccs.tencentyun.com`，避免大镜像经跨境 SSH 传输；主机 `compose.env` 同时设置 `DEBIAN_MIRROR=https://mirrors.cloud.tencent.com` 和 `PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple`；Node 与 Python 依赖仍按锁文件安装。`PYPI_DOWNLOAD_BASE=https://mirrors.cloud.tencent.com/pypi` 仅替换构建时的下载地址，保留所有版本和 SHA-256 校验，安装后恢复镜像内原始锁文件。服务器无需 GitHub 令牌。GitHub 仓库配置：
 
@@ -57,3 +58,5 @@ sudo journalctl -u caddy --since '15 minutes ago' --no-pager
 ```
 
 重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重建 API；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
+
+源码传输使用 gzip 压缩以减少跨境 SSH 上传时间，保留受限协议中的 `source.tar` 文件名；服务器通过 `tarfile` 自动识别压缩格式。传输完成前不会停止当前应用或切换版本。

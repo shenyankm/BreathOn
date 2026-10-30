@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -190,8 +190,41 @@ jobs:
             docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 api
           DISPOSABLE_AUTH_SMOKE=1 AUTH_SMOKE_CREDENTIALS_FILE="$smoke_dir/credentials.json" \
             python deploy/check-auth.py
+      - name: Deployment logs
+        if: failure()
+        run: docker compose logs --tail 100
+      - name: Remove disposable stack
+        if: always()
+        run: docker compose down --volumes
+
+  production:
+    needs: [frontend, backend, android, deployment]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: medvisit-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check latest main revision
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')
+          [[ "$latest_sha" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$latest_sha" == "$GITHUB_SHA" ]]; then
+            printf 'deploy=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'deploy=false\n' >> "$GITHUB_OUTPUT"
+            printf '%s\n' 'Skipping production deploy: a newer main revision exists.'
+          fi
       - name: Deploy production after all checks
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.latest.outputs.deploy == 'true'
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
@@ -206,14 +239,9 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$transport/key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
-          git archive --format=tar HEAD > "$payload/source.tar"
+          # The restricted receiver auto-detects gzip; retain its source.tar filename.
+          git archive --format=tar.gz HEAD > "$payload/source.tar"
           tar -cf - -C "$payload" REVISION source.tar | \
             ssh -i "$transport/key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$transport/known_hosts" -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST"
-      - name: Deployment logs
-        if: failure()
-        run: docker compose logs --tail 100
-      - name: Remove disposable stack
-        if: always()
-        run: docker compose down --volumes
