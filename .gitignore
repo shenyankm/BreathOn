@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+.venv/
+
+# Local configuration (keep example files)
+*.local
+.env
+.env.*
+!.env.example
+
+# Python caches and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# Runtime data and database backups
+backend/data/
+*.dump
+
+# Logs
+*.log
+*.log.*
+
+# Local tools, OS files and editor temporary files
+.taste-skill/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

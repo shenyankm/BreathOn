@@ -1,0 +1,15 @@
+{
+  "name": "medvisit-coach",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev --",
+    "build": "npm --prefix frontend run build --",
+    "lint": "npm --prefix frontend run lint --",
+    "preview": "npm --prefix frontend run preview --",
+    "test": "npm --prefix frontend run test --",
+    "dev:api": "uv run --directory backend uvicorn medvisit.main:app --host 127.0.0.1 --port 8000 --ws-max-size 4096 --ws-max-queue 16",
+    "test:api": "uv run --directory backend pytest"
+  }
+}

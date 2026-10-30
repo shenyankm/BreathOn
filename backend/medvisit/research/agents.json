@@ -1,0 +1,44 @@
+{
+  "mcp": {
+    "name": "medvisit_research",
+    "module": "medvisit.research.mcp_server",
+    "transport": "stdio",
+    "tools": ["search_public", "archive_source", "read_archive"],
+    "search_requests": 4,
+    "search_results": 5,
+    "archive_requests": 8
+  },
+  "agents": {
+    "policy": {
+      "name": "policy_watch_agent",
+      "label": "政策检索与追踪",
+      "skill": "policy-source-research",
+      "minimum_searches": 2,
+      "primary_hosts": ["gov.cn"],
+      "description": "核对发布机关、文号、层级、主题、施行日期及后续修订或废止线索，保留原文和检查记录。",
+      "source_priority": "首次搜索必须在查询里加 site:gov.cn，寻找原发布机关官网、政府公报、法规库；第二次查修订、废止或替代文件。转载用于发现线索，须区分转载日期与原文日期。",
+      "fields": ["发布机关", "发布层级", "政策分类", "文号", "发布日期", "施行日期", "修订或废止线索", "适用范围"]
+    },
+    "doctor": {
+      "name": "doctor_research_agent",
+      "label": "医生公开资料检索",
+      "skill": "doctor-source-research",
+      "minimum_searches": 2,
+      "primary_hosts": [],
+      "description": "查找医生公开专业背景、医院科室与研究方向，识别同名和过期资料，保留来源原文。",
+      "source_priority": "医院官网当前科室及医生主页、官方执业信息、大学和专业协会官网；首次使用医院名称及官网关键词，后续尽量用 site:医院或大学域名 定向核对，公众号、问诊平台和论文署名仅作线索。",
+      "fields": ["姓名", "医院", "科室", "专业职称", "专业方向", "公开学术背景", "同名或时效疑点"]
+    },
+    "drug": {
+      "name": "similar_drug_research_agent",
+      "label": "同类药品检索",
+      "skill": "drug-source-research",
+      "minimum_searches": 2,
+      "primary_hosts": ["gov.cn", "fda.gov", "ema.europa.eu", "innoventbio.com", "novonordisk.com", "novonordisk.com.cn", "lilly.com", "lilly.com.cn", "lillymedical.cn", "daiichisankyo.com.cn"],
+      "seed_sources": [{"terms":["玛仕度肽", "信尔美", "mazdutide"], "url":"https://img.innoventbio.com/product/W10030842001.pdf", "note":"厂家2025-06-24成人体重管理说明书基线，仍需搜索后续修订，不预先认定为最新版本。"}],
+      "description": "按通用名、机制和获批用途寻找相关药品，核对说明书、人群和来源版本，保留比较依据。",
+      "source_priority": "先用 site:nmpa.gov.cn（中国）或目标地区药监官网查获批文件，再用 site:厂家官网域名 定向找当前说明书；例如玛仕度肽厂家官网 innoventbio.com。行业新闻和研究原文作线索，不能代替获批用途或说明书。",
+      "fields": ["通用名", "商品名", "持有人或厂家", "药理类别", "作用机制", "获批地区", "获批适应症与人群", "说明书版本", "同类判断依据", "比较边界"]
+    }
+  }
+}

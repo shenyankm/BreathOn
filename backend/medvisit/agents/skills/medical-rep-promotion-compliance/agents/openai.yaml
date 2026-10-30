@@ -1,0 +1,4 @@
+interface:
+  display_name: "医药代表推广合规"
+  short_description: "识别中国大陆医药学术推广中的利益输送、越界宣传及安全信息处理问题"
+  default_prompt: "使用 $medical-rep-promotion-compliance，检查这段拜访话术的风险并给出合规的替代行动。"

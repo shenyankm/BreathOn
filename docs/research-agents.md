@@ -1,0 +1,103 @@
+# 政策 医生与同类药品检索助手
+
+三个 AgentScope 助手查找公开原文、整理带引用的事实，并保存可阅读的 HTML 和原始文件。政策助手同时检查后续修订、废止或替代文件；医生助手核对公开职业背景；药品助手按机制和获批范围寻找同类候选。结果保留核验时间和待核对项，由使用者核对后再加入训练资料。
+
+## 页面入口
+
+打开「训练管理 → 内容准备 → 资料检索」，选择助手并输入主题。学习资料中的「检索与追踪政策」「查找医生公开资料」「查找同类药品」也会进入对应助手。
+
+点击「开始检索并归档」才会调用模型与搜索。页面打开、读取历史记录、查看 HTML 不调用模型或服务可用性检测。需要在 `backend/.env` 配置 `DEEPSEEK_API_KEY` 并启用 `DEEPSEEK_SEARCH_ENABLED=true`；沿用项目的模型和接口配置。
+
+完成归档后可以开启每日追踪。追踪默认关闭，开启后每 24 小时重新搜索主题，并复查最多 5 份原始来源；仅在本机后端运行时执行，会产生实际模型和搜索用量。页面可以暂停或恢复主题。访问失败保留上次成功的原件与版本，不用失败内容覆盖已有资料。
+
+## Agent 和 Skill 配置
+
+运行配置位于 [agents.json](../backend/medvisit/research/agents.json)，AgentScope 实现在 [agents.py](../backend/medvisit/research/agents.py)。每次运行使用 `LocalSkillLoader` 实际加载对应 Skill，保存 Skill 内容哈希、模型用量、搜索查询及来源检查记录。
+
+| 助手 | Agent 名称 | Skill | 核对内容 |
+| --- | --- | --- | --- |
+| 政策 | `policy_watch_agent` | [policy-source-research](../backend/medvisit/agents/skills/policy-source-research/SKILL.md) | 原发布机关、发布层级、政策分类、文号、发布及施行日期、适用范围、修订或废止线索 |
+| 医生 | `doctor_research_agent` | [doctor-source-research](../backend/medvisit/agents/skills/doctor-source-research/SKILL.md) | 姓名、医院、科室、专业职称、公开学术背景、专业方向、同名或时效疑点 |
+| 同类药品 | `similar_drug_research_agent` | [drug-source-research](../backend/medvisit/agents/skills/drug-source-research/SKILL.md) | 通用名、商品名、厂家、机制、获批地区、适应症与人群、说明书版本、同类依据和比较边界 |
+
+政策和药品事实需要配置中认可的政府、监管或厂家官网原文；转载与新闻用于发现线索。增加厂家的来源域名时应核对其官方身份。医生优先医院、大学及专业协会的公开页面，保留同名、历史任职和来源性质的疑点；公开简介不等同执业资质认证，也不用于推断私人联系方式或真实医生的性格。
+
+每次至少完成两次不同查询，单次最多搜索 4 次，每次最多 5 条结果，最多尝试归档 8 个来源。AgentScope 推理最多 12 轮，总运行限时 240 秒；未完整完成的来源与已落盘原件分别保留。
+
+## MCP 配置
+
+三个助手共用项目内的有状态 STDIO MCP 服务，无需额外部署通用浏览器或文件系统 MCP。运行时以当前 Python 环境启动：
+
+```sh
+python -m medvisit.research.mcp_server
+```
+
+AgentScope 使用 `StdioMCPConfig` 传入当前任务的归档路径、查询预算及现有 DeepSeek 配置。服务不提供 Shell、任意文件读写或本机网络访问，只公开三项工具：
+
+| 工具 | 用途与范围 |
+| --- | --- |
+| `search_public` | 通过现有 DeepSeek Search 搜索公开来源，返回标题、链接和摘要 |
+| `archive_source` | 下载本次搜索发现、已知复查来源或已获取页面中的链接，保存原件与 HTML，返回版本及证据片段 |
+| `read_archive` | 在当前任务已经归档的正文中按关键词找片段；最多调用 8 次，不发起网络请求 |
+
+实际工具名包含 `mcp__medvisit_research__` 前缀。权限只放行这三个工具；网页内容和查询文本不能添加工具或改变任务权限。MCP 子进程只接收所需配置，文档解析子进程不继承应用密钥。
+
+归档限制为每个文件 20 MB、最多 6 次重定向，只允许公开 HTTP/HTTPS 标准端口。每次跳转重新核对 DNS，并使用验证后的公网地址连接、保留原始 Host 和 TLS 校验，防止公开页面转向本机或内网。本地 TUN 返回 `198.18.0.0/15` 假地址时，通过固定地址的 TLS DNS 查询获取公网地址；私网或混合 DNS 答案仍拒绝。
+
+## 原文 HTML 和版本
+
+默认文件目录：
+
+```text
+backend/data/sessions/research/
+├── jobs/<任务 ID>/                 # 查询、检查记录、模型结果与用量
+└── sources/<来源 URL 哈希>/<原件 SHA256>/
+    ├── original.html | pdf | doc | docx
+    ├── reader.html
+    ├── content.txt
+    └── metadata.json
+```
+
+原件按内容哈希保存，不覆盖旧版本。`metadata.json` 保留来源 URL、跳转后的 URL、获取时间、格式及原件和正文哈希；平台数据库保存任务、来源版本和追踪主题。备份时需同时保留平台数据库与上述文件目录。
+
+网页保存原始 HTML，并生成去除脚本的文字阅读副本；PDF 按可提取的页文转为 HTML；DOC/DOCX 转为正文阅读副本，同时保留原始附件。HTML 页面标明转换类型与来源，不冒充官网排版。原件仅以附件下载，HTML 阅读副本使用 CSP 沙箱、禁止脚本与外部资源。扫描件、动态内容或访问验证导致正文不足时，显示未核实，不伪造正文。
+
+DOCX 使用标准库读取正文、脚注和尾注；旧 DOC 在 macOS 使用系统 `textutil`，Docker 镜像安装 `antiword`。解析运行在有超时、大小和资源限制的独立进程中。
+
+模型引用工具实际返回的 `source_id` 和 `evidence_id`。后端将证据标识绑定到具体文件版本，回填真实原文引文；未返回的片段、伪造标识或不认可的来源会被拒绝。最多修正一次模型输出，原失败结果仍保留。事实是否正确概括原文，仍需人工专业核对。
+
+完成的检索结果会先写入任务目录中的私有 `result.json` 检查点，再提交数据库。数据库暂时不可用时，已有 30 秒调度周期会重试收尾；服务重启也会核对遗留任务。恢复时重新校验结果结构、原文文件、正文哈希和引文绑定，只恢复尚未完成且没有活动执行器的任务，不重复调用模型。检查点、观察记录或来源损坏时保留原文件并明确标记中断；未完成的付费调用不会自动重放。所有原文读取入口均检查正文完整性，不能把损坏缓存作为引用。
+
+版本检查区分首次归档、原件未变、排版变更但文字未变、正文变化。哈希不判断法律效力、医生现任职位、药品最新获批范围或医学审核状态。每日重搜用于发现新版本线索，不能保证所有网站都可访问或所有更新都能发现。检索结果不会自动覆盖已审核的训练资料或药品卡片。
+
+## HTTP 接口
+
+| 方法与路径 | 行为 |
+| --- | --- |
+| `GET /api/research` | 读取助手配置、最近 20 次任务、归档来源与追踪主题 |
+| `POST /api/research/jobs` | 按 `kind: policy/doctor/drug` 和 `query` 发起任务 |
+| `GET /api/research/jobs/{id}` | 读取进度与结果 |
+| `POST /api/research/jobs/{id}/cancel` | 停止任务，保留已归档原件 |
+| `PUT /api/research/jobs/{id}/watch` | 通过 `enabled` 开启或暂停每日追踪 |
+| `GET /api/research/sources/{id}/{sha}/html` | 阅读指定版本 HTML |
+| `GET /api/research/sources/{id}/{sha}/original` | 下载指定版本原件 |
+
+同一工作区只运行一个检索任务。写操作沿用应用的 Origin 检查，归档读取同时检查工作区元数据与版本。应用继续保持本机单用户运行范围。
+
+## 验收结果
+
+2026-10-29 回归包含 SQLite 和独立临时 PostgreSQL：后端 **299 项通过，无跳过**；前端 **20 项通过**，生产构建通过，lint 保留原有 3 条 Fast Refresh 提示。记录位于 [后端 JUnit](../backend/data/validation/research-final-backend.xml)。测试覆盖实际 STDIO MCP 工具清单、私网与重定向拦截、文档转换、伪造引用、同次多版本保留、取消恢复、跨工作区读取、追踪到期与失败保留。
+
+后端 Docker 镜像实际构建通过；无网络、只读文件系统和非 root 用户下，真实药监局 DOC 附件经私有临时文件转换成功，临时文件自动清理。镜像内 STDIO MCP 实际连接成功，三项工具可枚举，私网来源被拒绝。原生 Chrome 在独立数据库中核对了历史选择、HTML 阅读及每日追踪的开启与暂停；验收主题最后保持暂停，未改变主应用历史。
+
+真实模型、搜索、STDIO MCP 与归档验收见 [验收报告](../backend/data/validation/research-live-r6/summary.json)。三个助手均产出带原文引用的结果：政策 2 份原文、医生 3 份、同类药品 2 份；包含药监局 DOC 附件与厂家 PDF。三条链路均为部分完成状态，访问失败或正文不足的来源继续列为待核对。报告的 `functional_pass` 仅表示取得归档和带引用结果，不代表所有来源成功、绝对最新、医学或法律审核通过。
+
+需要真实服务配置且会产生用量的复现命令：
+
+```sh
+uv run --directory backend python -m tools.live_research --live --output data/validation/research-live-new
+# 只复验一个助手
+uv run --directory backend python -m tools.live_research --live --kind policy --output data/validation/research-policy-new
+```
+
+验收使用独立数据库和记录目录，不把合成验收内容写入用户的演练历史。真实麦克风、真人听感和专业审核与此项资料检索验收分别记录。

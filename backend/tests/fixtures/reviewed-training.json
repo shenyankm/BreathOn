@@ -1,0 +1,82 @@
+{
+  "scenario": {
+    "id": "scene",
+    "title": "证据专项",
+    "product": "合成教学材料",
+    "disease": "统计练习",
+    "objective": "解释绝对和相对变化",
+    "duration_seconds": 300,
+    "difficulty": "basic",
+    "stages": [
+      "evidence"
+    ],
+    "version": 2
+  },
+  "doctor": {
+    "id": "lin",
+    "version": 2,
+    "name": "林医生",
+    "display_name": "林医生（训练模拟）",
+    "specialty": "全科",
+    "background_type": "fictional",
+    "public_facts": "",
+    "sources": [],
+    "population": "合成成人研究人群",
+    "focus": "研究终点",
+    "training_style": "只追问一个关键问题",
+    "mood": "busy",
+    "opening": "请先说人群。"
+  },
+  "rubric": {
+    "id": "rubric",
+    "version": 2,
+    "name": "练习量表",
+    "calibration_status": "uncalibrated",
+    "dimensions": [
+      {
+        "key": "accuracy",
+        "label": "数据准确性",
+        "weight": 60,
+        "requires_content": true,
+        "anchors": [
+          "错误",
+          "混淆",
+          "基本正确",
+          "正确",
+          "完整准确"
+        ]
+      },
+      {
+        "key": "expression",
+        "label": "表达逻辑",
+        "weight": 40,
+        "requires_content": false,
+        "anchors": [
+          "混乱",
+          "跳跃",
+          "基本清楚",
+          "清楚",
+          "简洁清楚"
+        ]
+      }
+    ]
+  },
+  "stage": "evidence",
+  "as_of": "2026-10-27T00:00:00+00:00",
+  "documents": [
+    {
+      "id": "doc",
+      "version": 3,
+      "version_label": "v1",
+      "title": "合成算术材料",
+      "source_url": "",
+      "approved_at": "2026-10-27T00:00:00+00:00",
+      "pages": [
+        {
+          "number": 7,
+          "text": "仅为合成算术练习：固定一年，对照12%，干预9%，绝对下降3个百分点。"
+        }
+      ]
+    }
+  ]
+}

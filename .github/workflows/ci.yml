@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend test
+      - run: npm --prefix frontend run lint
+      - run: npm --prefix frontend run build
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install uv==0.12.13
+      - run: uv sync --directory backend --locked
+      - run: uv run --directory backend --locked pytest -q --junitxml=data/validation/ci.xml
+      - name: Require PostgreSQL tests to run
+        run: |
+          python - <<'PY'
+          from xml.etree import ElementTree
+          report = ElementTree.parse('backend/data/validation/ci.xml')
+          assert sum(int(s.attrib.get('skipped', 0)) for s in report.iter('testsuite')) == 0
+          PY
+
+  deployment:
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: medvisit-ci
+      POSTGRES_PASSWORD: ci-only-password
+      BACKEND_ENV_FILE: /dev/null
+      WEB_PORT: '18080'
+      ALLOWED_ORIGINS: http://127.0.0.1:18080
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: docker compose config --quiet
+      - run: docker compose up --build --wait --wait-timeout 120
+      - run: python deploy/check-stack.py
+      - name: Check nonroot archive persistence across container replacement
+        run: |
+          docker compose exec -T api python -c 'import os; from pathlib import Path; assert os.getuid() == 10001; Path("/app/data/sessions/ci-marker").write_text("persistent")'
+          docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 api
+          docker compose exec -T api python -c 'from pathlib import Path; assert Path("/app/data/sessions/ci-marker").read_text() == "persistent"'
+          python deploy/check-stack.py
+      - name: Check database outage and recovery
+        run: |
+          docker compose stop db
+          python - <<'PY'
+          from urllib.request import urlopen
+          from urllib.error import HTTPError
+          origin = 'http://127.0.0.1:18080'
+          with urlopen(origin+'/api/live', timeout=5) as response:
+              assert response.status == 200
+          for path in ('/api/ready', '/api/sessions'):
+              try:
+                  urlopen(origin+path, timeout=8)
+              except HTTPError as error:
+                  assert error.code == 503
+                  error.close()
+              else:
+                  raise AssertionError('Database outage must return 503: '+path)
+          PY
+          docker compose start --wait --wait-timeout 60 db
+          python deploy/check-stack.py
+      - name: Deployment logs
+        if: failure()
+        run: docker compose logs --tail 100
+      - name: Remove disposable stack
+        if: always()
+        run: docker compose down --volumes

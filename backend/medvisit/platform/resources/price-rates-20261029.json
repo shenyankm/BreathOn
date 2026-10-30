@@ -1,0 +1,8 @@
+[
+  {"provider":"deepseek","model":"deepseek-flash","unit":"input_tokens","amount":"0.30","per_units":1000000,"currency":"USD","source_url":"https://api-docs.deepseek.com/quick_start/pricing/","checked_on":"2026-10-29","note":"按公开峰时、输入未命中缓存单价估算上界；不推测缓存及分时优惠。"},
+  {"provider":"deepseek","model":"deepseek-flash","unit":"output_tokens","amount":"1.20","per_units":1000000,"currency":"USD","source_url":"https://api-docs.deepseek.com/quick_start/pricing/","checked_on":"2026-10-29","note":"按公开峰时输出单价估算上界，不代表实际账单。"},
+  {"provider":"seedasr","model":"volc.seedasr.sauc.duration","unit":"audio_seconds","amount":"1.00","per_units":3600,"currency":"CNY","source_url":"https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh","checked_on":"2026-10-29","note":"豆包流式语音识别模型2.0公开后付费价，按实际提交音频时长估算；套餐、并发包及账户优惠未计入。"},
+  {"provider":"doubao-tts","model":"seed-tts-2.0","unit":"text_characters","amount":"3.00","per_units":10000,"currency":"CNY","source_url":"https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh","checked_on":"2026-10-29","note":"按语音合成模型2.0公开后付费字符价估算；标点及空格均计字符，不推测套餐优惠。"},
+  {"provider":"doubao-duplex","model":"1.2.6.1","unit":"input_tokens","amount":"80.00","per_units":1000000,"currency":"CNY","source_url":"https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh","checked_on":"2026-10-29","note":"未细分文本、音频及缓存时，全部输入按音频单价估算上界；实际分项费用可能更低。"},
+  {"provider":"doubao-duplex","model":"1.2.6.1","unit":"output_tokens","amount":"300.00","per_units":1000000,"currency":"CNY","source_url":"https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh","checked_on":"2026-10-29","note":"未细分文本和音频时，全部输出按音频单价估算上界；不包含额外音色、并发或账户费用。"}
+]

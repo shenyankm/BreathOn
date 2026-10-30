@@ -1,0 +1,4 @@
+interface:
+  display_name: "医药代表学术拜访"
+  short_description: "依据真实对话训练医药代表的访前准备、需求探询、异议处理与跟进能力"
+  default_prompt: "使用 $medical-rep-academic-visit，根据这段拜访记录指出最值得重练的一处，并给出参考回应。"

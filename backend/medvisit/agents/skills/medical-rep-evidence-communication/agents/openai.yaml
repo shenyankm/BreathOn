@@ -1,0 +1,4 @@
+interface:
+  display_name: "医药代表循证沟通"
+  short_description: "帮助医药代表准确解释研究人群、终点、绝对获益及局限，避免夸大证据"
+  default_prompt: "使用 $medical-rep-evidence-communication，检查这段研究介绍的证据边界并改写给医生听。"
