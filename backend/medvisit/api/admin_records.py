@@ -16,11 +16,10 @@ def admin_records_router(records, platform, current_user):
 
     @router.get('')
     def list_sessions(user=Depends(admin)):
-        rows = records.list(workspace=user['workspace'], limit=None)
-        docs = records.get_many([UUID(row['id']) for row in rows])
+        rows = records.list(workspace=user['workspace'], limit=None, include_owner=True)
         with platform.transaction(user['workspace']) as tx:
             tx.audit(user['workspace'], user['id'], 'session.list', 'session', '*')
-        return [{**row, 'owner_id':docs.get(row['id'], {}).get('owner_id')} for row in rows]
+        return rows
 
     @router.get('/{session_id}')
     def get_session(session_id: UUID, user=Depends(admin)):

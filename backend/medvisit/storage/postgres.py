@@ -49,19 +49,22 @@ class PostgresRecords:
                 (UUID(record.data["id"]), Jsonb(record.data)),
             )
 
-    def list(self, *, workspace=None, owner_id=None, team=None, limit=50):
+    def list(self, *, workspace=None, owner_id=None, team=None, limit=50, include_owner=False):
         where, params = scope_sql(workspace, owner_id, team)
         limit_sql = ' LIMIT %s' if limit is not None else ''
         if limit is not None:
             params.append(limit)
+        owner_sql = ", document->'owner_id'" if include_owner else ''
         with self.pool.connection() as connection:
             rows = connection.execute(
                 "SELECT id, document->>'experience', document->>'mode', document->>'started_at', "
-                "document->>'ended_at', document->>'status', jsonb_array_length(document->'messages'), document->'training'->'scenario'->>'title' "
-                "FROM sessions" + where + " ORDER BY saved_at DESC, id DESC" + limit_sql, params,
+                "document->>'ended_at', document->>'status', jsonb_array_length(document->'messages'), document->'training'->'scenario'->>'title'"
+                + owner_sql + " FROM sessions" + where + " ORDER BY saved_at DESC, id DESC" + limit_sql, params,
             ).fetchall()
-        return [dict(zip(("id", "experience", "mode", "started_at", "ended_at", "status", "message_count", "scenario_title"),
-                         (str(row[0]), *row[1:]))) for row in rows]
+        fields = ("id", "experience", "mode", "started_at", "ended_at", "status", "message_count", "scenario_title")
+        if include_owner:
+            fields += ('owner_id',)
+        return [dict(zip(fields, (str(row[0]), *row[1:]))) for row in rows]
 
     def get(self, session_id: UUID):
         with self.pool.connection() as connection:
