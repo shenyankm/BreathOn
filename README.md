@@ -8,6 +8,8 @@
 
 技术栈：React / Vite / shadcn/ui、FastAPI、AgentScope；支持本地 JSON 或 PostgreSQL 存储。
 
+Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。安装版在线加载现有 HTTPS 站点，后端仍由服务器运行。
+
 ## 本地运行
 
 需要 Node.js 22.12+ 和 [uv](https://docs.astral.sh/uv/getting-started/installation/)。在项目根目录执行：
