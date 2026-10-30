@@ -7,7 +7,7 @@ import pytest
 
 from medvisit.agents.coach import generate_reply
 from medvisit.platform.evaluation import validate_assessment
-from medvisit.platform.training import context, retrieve, snapshot, doctor_instructions
+from medvisit.platform.training import context, retrieve, snapshot, doctor_instructions, speech_instructions
 from test_bridge import settings
 from test_practice import REPLY
 
@@ -98,6 +98,19 @@ def test_situation_difficulty_and_opening_control_doctor_behavior(training, situ
         assert opening(training) == '请在一分钟内说明重点。'
     training['stage'] = 'closing'
     assert '跟进' in opening(training)
+
+
+@pytest.mark.parametrize('mood, phrase', [('neutral', '平和'), ('busy', '匆忙'), ('skeptical', '质疑'), ('friendly', '友好')])
+def test_speech_instructions_follow_simulated_mood_and_time_pressure(training, mood, phrase):
+    training['doctor']['mood'] = mood
+    instruction = speech_instructions(training)
+    assert phrase in instruction and '时间有限' not in instruction
+    assert training['doctor']['name'] not in instruction and training['documents'][0]['title'] not in instruction
+    training['scenario']['situation'] = 'time_pressure'
+    assert instruction.startswith('请用中文普通话') and len(instruction) <= 500
+    assert '时间有限' in speech_instructions(training)
+    training['doctor']['mood'] = 'legacy'
+    assert '平和' in speech_instructions(training) and '平和' in speech_instructions()
 
 
 async def test_selected_training_reaches_real_agentscope_payload(tmp_path,training):

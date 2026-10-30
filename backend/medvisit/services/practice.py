@@ -13,7 +13,7 @@ from ..agents.coach import OPENING, generate_reply
 from ..voice.protocol import BridgeError
 from ..voice.speech import SpeechEvidence
 from ..voice.tts import synthesize
-from ..platform.training import opening
+from ..platform.training import opening, speech_instructions
 from fastapi import HTTPException
 
 class PracticeDialogue:
@@ -60,7 +60,8 @@ class PracticeDialogue:
             async def send_audio(pcm):
                 if not self.stopping:
                     await self.send_client({"type": "audio", "response_id": response_id, "audio": base64.b64encode(pcm).decode()})
-            usage = await synthesize(self.settings, text, self.record.data["id"], send_audio)
+            usage = await synthesize(self.settings, text, self.record.data["id"], send_audio,
+                                     instruction=speech_instructions(self.record.training))
             message["speech_status"] = "completed"
             if usage:
                 self.record.data["usage"].append({"provider": "doubao-tts", **usage})

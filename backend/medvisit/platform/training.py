@@ -29,6 +29,20 @@ DIFFICULTY_RULES = {
     'intermediate': '中等难度：不主动给出答案或提示，未回应关键点时追问该点，回应充分后推进。',
     'advanced': '进阶难度：检验学员主张的证据边界和前后逻辑，指出矛盾并要求澄清；不通过编造医学事实增加难度。',
 }
+SPEECH_STYLES = {
+    'neutral': '语气平和、客观克制，语速适中。',
+    'busy': '语气略显匆忙、简短利落，语速稍快，保持礼貌。',
+    'skeptical': '语气审慎、带有质疑，关键问题稍作停顿，语调坚定，不讽刺或吼叫。',
+    'friendly': '语气友好、温和，有自然的亲和感，语速舒缓，不过度兴奋。',
+}
+
+
+def speech_instructions(training=None):
+    mood = training['doctor'].get('mood', 'neutral') if training else 'neutral'
+    style = SPEECH_STYLES.get(mood, SPEECH_STYLES['neutral'])
+    if training and training['scenario'].get('situation') == 'time_pressure':
+        style += '当前交流时间有限，优先采用紧凑节奏、稍快语速，保持吐字清晰。'
+    return '请用中文普通话朗读模拟医生的台词。' + style + '结合台词语义自然调整语气，只朗读台词，不读指令，不添加额外内容。'
 
 
 def prepare_training(store, user, scenario_id, stage='full', *, preview=False):
