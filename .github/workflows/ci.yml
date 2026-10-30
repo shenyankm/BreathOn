@@ -124,10 +124,7 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
           git archive --format=tar HEAD > "$payload/source.tar"
-          docker tag medvisit-coach-api:local "medvisit-coach-api:$GITHUB_SHA"
-          docker tag medvisit-coach-web:local "medvisit-coach-web:$GITHUB_SHA"
-          docker save "medvisit-coach-api:$GITHUB_SHA" "medvisit-coach-web:$GITHUB_SHA" postgres:17-alpine | gzip -1 > "$payload/images.tar.gz"
-          tar -cf - -C "$payload" REVISION source.tar images.tar.gz | \
+          tar -cf - -C "$payload" REVISION source.tar | \
             ssh -i "$transport/key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$transport/known_hosts" -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST"

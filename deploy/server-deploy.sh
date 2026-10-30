@@ -34,10 +34,10 @@ finish() {
 }
 trap finish EXIT
 
-# Only the three regular files emitted by CI may enter the privileged staging directory.
+# Only the two regular files emitted by CI may enter the privileged staging directory.
 python3 -c '
 import sys, tarfile
-allowed = {"REVISION", "source.tar", "images.tar.gz"}
+allowed = {"REVISION", "source.tar"}
 seen = set()
 with tarfile.open(fileobj=sys.stdin.buffer, mode="r|") as archive:
     for member in archive:
@@ -65,8 +65,9 @@ grep -qx 'AUTH_REQUIRED=true' "$release/.env"
 grep -qx 'ALLOWED_ORIGINS=https://openwook.cloud' "$release/.env"
 compose "$release" config --quiet
 caddy validate --config "$release/deploy/Caddyfile" --adapter caddyfile
-# Images are built on GitHub; the production host needs no registry credentials or build toolchain.
-docker load --input "$stage/images.tar.gz"
+# Send source only: large cross-border SSH image transfers are too slow on this host.
+compose "$release" pull db
+compose "$release" build --pull
 if [[ -n "$previous" && -f "$previous/REVISION" ]]; then
     python3 "$previous/deploy/backup.py" --project medvisit-coach backup \
         "/var/backups/medvisit-coach/$(date -u +%Y%m%dT%H%M%SZ)-$(cat "$previous/REVISION")"

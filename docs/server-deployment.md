@@ -18,7 +18,7 @@ uv run --directory backend python -m medvisit.api.auth
 
 推送 `main` 后，GitHub Actions 依次完成前后端检查、真实 PostgreSQL 回归和独立 Compose 故障恢复测试，再部署生产。Pull Request 不部署。主分支流水线不自动取消正在运行的部署，主机文件锁避免同时更新。
 
-镜像在 GitHub 上构建并按提交 SHA 标记，与 `git archive` 源码一起通过固定主机密钥的 SSH 传输；服务器无需 GitHub 或镜像仓库令牌，也无需在线拉取镜像。GitHub 仓库配置：
+GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器构建镜像并按提交 SHA 标记。主机 Docker 配置腾讯云官方镜像缓存 `https://mirror.ccs.tencentyun.com`，避免大镜像经跨境 SSH 传输；Node 与 Python 依赖仍按锁文件安装。服务器无需 GitHub 令牌。GitHub 仓库配置：
 
 | 类型 | 名称 | 用途 |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ uv run --directory backend python -m medvisit.api.auth
 
 专用 SSH 密钥使用 `restrict` 和强制命令，仅可调用 root 所有的 `/usr/local/sbin/medvisit-deploy`。该脚本对应仓库的 `deploy/server-deploy.sh`；更新脚本时，需由服务器管理员重新安装到该位置。密钥不能获得交互 shell、转发端口或执行任意 SSH 命令。
 
-部署前加载新镜像，并对既有应用完整备份数据库和检索原文。新服务通过健康和登录检查后，才切换 `current` 并重载 Caddy；失败尝试恢复上一版镜像与代理配置，不自动回滚数据库。涉及不兼容的数据迁移时，应先停止自动部署并按恢复流程验证。
+部署前构建新镜像，并对既有应用完整备份数据库和检索原文。新服务通过健康和登录检查后，才切换 `current` 并重载 Caddy；失败尝试恢复上一版镜像与代理配置，不自动回滚数据库。涉及不兼容的数据迁移时，应先停止自动部署并按恢复流程验证。
 
 ## 主机路径
 
