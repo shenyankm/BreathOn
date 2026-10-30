@@ -76,7 +76,7 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 行为验收：相关测试 **54 passed、0 skipped，11.69 秒**；完整后端含隔离真实 PG **821 passed、0 skipped，80.72 秒**。默认个人列表仍不返回 `owner_id`，历史无归属记录为 null，管理员列表/详情审计与角色拒绝访问通过。浏览器在独立 `127.0.0.1:5178` / `8006` 上实际执行三条合成记录列表、按代表搜索、打开详情原文、关闭与刷新；截图为 `admin-browser.jpg`。测试完成已关闭临时页面和两个服务；原有 8000/5173 及 AVD 未修改。
 
-只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交 `fba107995f2e82f22b852f0fc5b0ff944fde9d6f` 已推送，`git ls-remote` 确认远程精确包含该 SHA。[对应 CI 41100857013](https://github.com/shenyankm/BreathOn/actions/runs/41100857013) 的 frontend、backend、android 已成功，deployment 仍运行中（`admin-checks.json`）；四项远程 CI 完成前仍不关闭本项。
+只有摘要查询与调用方改动，无前端/Android 原生、医学资料或依赖改动。diff 已审查，`git diff --check` 成功。提交 `fba107995f2e82f22b852f0fc5b0ff944fde9d6f` 已推送，`git ls-remote` 确认远程精确包含该 SHA。[对应 CI 41100857013](https://github.com/shenyankm/BreathOn/actions/runs/41100857013) 的 frontend、backend、android、deployment **全部成功**，production 按规则 skipped；`admin-checks-latest.json` 逐条校验 head_sha 与四个 job。本项验收完成。
 
 ## 3. 转写后台事务移出事件循环（改动前标准）
 
@@ -108,13 +108,36 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 
 ## 当前真实服务与设备边界
 
-第 3 项已提交为 `e01bb8f1113ae4da02932900f8ab4465d072df0f` 并推送到 `sheny/optimize-transcription-io-20261031`，远程 ref 精确匹配，包含前两项保留改动。[对应 CI 41102447430](https://github.com/shenyankm/BreathOn/actions/runs/41102447430) 排队中，尚待验证（`visits-checks.json`）。
+第 3 项已提交为 `e01bb8f1113ae4da02932900f8ab4465d072df0f` 并推送到 `sheny/optimize-transcription-io-20261031`，远程 ref 精确匹配，包含前两项保留改动。[对应 CI 41102447430](https://github.com/shenyankm/BreathOn/actions/runs/41102447430) 的四项非生产 job **全部成功**（`visits-checks-latest.json` 逐条校验 head_sha），production skipped；本项验收完成。
 
 手动执行现有 `check_services` **一次**：四类配置完整的提供商探针各一次、每类 20 秒上限；3.188 秒完成，ASR、TTS、analysis、practice、combat 五个状态均正常（`live-services-once.json`）。practice/combat 为组合状态，实际探针为 SeedASR、TTS、DeepSeek、Seeduplex 四类。使用仓库内的合成音频和简短状态文本，可能产生服务用量；未重复收费压测，不把单次状态检测当延迟分布、医学输出质量或麦克风/扬声器验收。
 
-当前仅检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。已询问可用的隔离真机环境；尚未完成真实麦克风、扬声器与真机端到端验收，goal 仍 active。
+当前仅检测到正在使用的 `emulator-5554`（已有 `cloud.openwook.medvisit.debug`），未覆盖安装、清空数据或改变连接目标，以保护已有工作。用户确认“暂时无真机，先完成其他验收”；真实麦克风、扬声器与真机端到端保留待验收，goal 仍 active。正准备独立 AVD 做基础 UI 验收；首次启动因默认 userdata 需要 12288 MB、本机可用 12114.80 MB 失败，未清理用户文件或改变旧 AVD。
 
 ## 待核实/处理候选
+
+### 5. 单次审核快照复用资料收据（改动前标准）
+
+`MedicalCorpus.approval_snapshot` 已在每份有效资料的第一遍中计算页内容 SHA-256，但为每个匹配的来源页面重新序列化整份资料再哈希。合成代表负载为 3 份各 20 页、每页正文 1500 字：每次 **63 次**序列化/哈希；3 批各 50 次的 p50 为 6.99646–7.12662 ms。cProfile 的 10 次快照中，630 次 JSON 序列化、编码和 SHA-256 约占总 73 ms 中的 60 ms。
+
+调用方为医学列表/来源权限、`search`、`MedicalVerifier.check` 的推理前后核对及撤销校验。只在同一次调用内复用已计算的收据，不缓存审核结果、不跨请求复用 hash，不改资料有效性、来源 URL/逐字页匹配、相同来源的确定性选取和返回字段。变更仅在 `knowledge/corpus.py` 与 `test_medical.py`，无依赖、配置、导出或资料原文修改。回退 `git revert <本项 SHA>`。
+
+预设标准：代表与较大负载的函数 p50/p95 中位数均降低至少 **50%**；单页及不匹配对照不得出现同时超过 **10% 和 0.01 ms** 的 p50 退化。真实 HTTP `/api/medical` 用隔离文件/PG 数据、真实 Cookie 代表登录、3 份 20 页纯合成软件文本，每模式 3 次进程启动，每轮预热 5 次后串行 60 次、10 并发 100 次；四类 p50/p95 中位数均须降低至少 **20%**，响应 JSON 的 SHA-256 完全一致。默认方法每次重新读取审核状态，版本/页内容改变或撤销必须立即反映；完整相关行为/权限/版本回归与最终完整检查通过。
+
+修改前 HTTP：文件模式串行 p50/p95 中位数 **8.9804/9.3845 ms**，10 并发 **74.6611/80.1629 ms**；PG 分别 **11.5897/14.9750 ms**、**88.1749/102.4312 ms**。两种模式所有基线响应 SHA 均为 `17af641dc2ad39b4cfccf054c1c754aa173f8921d48220b1012253c17cb52dfe`。脚本和原始结果为 `medical_approval_probe.py`、`medical_http_probe.py`、`medical-approval-before.json`、`medical-http-before.json`，均在本次忽略的验收目录；不含临床证据、真实资料、外部请求或模型调用。
+
+改动前新回归 **1 failed**（3 页资料实际哈希 4 次，要求 1 次）；修改后整个医学模块 **16 passed**，随后完整后端含隔离 PG **830 passed、0 skipped，90.92 秒**。新增回归验证收据字段、改变页内容/版本后下一次立即重新核对、已返回收据不被修改、撤销后无可用收据。已有逐字引用、OCR/不明确版本降级、推理前后变更与账号权限回归继续通过。
+
+| 指标（三轮中位数） | 修改前 → 修改后 | 改善 |
+| --- | --- | --- |
+| 3 份×20 页快照 p50 / ms | 7.11404 → 1.43217 | 79.87% |
+| 6 份×40 页快照 p50 / ms | 34.31517 → 3.97187 | 88.43% |
+| 文件 HTTP 串行 p50 / p95 / ms | 8.9804 / 9.3845 → 3.3007 / 3.5406 | 63.25% / 62.27% |
+| 文件 HTTP 10 并发 p50 / p95 / ms | 74.6611 / 80.1629 → 25.6613 / 33.4539 | 65.63% / 58.27% |
+| PG HTTP 串行 p50 / p95 / ms | 11.5897 / 14.9750 → 5.6468 / 8.5489 | 51.28% / 42.91% |
+| PG HTTP 10 并发 p50 / p95 / ms | 88.1749 / 102.4312 → 36.2939 / 48.9930 | 58.84% / 52.17% |
+
+代表函数 3 批各 50 次、较大负载各 30 次；小页各 300 次、不匹配各 100 次对照均未退化，后者约 0.29 ms 的差异在噪声内。每模式 HTTP 180 个热串行、300 个 10 并发样本；PG 10 并发 p95 各轮前 99.6916–104.2522、后 43.2715–50.9240 ms，收益超过波动。首请求另列，PG 三轮前 21.9143–24.4553、后 16.4864–17.4187 ms；未清系统文件缓存，不将此当磁盘完全冷读指标。前后全部响应 SHA 保持上述值，所有预设标准通过（`medical-comparison-summary.json`）。无前端或 Android 原生变更，不将本项写成设备或真实医学输出质量验收。diff 已审查、`git diff --check` 成功；提交后仍须对应 SHA 远程 CI 通过。
 
 ### 4. 原生部署就绪探针重试截断状态行（改动前标准）
 
@@ -125,6 +148,8 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 改动前 **2 failed、1 passed**：两种截断情况均抛出 BadStatusLine，退出进程的原检查通过。仅增加标准库异常导入与就绪等待中的捕获。修改后相关套件 **64 passed、16 skipped，9.82 秒**（该次未设置测试 DB）；随后完整后端使用隔离 PG **829 passed、0 skipped，77.71 秒**，补齐全部 PG 检查。没有把 skipped 写成通过。
 
 新建独立 PG 数据库的原生部署验收再次通过：实际 Caddy 路由、Uvicorn 重启、PG 停机与恢复、Cookie/权限/账号隔离（`native-ready-integration.log`）；临时数据库、进程和目录均清理，保留公共的一次性测试容器供后续工作。diff 审查和 `git diff --check` 通过；无前端或 Android 原生改动，沿用第三项同一前端树的 99 项、lint、Web 和 Android 页面构建结果。远程仍须验证本项提交的四个 job，不复用旧 SHA 的绿色状态。
+
+本项提交 `17ca719f4f22281a1a115d025e309ee564c18026` 已推送到 `sheny/optimize-readiness-20261031`。[对应 CI 41103531410](https://github.com/shenyankm/BreathOn/actions/runs/41103531410) 的四项非生产 job **全部成功**（`readiness-checks-latest.json` 逐条校验 head_sha），production skipped；本项验收完成。
 
 - 原生部署 `wait_ready` 在收到截断状态行后抛出 `BadStatusLine`，没有继续等待就绪。真实本机 HTTP 服务器第一次发送 `HTTP/1.1 20`，第二次应返回 200；当前只请求一次就失败（`native-probe-before.json`）。需独立修复并验证有限重试与进程退出行为。
 - 日记转写任务在协程内直接调用同步数据库事务。真实隔离 PG 占满 4 个连接后运行现有 `visit_run_job`，20 ms 事件循环心跳实际延迟 **5006.999 ms**，直到连接池超时才恢复（`visit-pool-before.json`）。没有调用上游服务；这是实际 PG 加进程内心跳测量，尚不是网络 HTTP 时延验收。需独立修复数据库阻塞与取消收尾，并检查任务在数据库恢复后的状态。
