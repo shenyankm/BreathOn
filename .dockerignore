@@ -1,6 +1,8 @@
 **/node_modules
 **/.venv
 **/dist
+frontend/dist-android
+frontend/src-tauri
 **/__pycache__
 **/.pytest_cache
 **/*.tsbuildinfo

@@ -65,8 +65,62 @@ jobs:
           assert sum(int(s.attrib.get('skipped', 0)) for s in report.iter('testsuite')) == 0
           PY
 
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Configure Android toolchain
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="${JAVA_HOME_25_X64:?JDK 25 is required}"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME" >> "$GITHUB_PATH"
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          (yes || true) | "$sdkmanager" --licenses > /dev/null
+          "$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+          printf 'NDK_HOME=%s/ndk/28.2.13676358\n' "$ANDROID_HOME" >> "$GITHUB_ENV"
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --no-self-update
+          rustup target add --toolchain "$RUSTUP_TOOLCHAIN" aarch64-linux-android
+      - run: npm --prefix frontend ci
+      - name: Compile installable ARM64 APK
+        run: npm run android:build -- --debug --apk --target aarch64 --ci -- --locked
+      - name: Check packaged user resources and locked dependencies
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          apks = list(Path('frontend/src-tauri/gen/android/app/build/outputs/apk').glob('**/debug/*.apk'))
+          assert len(apks) == 1, 'Expected one ARM64 debug APK'
+          with ZipFile(apks[0]) as archive:
+              names = archive.namelist()
+              assert any(name.startswith('lib/arm64-v8a/') and name.endswith('.so') for name in names)
+              assert b'/_android/assets/' in archive.read('assets/index.html')
+              assert any(name.startswith('assets/assets/') and name.endswith('.js') for name in names)
+              assert not any(PurePosixPath(name).name in ('.env', 'keystore.properties', 'local.properties')
+                             or PurePosixPath(name).suffix in ('.jks', '.keystore') for name in names)
+          print('ARM64 APK contains the bundled Android user resources and no signing-key files')
+          PYCODE
+          git diff --exit-code -- frontend/package-lock.json frontend/src-tauri/Cargo.lock
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: BreathOn-android-arm64-debug-${{ github.sha }}
+          path: frontend/src-tauri/gen/android/app/build/outputs/apk/**/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false
+
   deployment:
-    needs: [frontend, backend]
+    needs: [frontend, backend, android]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -108,6 +162,34 @@ jobs:
           PY
           docker compose up -d --no-deps --no-recreate --wait --wait-timeout 60 db
           python deploy/check-stack.py
+      - name: Check authenticated account isolation
+        run: |
+          set -euo pipefail
+          umask 077
+          smoke_dir=$(mktemp -d "$RUNNER_TEMP/medvisit-auth-smoke.XXXXXX")
+          trap 'rm -rf "$smoke_dir"' EXIT
+          docker compose exec -T api python - <<'PYCODE'
+          import json
+          import os
+          from pathlib import Path
+          import secrets
+          from medvisit.api.auth import hash_password
+          os.umask(0o077)
+          root = Path('/tmp/medvisit-auth-smoke')
+          root.mkdir(mode=0o700, exist_ok=True)
+          users = {'admin':'ci-auth-admin', 'representative_a':'ci-auth-a', 'representative_b':'ci-auth-b'}
+          credentials = {role:{'username':name, 'password':secrets.token_urlsafe(32)} for role,name in users.items()}
+          hashes = {item['username']:hash_password(item['password']) for item in credentials.values()}
+          (root/'credentials.json').write_text(json.dumps(credentials))
+          (root/'backend.env').write_text("LOGIN_USERS_JSON='"+json.dumps(hashes)+"'\nADMIN_USERS_JSON='"+json.dumps([users['admin']])+"'\n")
+          PYCODE
+          docker compose cp api:/tmp/medvisit-auth-smoke/credentials.json "$smoke_dir/credentials.json"
+          docker compose cp api:/tmp/medvisit-auth-smoke/backend.env "$smoke_dir/backend.env"
+          chmod 600 "$smoke_dir/credentials.json" "$smoke_dir/backend.env"
+          BACKEND_ENV_FILE="$smoke_dir/backend.env" AUTH_REQUIRED=true \
+            docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 api
+          DISPOSABLE_AUTH_SMOKE=1 AUTH_SMOKE_CREDENTIALS_FILE="$smoke_dir/credentials.json" \
+            python deploy/check-auth.py
       - name: Deploy production after all checks
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
