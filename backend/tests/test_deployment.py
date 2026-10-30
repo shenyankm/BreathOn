@@ -3,9 +3,11 @@ from pathlib import Path
 import subprocess
 import sys
 from threading import Thread
+import pytest
 
 
-def test_stack_check_retries_a_truncated_response_during_restart():
+@pytest.mark.parametrize('leaked_route', [None, '/app', '/_android/index.html'])
+def test_stack_check_retries_a_truncated_response_during_restart(leaked_route):
     ready_calls = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -22,9 +24,13 @@ def test_stack_check_retries_a_truncated_response_during_restart():
                     self.wfile.write(b'8\r\n{"sta')
                     self.close_connection = True
                     return
-            if self.path == '/assets/does-not-exist.js':
+            if self.path == leaked_route:
+                return self.respond(200)
+            if self.path in ('/app', '/app/records', '/preview-visit.html'):
+                return self.respond(410)
+            if self.path.startswith('/_android/') or self.path == '/assets/does-not-exist.js':
                 return self.respond(404)
-            if self.path == '/':
+            if self.path in ('/', '/admin'):
                 return self.respond(200, b'<script src="/assets/app.js"></script>', 'no-cache')
             self.respond(200, cache='public, max-age=31536000, immutable')
 
@@ -52,6 +58,10 @@ def test_stack_check_retries_a_truncated_response_during_restart():
         finally:
             server.shutdown()
             worker.join(timeout=2)
-    assert result.returncode == 0, result.stderr
     assert len(ready_calls) == 2
-    assert 'Compose HTTP checks passed' in result.stdout
+    if leaked_route is None:
+        assert result.returncode == 0, result.stderr
+        assert 'Compose HTTP checks passed' in result.stdout
+    else:
+        assert result.returncode != 0
+        assert leaked_route in result.stderr
