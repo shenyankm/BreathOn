@@ -5,6 +5,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Field } from './ui/form-field'
 import { Alert, AlertDescription } from './ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 
 type Session = { enabled: boolean; authenticated: boolean; expires_at: number | null; username?: string | null; role?: 'admin' | 'representative' | null }
 const signedOut: Session = { enabled: true, authenticated: false, expires_at: null }
@@ -27,6 +28,7 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
   const [busy, setBusy] = useState(false)
   const [visible, setVisible] = useState(false)
   const [retry, setRetry] = useState(0)
+  const [confirmLogout, setConfirmLogout] = useState(false)
   const pending = useRef<AbortController | null>(null)
   const changing = useRef(false)
   const identity = useRef('')
@@ -141,12 +143,23 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
     }
   }
 
+  const requestLogout = () => { if (!changing.current) setConfirmLogout(true) }
+  const logoutConfirmation = <Dialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+    <DialogContent role="alertdialog" showCloseButton={false}>
+      <DialogHeader><DialogTitle>退出登录？</DialogTitle><DialogDescription>退出后需要重新登录才能继续使用。</DialogDescription></DialogHeader>
+      <DialogFooter className="grid grid-cols-2 gap-3 sm:flex">
+        <Button variant="outline" className="min-h-11" onClick={() => setConfirmLogout(false)}>取消</Button>
+        <Button className="min-h-11" disabled={busy} onClick={() => { setConfirmLogout(false); return logout() }}>确认退出</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
   const reconnect = () => { setError(''); setRetry(value => value + 1) }
   if (session && (session.authenticated || target === 'admin' && !session.enabled)) {
-    if (target === 'admin' && session.enabled && session.role !== 'admin') return <main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button className="h-11" variant="outline" disabled={busy} onClick={logout}>退出登录</Button></main>
+    if (target === 'admin' && session.enabled && session.role !== 'admin') return <><main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button className="h-11" variant="outline" disabled={busy} onClick={requestLogout}>退出登录</Button></main>{logoutConfirmation}</>
     return <>
+      {logoutConfirmation}
       {error && <Alert variant="destructive" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-lg"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="outline" className="h-11" disabled={busy} onClick={reconnect}>重新连接</Button></AlertDescription></Alert>}
-      <AppComponent key={`${session.username ?? 'local'}:${session.role ?? 'admin'}`} onLogout={session.enabled ? logout : undefined} username={session.username ?? undefined} role={session.enabled ? session.role ?? 'representative' : 'admin'} />
+      <AppComponent key={`${session.username ?? 'local'}:${session.role ?? 'admin'}`} onLogout={session.enabled ? requestLogout : undefined} username={session.username ?? undefined} role={session.enabled ? session.role ?? 'representative' : 'admin'} />
     </>
   }
 
