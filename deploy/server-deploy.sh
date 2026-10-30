@@ -57,6 +57,8 @@ import sys, tarfile
 with tarfile.open(sys.argv[1]) as archive:
     archive.extractall(sys.argv[2], filter="data")
 ' "$stage/source.tar" "$release"
+# tarfile's data filter leaves directory modes to the private deployment umask.
+find "$release" -type d -exec chmod 755 {} +
 cp "$stage/REVISION" "$release/REVISION"
 cp /etc/medvisit-coach/compose.env "$release/.env"
 printf '\nRELEASE_SHA=%s\n' "$revision" >> "$release/.env"
