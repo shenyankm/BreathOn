@@ -653,6 +653,7 @@ def visits_router(store, settings, current_user):
                     except FileNotFoundError:
                         pass
 
+    router.visit_work = work
     router.visit_cleanup = cleanup
     router.visit_recover = recover
     router.visit_close = close

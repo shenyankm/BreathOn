@@ -10,7 +10,7 @@ from threading import Event
 from types import SimpleNamespace
 
 from fastapi import FastAPI, Request
-from psycopg import OperationalError
+from psycopg import OperationalError, connect
 from starlette.websockets import WebSocketDisconnect
 import pytest
 
@@ -202,6 +202,96 @@ async def test_scheduled_visit_cleanup_recovers_without_leaking_private_errors(t
         assert errors == [f'visit_cleanup_failed error_type={"PoolTimeout" if storage == "postgres" else "OSError"}']
         assert 'synthetic-private-path-and-content' not in caplog.text
     assert worker.cancelled() and cleanup.call_count == 3 and not app.state.ready
+
+
+@pytest.mark.parametrize('worker_fails', [False, True])
+@pytest.mark.parametrize('cancel_shutdown', [False, True])
+async def test_shutdown_drains_scheduled_visit_cleanup_before_closing_storage(tmp_path, monkeypatch, database_url, caplog, worker_fails, cancel_shutdown):
+    started, release, finished = Event(), Event(), Event()
+    ticks = asyncio.Queue()
+    order, scheduled = [], []
+    calls = 0
+    def held_visits(*args):
+        router = visits_router(*args)
+        cleanup = router.visit_cleanup
+        def held(workspace):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return cleanup(workspace)
+            started.set()
+            try:
+                assert release.wait(5), 'Test did not release cleanup worker'
+                if worker_fails:
+                    raise OSError('synthetic-private-cleanup-path')
+                return cleanup(workspace)
+            finally:
+                order.append('cleanup_finished')
+                finished.set()
+        router.visit_cleanup = held
+        return router
+    monkeypatch.setattr('medvisit.api.app.visits_router', held_visits)
+    app = create_app(settings(tmp_path / 'sessions', database_url=database_url))
+    sleep = asyncio.sleep
+    async def clock(delay):
+        task = asyncio.current_task()
+        if delay == 3600 and task.get_coro().__qualname__.endswith('cleanup_visits'):
+            scheduled.append(task)
+            await ticks.get()
+        else:
+            await sleep(delay)
+    monkeypatch.setattr('medvisit.api.app.asyncio.sleep', clock)
+    close = app.state.records.close
+    def close_store():
+        order.append('storage_closed')
+        close()
+    caplog.set_level(logging.ERROR, logger='medvisit')
+    lifecycle = app.router.lifespan_context(app)
+    with patch.object(app.state.records, 'close', close_store):
+        await lifecycle.__aenter__()
+        directory = tmp_path / 'visit-audio'
+        directory.mkdir(mode=0o700)
+        raw, transcript = directory / ('a' * 32), directory / ('a' * 32 + '.transcript')
+        raw.write_bytes(b'synthetic expired audio')
+        transcript.write_text('{"text":"synthetic expired transcript"}')
+        with app.state.platform.transaction('local') as tx:
+            item = tx.create('local', 'visit', {'owner_id':'local', 'source':'recording',
+                'audio_path':raw.name, 'transcript_file':transcript.name, 'audio_status':'transcribed',
+                'audio_uploaded_at':(datetime.now(timezone.utc) - timedelta(days=31)).isoformat()})
+        shutdown = None
+        try:
+            ticks.put_nowait(None)
+            assert await asyncio.to_thread(started.wait, 2)
+            shutdown = asyncio.create_task(lifecycle.__aexit__(None, None, None))
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(shutdown), .05)
+            assert not app.state.ready and not app.state.records.pool.closed
+            if cancel_shutdown:
+                for _ in range(2):
+                    shutdown.cancel()
+                    await asyncio.sleep(0)
+                assert not shutdown.done() and 'storage_closed' not in order
+        finally:
+            release.set()
+            if shutdown is None:
+                await lifecycle.__aexit__(None, None, None)
+            else:
+                await asyncio.wait_for(asyncio.gather(shutdown, return_exceptions=True), 2)
+            assert await asyncio.to_thread(finished.wait, 2)
+    assert order == ['cleanup_finished', 'storage_closed']
+    assert calls == 2 and len(scheduled) == 1 and scheduled[0].cancelled()
+    assert shutdown.cancelled() is cancel_shutdown and app.state.records.pool.closed
+    with connect(database_url, autocommit=True) as connection:
+        saved = json.loads(connection.execute('SELECT document FROM platform_entities WHERE id=%s', (item['id'],)).fetchone()[0])
+        assert saved['audio_status'] == ('transcribed' if worker_fails else 'deleted')
+        deadline = asyncio.get_running_loop().time() + 2
+        while connection.execute("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()", ()).fetchone()[0]:
+            assert asyncio.get_running_loop().time() < deadline, 'Cleanup left a database connection open'
+            await asyncio.sleep(.01)
+    assert raw.exists() is worker_fails and transcript.exists() is worker_fails
+    errors = [record.getMessage() for record in caplog.records if record.name == 'medvisit']
+    assert errors == (['visit_cleanup_failed error_type=OSError'] if worker_fails else [])
+    assert 'synthetic-private-cleanup-path' not in caplog.text
 
 
 def test_pricing_preparation_failure_releases_the_voice_slot(tmp_path):

@@ -77,9 +77,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 while True:
                     await asyncio.sleep(3600)
                     try:
-                        await asyncio.to_thread(visits.visit_cleanup, current_user()['workspace'])
+                        await visits.visit_work(visits.visit_cleanup, current_user()['workspace'])
                     except Exception as exc:
                         logger.error('visit_cleanup_failed error_type=%s', type(exc).__name__)
+                        if asyncio.current_task().cancelling():
+                            raise asyncio.CancelledError
             visit_cleanup_task = asyncio.create_task(cleanup_visits())
             async def close_visit_cleanup():
                 visit_cleanup_task.cancel()
