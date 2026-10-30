@@ -87,7 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             finally:
                 app.state.ready = False
 
-    app = FastAPI(title="Medcoach", lifespan=lifespan)
+    app = FastAPI(title="BreathOn", lifespan=lifespan)
     app.state.records = store
     app.state.platform = platform
     app.state.local_user = current_user()

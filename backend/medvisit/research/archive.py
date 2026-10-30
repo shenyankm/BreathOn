@@ -93,7 +93,7 @@ async def download_public(url, *, max_bytes=MAX_BYTES):
             address = await resolve_public(target.host, target.port or (443 if target.scheme == 'https' else 80))
             # Pin the validated address; retain the origin Host and TLS SNI to prevent DNS rebinding.
             async with client.stream('GET', target.copy_with(host=address),
-                    headers={'Host': target.netloc.decode(), 'User-Agent': 'MedcoachResearch/0.1', 'Accept': '*/*'},
+                    headers={'Host': target.netloc.decode(), 'User-Agent': 'BreathOnResearch/0.1', 'Accept': '*/*'},
                     extensions={'sni_hostname': target.host}) as response:
                 if response.status_code in (301, 302, 303, 307, 308):
                     location = response.headers.get('location')

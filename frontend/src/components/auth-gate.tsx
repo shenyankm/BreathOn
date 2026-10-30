@@ -87,8 +87,8 @@ export function AuthGate() {
 
   return <main className="flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12">
     <section className="w-full max-w-sm" aria-labelledby="login-title">
-      <a href="/" className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><AudioLines className="size-6" />Medcoach</a>
-      <h1 id="login-title" className="text-2xl font-semibold">登录Medcoach</h1>
+      <a href="/" className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><AudioLines className="size-6" />BreathOn</a>
+      <h1 id="login-title" className="text-2xl font-semibold">登录BreathOn</h1>
       <p className="mb-8 mt-3 text-sm leading-7 text-muted-foreground">进入你的演练、资料与复盘记录。</p>
       {error && <p role="alert" className="mb-5 text-sm text-destructive">{error}</p>}
       {!session ? error ? <Button className="h-11 w-full" onClick={() => { setError(''); setRetry(value => value + 1) }}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在确认登录状态…</p> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
