@@ -29,6 +29,10 @@ backend/data/
 *.log
 *.log.*
 
+# Android signing keys
+*.jks
+*.keystore
+
 # Local tools, OS files and editor temporary files
 .taste-skill/
 .DS_Store
