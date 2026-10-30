@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/platform-api'
 import { Field, inputClass } from './ui/form-field'
-import { stages, type Content, type Doctor, type Rubric, type Scenario, type Dimension } from '@/lib/catalog-types'
+import { stages, type Content, type Doctor, type DoctorDraft, type Rubric, type Scenario, type Dimension } from '@/lib/catalog-types'
 
 
 function text(data: FormData, name: string) { return String(data.get(name) ?? '') }
@@ -50,41 +50,46 @@ export function ContentForm({ item, busy, disabled, save }: Submit & { item?: Co
   </fieldset></form>
 }
 
-export function DoctorForm({ item, busy, disabled, save }: Submit & { item?: Doctor }) {
+export function DoctorForm({ item, initial, busy, disabled, save }: Submit & { item?: Doctor; initial?: DoctorDraft }) {
+  const values = item ?? initial
+  const [reviewed, setReviewed] = useState(false)
   function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const data=new FormData(event.currentTarget)
-    save({...Object.fromEntries(['name','specialty','background_type','public_facts','population','focus','training_style','mood','opening'].map(key=>[key,text(data,key)])), sources:text(data,'sources').split('\n').map(s=>s.trim()).filter(Boolean)})
+    event.preventDefault()
+    if (initial && !reviewed) return
+    const data=new FormData(event.currentTarget)
+    save({...Object.fromEntries(['name','specialty','background_type','public_facts','population','focus','training_style','mood','opening'].map(key=>[key,text(data,key)])), sources:text(data,'sources').split('\n').map(s=>s.trim()).filter(Boolean), ...(values?.research_job_id ? {research_job_id:values.research_job_id} : {})})
   }
   return <form aria-label="医生资料" onSubmit={submit}><fieldset disabled={disabled || busy} className="min-w-0 space-y-6 [&_label]:min-w-0 [&_textarea]:bg-background [&_textarea]:font-normal [&_textarea]:leading-6">
     <section aria-labelledby="doctor-basic" className="space-y-4">
       <h4 id="doctor-basic" className="text-sm font-semibold">基本信息</h4>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Field label="医生姓名" name="name" value={item?.name} maxLength={60} />
-        <Field label="专科" name="specialty" value={item?.specialty} maxLength={80} />
-        <div className="min-w-0 sm:col-span-2 xl:col-span-1"><Field label="背景类型" htmlFor="doctor-background-type"><Select name="background_type" defaultValue={item?.background_type ?? 'fictional'} disabled={disabled || busy}><SelectTrigger id="doctor-background-type" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="fictional">虚构训练角色</SelectItem><SelectItem value="public">依据公开人物背景的训练模拟</SelectItem></SelectContent></Select></Field></div>
+        <Field label="医生姓名" name="name" value={values?.name} maxLength={60} />
+        <Field label="专科" name="specialty" value={values?.specialty} maxLength={80} />
+        <div className="min-w-0 sm:col-span-2 xl:col-span-1"><Field label="背景类型" htmlFor="doctor-background-type"><Select name="background_type" defaultValue={values?.background_type ?? 'fictional'} disabled={disabled || busy}><SelectTrigger id="doctor-background-type" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="fictional">虚构训练角色</SelectItem><SelectItem value="public">依据公开人物背景的训练模拟</SelectItem></SelectContent></Select></Field></div>
       </div>
     </section>
     <div className="grid gap-6 border-t pt-6 xl:grid-cols-2 xl:gap-8">
       <section aria-labelledby="doctor-training" className="min-w-0 space-y-4">
         <h4 id="doctor-training" className="text-sm font-semibold">训练设定</h4>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="训练患者人群"><Textarea name="population" required maxLength={1000} defaultValue={item?.population} className="min-h-20" /></Field>
-          <Field label="训练关注点"><Textarea name="focus" required maxLength={1000} defaultValue={item?.focus} className="min-h-20" /></Field>
-          <Field label="训练交流方式"><Textarea name="training_style" required maxLength={1000} defaultValue={item?.training_style} className="min-h-20" /></Field>
-          <Field label="医生互动状态" htmlFor="doctor-mood"><Select name="mood" defaultValue={item?.mood ?? 'neutral'} disabled={disabled || busy}><SelectTrigger id="doctor-mood" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="neutral">平和</SelectItem><SelectItem value="busy">时间紧张</SelectItem><SelectItem value="skeptical">对证据存疑</SelectItem><SelectItem value="friendly">愿意交流</SelectItem></SelectContent></Select></Field>
-          <div className="sm:col-span-2"><Field label="开场白"><Textarea name="opening" required maxLength={400} defaultValue={item?.opening} className="min-h-24" /></Field></div>
+          <Field label="训练患者人群"><Textarea name="population" required maxLength={1000} defaultValue={values?.population} className="min-h-20" /></Field>
+          <Field label="训练关注点"><Textarea name="focus" required maxLength={1000} defaultValue={values?.focus} className="min-h-20" /></Field>
+          <Field label="训练交流方式"><Textarea name="training_style" required maxLength={1000} defaultValue={values?.training_style} className="min-h-20" /></Field>
+          <Field label="医生互动状态" htmlFor="doctor-mood"><Select name="mood" defaultValue={values?.mood ?? 'neutral'} disabled={disabled || busy}><SelectTrigger id="doctor-mood" className="min-h-11 w-full font-normal"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="neutral">平和</SelectItem><SelectItem value="busy">时间紧张</SelectItem><SelectItem value="skeptical">对证据存疑</SelectItem><SelectItem value="friendly">愿意交流</SelectItem></SelectContent></Select></Field>
+          <div className="sm:col-span-2"><Field label="开场白"><Textarea name="opening" required maxLength={400} defaultValue={values?.opening} className="min-h-24" /></Field></div>
         </div>
         <p className="text-xs leading-6 text-muted-foreground">互动状态、关注点与交流方式均为训练设计，不能作为真实人物的性格、处方偏好或产品背书。</p>
       </section>
       <section aria-labelledby="doctor-background" className="min-w-0 space-y-4">
         <div className="space-y-1"><h4 id="doctor-background" className="text-sm font-semibold">背景与来源</h4><p className="text-xs leading-6 text-muted-foreground">公开人物需填写专业事实及来源，虚构角色可留空。</p></div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          <Field label="公开专业事实"><Textarea name="public_facts" defaultValue={item?.public_facts} maxLength={3000} className="min-h-28" /></Field>
-          <Field label="事实来源链接（每行一条）"><Textarea name="sources" defaultValue={item?.sources.join('\n')} maxLength={65000} className="min-h-28" /></Field>
+          <Field label="公开专业事实"><Textarea name="public_facts" defaultValue={values?.public_facts} maxLength={3000} className="min-h-28" /></Field>
+          <Field label="事实来源链接（每行一条）"><Textarea name="sources" defaultValue={values?.sources.join('\n')} maxLength={65000} className="min-h-28" /></Field>
         </div>
       </section>
     </div>
-    {!disabled && <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t bg-background px-5 py-4 sm:-mx-6 sm:px-6"><p className="text-xs leading-6 text-muted-foreground">{item?'修改将覆盖当前医生资料。':'保存草稿后可发布医生。'}</p><Button className="h-11" type="submit" disabled={busy}>{busy?'正在保存…':item?'保存修改':'保存草稿'}</Button></div>}
+    {initial && <label className="flex min-h-11 items-start gap-3 text-sm leading-7"><input type="checkbox" className="mt-2" required checked={reviewed} onChange={event => setReviewed(event.target.checked)}/><span>我已核对医生身份、公开事实与来源，并确认训练设定的适用范围。</span></label>}
+    {!disabled && <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center justify-between gap-3 border-t bg-background px-5 py-4 sm:-mx-6 sm:px-6"><p className="text-xs leading-6 text-muted-foreground">{item?'修改将覆盖当前医生资料。':'保存草稿后可发布医生。'}</p><Button className="h-11" type="submit" disabled={busy || Boolean(initial && !reviewed)}>{busy?'正在保存…':item?'保存修改':initial?'确认核对并保存草稿':'保存草稿'}</Button></div>}
   </fieldset></form>
 }
 

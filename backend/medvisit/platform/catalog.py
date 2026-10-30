@@ -62,11 +62,20 @@ class Catalog:
         if kind == 'rubric':
             data['calibration_status'] = 'uncalibrated'
         with self.store.transaction(user['workspace']) as tx:
+            research = None
+            if kind == 'doctor' and data.get('research_job_id'):
+                research = require_item(tx, user['workspace'], 'research_job', data['research_job_id'])
+                if research.get('doctor_id'):
+                    raise HTTPException(409, '本次画像草稿已保存，请打开已有医生角色继续编辑。')
+                if research.get('kind') != 'doctor' or research.get('status') not in ('completed', 'partial') or not research.get('doctor_draft'):
+                    raise HTTPException(409, '本次检索尚无可保存的医生画像草稿。')
             if kind == 'content' and data.get('asset_id'):
                 require_item(tx, user['workspace'], 'asset', data['asset_id'])
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], data, publishing=False)
             item = tx.create(user['workspace'], kind, data)
+            if research:
+                tx.update(user['workspace'], 'research_job', research['id'], {**research, 'doctor_id':item['id']}, research['version'])
             if kind == 'content':
                 item = tx.update(user['workspace'], kind, item['id'], {**item, 'series_id': item['id']}, item['version'])
             tx.audit(user['workspace'], user['id'], f'{kind}.create', kind, item['id'])
@@ -82,6 +91,7 @@ class Catalog:
                 require_item(tx, user['workspace'], 'asset', data['asset_id'])
             if kind == 'doctor':
                 data['display_name'] = data['name'] + '（训练模拟）'
+                data['research_job_id'] = old.get('research_job_id')
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], data, publishing=False)
             updated = tx.update(user['workspace'], kind, item_id, {**old, **data, 'status': old['status'] if kind == 'doctor' else 'draft'}, body.version)
@@ -108,6 +118,10 @@ class Catalog:
                 raise HTTPException(409, '医生仍被训练场景使用，请先更换场景中的医生。')
             # Keep a tombstone so startup seeding cannot recreate a deleted default doctor.
             tx.update(user['workspace'], 'doctor', item_id, {**old, 'status': 'deleted'}, version)
+            if old.get('research_job_id'):
+                research = tx.get(user['workspace'], 'research_job', old['research_job_id'])
+                if research and research.get('doctor_id') == item_id:
+                    tx.update(user['workspace'], 'research_job', research['id'], {**research, 'doctor_id':None}, research['version'])
             tx.audit(user['workspace'], user['id'], 'doctor.delete', 'doctor', item_id)
             return {'id': item_id}
 

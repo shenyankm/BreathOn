@@ -6,6 +6,8 @@ import ts from 'typescript'
 
 function page(file: string, name: string, api: (path: string, options?: RequestInit) => Promise<unknown>, hash = '') {
   const slots: any[] = [], effects: (() => void)[] = []
+  const timers = new Map<number, () => void>()
+  let nextTimer = 0
   let cursor = 0
   const react = {
     useState(initial: any) {
@@ -30,19 +32,26 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   }).outputText, {
     exports, AbortController, URLSearchParams, location: { hash },
     window: { addEventListener() {}, removeEventListener() {} },
-    FormData: class { get(key: string) { return key } },
+    setTimeout(callback: () => void) { timers.set(++nextTimer, callback); return nextTimer },
+    clearTimeout(id: number) { timers.delete(id) },
+    FormData: class {
+      values: Record<string, string>
+      constructor(values: Record<string, string>) { this.values = values }
+      get(key: string) { return this.values[key] ?? key }
+    },
     require: (module: string) => {
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (module === '@/lib/platform-api') return { api }
       if (module === '@/lib/catalog-types') return { kindLabels: {}, statusLabels: {}, titleOf: (row: any) => row.title ?? row.name }
       if (module === '@/lib/progress') return { costLabel: () => '' }
-      assert.ok(module.startsWith('@/components/') || module.startsWith('@/pages/'), module)
+      assert.ok(module.startsWith('@/components/') || module.startsWith('@/pages/') || module.startsWith('./ui/') || module === 'lucide-react', module)
       return new Proxy({}, { get: (_, key) => String(key) })
     },
   })
   return {
     render(props: unknown = {}) { cursor = 0; const result = exports[name](props); effects.splice(0).forEach(effect => effect()); return result },
+    async tick() { const pending = [...timers.values()]; timers.clear(); pending.forEach(callback => callback()); await settle() },
   }
 }
 
@@ -200,4 +209,143 @@ test('a pending catalog read cannot resurrect a doctor deleted after creation', 
   assert.equal(rows.length, 1)
   assert.equal(find(rows[0], 'span')[0].props.children, 'Other')
   assert.equal(find(view, 'DoctorForm').length, 0)
+})
+
+const doctorDraft = { name: '陈明', specialty: '内分泌科', background_type: 'public', public_facts: '医院：教学大学附属医院',
+  sources: ['https://hospital.example.edu/chen'], population: '训练人群', focus: '证据局限', training_style: '每轮追问一个问题', mood: 'neutral', opening: '今天讨论什么？', research_job_id: 'research-1' }
+const doctorJob = { id: 'research-1', kind: 'doctor', query: '陈明 教学大学附属医院 内分泌科', status: 'running',
+  doctor_identity: { name: '陈明', hospital: '教学大学附属医院', department: '内分泌科' }, result: null }
+
+test('generated doctor fields are editable and never saved until the review form submits', async () => {
+  const writes: any[] = []
+  const app = page('platform-page.tsx', 'CatalogPage', async (_path, options) => {
+    if (!options?.method) return []
+    writes.push(JSON.parse(String(options.body)))
+    return { ...doctorDraft, id: 'saved', version: 1, status: 'draft' }
+  })
+  let view = app.render({ kind: 'doctor' })
+  find(view, 'DoctorGenerator')[0].props.onGenerated('research-1', doctorDraft)
+  await settle()
+  view = app.render({ kind: 'doctor' })
+  assert.equal(writes.length, 0)
+  const form = find(view, 'DoctorForm')[0]
+  assert.equal(form.key, 'research-1')
+  assert.deepEqual(form.props.initial, doctorDraft)
+  form.props.save({ ...doctorDraft, focus: '人工调整后的训练关注点' })
+  await settle()
+  view = app.render({ kind: 'doctor' })
+  assert.equal(writes[0].focus, '人工调整后的训练关注点')
+  assert.equal(find(view, 'DoctorForm')[0].props.initial, undefined)
+  assert.ok(find(view, 'Button').some(button => button.props.children === '发布医生'))
+})
+
+test('generated doctor form requires explicit review and preserves source fields', () => {
+  const saves: any[] = []
+  const app = page('../components/catalog-forms.tsx', 'DoctorForm', async () => {})
+  const props = { initial: doctorDraft, busy: false, disabled: false, save: (body: any) => saves.push(body) }
+  let view = app.render(props)
+  assert.equal(find(view, 'Field').find(field => field.props.name === 'name').props.value, doctorDraft.name)
+  assert.equal(find(view, 'Textarea').find(field => field.props.name === 'public_facts').props.defaultValue, doctorDraft.public_facts)
+  const submit = () => find(view, 'form')[0].props.onSubmit({ preventDefault() {}, currentTarget: { ...doctorDraft, sources: doctorDraft.sources.join('\n') } })
+  submit()
+  assert.equal(saves.length, 0)
+  assert.equal(find(view, 'Button')[0].props.disabled, true)
+  find(view, 'input').find(input => input.props.type === 'checkbox').props.onChange({ target: { checked: true } })
+  view = app.render(props)
+  assert.equal(find(view, 'Button')[0].props.disabled, false)
+  submit()
+  assert.deepEqual(JSON.parse(JSON.stringify(saves[0])), doctorDraft)
+})
+
+test('doctor generation starts only on submit and polling exposes the draft for review', async () => {
+  const writes: { path: string; body: object }[] = []
+  const drafts: unknown[] = []
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async (path, options) => {
+    if (path === '/research') return { configured: true, jobs: [] }
+    if (options?.method) { writes.push({ path, body: JSON.parse(String(options.body)) }); return doctorJob }
+    assert.equal(path, '/research/jobs/research-1')
+    return { ...doctorJob, status: 'completed', doctor_draft: doctorDraft }
+  })
+  const props = { onGenerated: (id: string, draft: unknown) => drafts.push([id, draft]) }
+  app.render(props)
+  await settle()
+  let view = app.render(props)
+  assert.equal(writes.length, 0)
+  find(view, 'form')[0].props.onSubmit({ preventDefault() {}, currentTarget: doctorJob.doctor_identity })
+  await settle()
+  app.render(props)
+  assert.deepEqual(writes, [{ path: '/research/doctor-jobs', body: doctorJob.doctor_identity }])
+  await app.tick()
+  view = app.render(props)
+  assert.equal(drafts.length, 0)
+  find(view, 'Button').find(button => button.props.children === '核对并编辑画像草稿').props.onClick()
+  assert.deepEqual(drafts, [['research-1', doctorDraft]])
+})
+
+test('doctor progress retry recovers a failed initial read without a second paid search', async () => {
+  let reads = 0
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async (path, options) => {
+    assert.equal(options?.method, undefined)
+    assert.equal(path, '/research')
+    if (++reads === 1) throw new Error('暂时断网')
+    return { configured: true, jobs: [{ ...doctorJob, status: 'partial', doctor_draft: doctorDraft }] }
+  })
+  const props = { onGenerated() {} }
+  app.render(props)
+  await settle()
+  find(app.render(props), 'Button').find(button => button.props.children === '重新读取进度').props.onClick()
+  app.render(props)
+  await settle()
+  assert.equal(reads, 2)
+  assert.ok(find(app.render(props), 'Button').some(button => button.props.children === '核对并编辑画像草稿'))
+})
+
+test('a cancelled doctor search cannot be revived by an older progress response', async () => {
+  let completePoll!: (job: unknown) => void
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async (path, options) => {
+    if (path === '/research') return { configured: true, jobs: [doctorJob] }
+    if (options?.method) return { ...doctorJob, status: 'interrupted' }
+    return new Promise(resolve => { completePoll = resolve })
+  })
+  const props = { onGenerated() {} }
+  app.render(props)
+  await settle()
+  let view = app.render(props)
+  await app.tick()
+  find(view, 'Button').find(button => button.props.children === '停止检索').props.onClick()
+  await settle()
+  app.render(props)
+  completePoll(doctorJob)
+  await settle()
+  view = app.render(props)
+  assert.ok(find(view, 'p').some(node => node.props.children === '检索已停止，已归档资料保留。'))
+  assert.equal(find(view, 'Button').filter(button => button.props.children === '停止检索').length, 0)
+})
+
+test('a saved research draft opens its existing doctor instead of offering another creation', async () => {
+  const opened: string[] = []
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async () => ({ configured: true,
+    jobs: [{ ...doctorJob, status: 'completed', doctor_draft: doctorDraft, doctor_id: 'saved-doctor' }] }))
+  const props = { onGenerated() { assert.fail('saved draft must not create another role') }, onOpen: (id: string) => opened.push(id) }
+  app.render(props)
+  await settle()
+  const view = app.render(props)
+  assert.equal(find(view, 'Button').filter(button => button.props.children === '核对并编辑画像草稿').length, 0)
+  find(view, 'Button').find(button => button.props.children === '查看已保存的医生角色').props.onClick()
+  assert.deepEqual(opened, ['saved-doctor'])
+})
+
+test('source review links load the requested job even outside the recent history', async () => {
+  const older = { ...doctorJob, id: 'older', query: '本次角色的原始检索', created_at: '2026-10-30T00:00:00Z', status: 'completed', source_ids: [] }
+  const reads: string[] = []
+  const app = page('../components/research-panel.tsx', 'ResearchPanel', async path => {
+    reads.push(path)
+    return path === '/research/jobs/older' ? older : { configured: true, profiles: [],
+      jobs: [{ ...older, id: 'latest', query: '另一位医生的最新检索' }], sources: [], watches: [] }
+  }, '#workspace?tab=research&job=older')
+  app.render()
+  await settle()
+  const view = app.render()
+  assert.equal(find(view, 'h3')[0].props.children, older.query)
+  assert.deepEqual(reads, ['/research', '/research/jobs/older'])
 })

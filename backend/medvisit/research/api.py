@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 
 from .agents import PROFILES
 from .archive import read_source
-from .models import ResearchRequest, WatchRequest
+from .models import DoctorResearchRequest, ResearchRequest, WatchRequest
 
 
 def research_router(service):
@@ -23,6 +23,10 @@ def research_router(service):
 
     @router.post('/jobs', status_code=201)
     async def start_research(body: ResearchRequest):
+        return await service.start(body)
+
+    @router.post('/doctor-jobs', status_code=201)
+    async def research_doctor(body: DoctorResearchRequest):
         return await service.start(body)
 
     @router.get('/jobs/{job_id}')
