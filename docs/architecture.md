@@ -5,9 +5,9 @@
 ```text
 React + Tauri 2 Android App（用户端，页面内置 APK）
   └─ HTTPS /api HTTP + WSS（登录 Cookie）
-服务器 Web 管理端 /admin（管理员）
-  └─ 同源 /api HTTP
-      └─ FastAPI api/app.py
+服务器 Caddy（原生，静态 Web 管理端 /admin）
+  └─ 同源 /api HTTP + WebSocket 代理
+      └─ FastAPI api/app.py（原生 systemd 单进程）
           ├─ voice/：SeedASR / Seeduplex / TTS
           ├─ services/practice.py：会话、转录修正、取消、重试、复盘
           │   └─ agents/coach.py：独立 AgentScope Agent → DeepSeek → 输出校验
@@ -18,7 +18,7 @@ Android 是唯一用户端，底部导航为「练习、学习、我的」，拜
 
 `main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；模型与客户端均关闭自动重试，由现有会话层处理重试和取消。
 
-医生/教练通过 AgentScope `LocalSkillLoader` 加载 `backend/medvisit/agents/skills/humanizer/SKILL.md`，在各自的请求中注入完整写作规则。使用 embedded mode，只润色中文措辞；引用原话、医学证据约束、风险提示和 JSON 格式优先，草稿不对外输出。技能随 `medvisit/` 打包进后端镜像，无额外工具调用，也不在运行时下载。原版来自 [blader/humanizer](https://github.com/blader/humanizer/tree/8c307f367c91bd974002f10f2be2965d642c13df)，版本 3.1.0，固定提交 `8c307f367c91bd974002f10f2be2965d642c13df`，保留 MIT 许可证。完整规则会增加每次请求的输入 token；更新时同时替换技能和许可证并运行后端测试。
+医生/教练通过 AgentScope `LocalSkillLoader` 加载 `backend/medvisit/agents/skills/humanizer/SKILL.md`，在各自的请求中注入完整写作规则。使用 embedded mode，只润色中文措辞；引用原话、医学证据约束、风险提示和 JSON 格式优先，草稿不对外输出。技能随 `medvisit/` 打包进后端发布源码，无额外工具调用，也不在运行时下载。原版来自 [blader/humanizer](https://github.com/blader/humanizer/tree/8c307f367c91bd974002f10f2be2965d642c13df)，版本 3.1.0，固定提交 `8c307f367c91bd974002f10f2be2965d642c13df`，保留 MIT 许可证。完整规则会增加每次请求的输入 token；更新时同时替换技能和许可证并运行后端测试。
 
 DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI 适配器的128K默认值，供 AgentScope 上下文管理使用；它不是发送给上游的请求字段。模型容量依据 [DeepSeek 官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)。业务层仍保留每条4000字符、每次64000字符的转录上限，练习取最近16条、复盘取全部可容纳记录；字符预算不等于 token 容量。默认输出限制2000 tokens，已配置场景的结构化评分最多4000 tokens。
 
@@ -32,7 +32,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 ## 平台存储与账号访问
 
-`platform/`处理版本化目录、医学审核、校准、点评与重练。Compose复用PostgreSQL连接池和`platform_entities`表；未配置数据库时，演练仍存JSON，平台元数据存`records/platform.sqlite3`（权限0600）。写操作使用事务与版本CAS；PostgreSQL用事务锁，SQLite用`BEGIN IMMEDIATE`及WAL，让读取快照不阻塞其他请求提交，保持`FULL`同步。本地备份应停止API后复制整个记录目录，包含尚未合并的WAL文件。PDF原件作为同一库内的资产保存，单文件20MB、最多200页，只解析文字层，不做OCR；解析在限时子进程内执行。大规模资料库需在实测后迁移对象存储与语义索引。
+`platform/`处理版本化目录、医学审核、校准、点评与重练。生产API复用PostgreSQL连接池和`platform_entities`表；未配置数据库时，演练仍存JSON，平台元数据存`records/platform.sqlite3`（权限0600）。写操作使用事务与版本CAS；PostgreSQL用事务锁，SQLite用`BEGIN IMMEDIATE`及WAL，让读取快照不阻塞其他请求提交，保持`FULL`同步。本地备份应停止API后复制整个记录目录，包含尚未合并的WAL文件。PDF原件作为同一库内的资产保存，单文件20MB、最多200页，只解析文字层，不做OCR；解析在限时子进程内执行。大规模资料库需在实测后迁移对象存储与语义索引。
 
 服务器使用预配置账号，不开放注册。Android 始终要求启用登录；仅 Web 本机开发兼容免登录。HTTP 和 WebSocket 校验 Cookie 会话，写入校验 Origin；Cookie 使用 HttpOnly、SameSite=Strict，HTTPS 下附加 Secure。退出会撤销当前会话，服务重启会清除会话。账号切换会卸载原用户页面，避免沿用原会话的内存数据。
 
@@ -60,9 +60,9 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 教练通过AgentScope `FunctionTool`按需调用DeepSeek原生Search/Fetch接口，医生请求不使用搜索。搜索启用时，教练最多3次模型推理、2次网页工具尝试，整体等待上限45秒；关闭时保持单次教练推理、25秒上限。多轮工具调用的模型token用量会累加。普通沟通和已有数字的算术练习不要求联网。
 
-`backend/.env`及`backend/.env.example`中的配置如下；Compose已通过`env_file`读取该文件：
+开发配置见`backend/.env`及`backend/.env.example`；生产由systemd加载私有环境文件，路径见[服务器与CI/CD](server-deployment.md)。以下为配置项及示例值，不替代供应商实时额度：
 
-| 变量 | 当前值 | 含义 |
+| 变量 | 示例值 | 含义 |
 | --- | --- | --- |
 | `DEEPSEEK_SEARCH_ENABLED` | `true` | 给教练注册搜索与抓取工具 |
 | `DEEPSEEK_MAX_CONCURRENCY` | `2500` | 当前进程所有对话/Agent共享的模型请求信号量；当前Flash标准额度2500，切换Pro时改为500，定制额度按实际配置 |
@@ -82,47 +82,39 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 | 本地 Web 管理端 | `npm run dev -- --host 127.0.0.1` | 通过 Vite 代理 API |
 | Android App | `npm run android:build -- --debug --apk --target aarch64` | APK 内置页面，数据保存在服务器 |
 | 本地 API | `npm run dev:api` | `DATABASE_URL` 为空时使用原 JSON |
-| Docker | `docker compose up -d --build --wait` | PostgreSQL 命名卷 |
+| 生产 API / Web 管理端 | `medvisit-coach.service` 与 Caddy 原生服务，见[部署说明](server-deployment.md) | PostgreSQL 与主机私有文件目录 |
+| 生产数据库 | `deploy/database.compose.yaml`（仅 PostgreSQL） | 数据库命名卷 |
+| 可选旧组合验证 | `docker compose up -d --build --wait`，仅在一次性隔离项目运行 | 临时 PostgreSQL / 文件卷，不连接生产数据 |
 
 所有命令均从项目根目录执行。Node 依赖与锁文件均归 `frontend/`：从根目录执行 `npm --prefix frontend ci`，或进入 `frontend/` 后执行 `npm ci`。根目录 `package.json` 仅转发开发命令，不声明 workspace，也不安装依赖。Python 使用 `uv sync --directory backend --locked`，依赖声明与锁文件不一致时直接失败，不修改锁文件。
 
-根目录 `.env` 管理数据库用户名、密码、网页端口和允许的 Origin；`backend/.env` 管理模型与语音密钥。Compose 使用 `PGHOST` / `PGDATABASE` / `PGUSER` / `PGPASSWORD` 连接数据库，避免密码中的 URI 特殊字符造成解析错误。密钥、历史数据、虚拟环境及构建缓存都由 `.dockerignore` 排除；前端镜像只含静态构建产物。
+本地开发的服务密钥放在 `backend/.env`。生产数据库配置、systemd 环境文件及 Caddy 配置独立于发布目录，按[原生部署说明](server-deployment.md)维护；不要用旧完整 Compose 项目替代原生 API / Web 服务。发布包携带后端源码和 CI 构建的管理端静态文件，服务器仅按 Python 锁文件安装依赖，不运行 npm 构建。
 
-修改 `WEB_PORT` 时也要修改 `ALLOWED_ORIGINS`，例如 `http://127.0.0.1:8090,http://localhost:8090`。免登录模式保持绑定本机；公网必须启用登录并使用 HTTPS。API 使用单进程，每账号至多一场演练，总并发由 `VOICE_MAX_SESSIONS` 控制（默认 10）；增加 worker 前需先实现共享限流和后台任务执行器。
+本机免登录模式保持绑定本机；公网必须启用登录并使用 HTTPS。API 使用单进程，每账号至多一场演练，总并发由 `VOICE_MAX_SESSIONS` 控制（默认 10）；增加 worker 前需先实现共享限流和后台任务执行器。
 
 ## 导入旧 JSON
 
-先完成 PostgreSQL 启动，再执行：
+先完成 PostgreSQL 启动，在原生 API 相同的环境配置和权限下运行 `python -m medvisit.storage.import_records <旧记录目录>`。本地开发可从项目根目录执行：
 
 ```sh
-docker compose run --rm --no-deps --user root \
-  -v "$PWD/backend/data/sessions:/legacy:ro" \
-  api python -m medvisit.storage.import_records /legacy
+uv run --directory backend python -m medvisit.storage.import_records data/sessions
 ```
 
-命令先校验全部记录，再在一个事务中导入；保持原文件修改时间对应的列表顺序。UUID 已存在时跳过，不覆盖数据库的新版本。原 JSON 以只读方式挂载并保留在原处；遇到损坏或非法文件会失败，不提交部分记录。仅本机免登录兼容模式可读取旧匿名记录及关联点评，不更改其归属字段；服务器账号不能因此越过记录归属检查。已有平台资料沿用首次初始化的工作区；其他旧工作区资料和重练保留在原库中，但不会自动合并，避免标识及引用冲突。
-
-本地 API 连接自行管理的 PostgreSQL 时，可在 `backend/.env` 中设置 `DATABASE_URL`，再执行 `uv run --directory backend python -m medvisit.storage.import_records`。连接串中的密码需按 PostgreSQL URI 规则编码。
+命令先校验全部记录，再在一个事务中导入；保持原文件修改时间对应的列表顺序。UUID 已存在时跳过，不覆盖数据库的新版本。原 JSON 保留在原处；遇到损坏或非法文件会失败，不提交部分记录。仅本机免登录兼容模式可读取旧匿名记录及关联点评，不更改其归属字段；服务器账号不能因此越过记录归属检查。已有平台资料沿用首次初始化的工作区；其他旧工作区资料和重练保留在原库中，但不会自动合并。
 
 ## 备份与停止
 
-数据库与检索原文需要成套备份。在维护窗口结束演练后运行：
+生产备份通过 `deploy/native-backup.py` 的 `backup` / `verify` 接口，同时覆盖 PostgreSQL 与 `RECORDS_DIR`，排除私有 `visit-audio`。备份前停止原生 API；该工具不会代为启动服务，也没有原地生产恢复命令。具体参数、恢复边界及旧 Compose 工具的适用范围见[运维说明](operations.md)。
 
-```sh
-python3 deploy/backup.py backup /安全目录/medvisit-20261029
-python3 deploy/backup.py verify /安全目录/medvisit-20261029
-docker compose down
-```
-
-数据库和文件卷在普通 `down` 和重新构建后保留；`down -v` 会删除数据。旧版没有文件卷，首次升级前必须从旧容器备份原文，恢复到全新项目验证后再切换，不能先重建旧容器。备份文件含对话正文，应按本地记录同等保护；完整的恢复与回退流程见[运维说明](operations.md)。改变初始化密码环境变量不会自动修改已有数据库角色密码，需用 PostgreSQL 的密码修改命令同步更新。
+API 用 `systemctl` 停止，不使用 `docker compose down` 停止应用。数据库卷和私有文件目录须成套保护；`down -v` 会删除数据。首次从旧容器迁移时，尚在容器可写层的原文必须先导出，再按[原生部署说明](server-deployment.md)迁移，不能先重建或删除旧容器。改变初始化密码环境变量不会自动修改已有数据库角色密码。
 
 ## 运行探针与故障定位
 
-`GET /api/live` 只检查进程响应；`GET /api/ready` 有限时地检查数据库连接、平台表及文件目录写入，失败返回 503。Compose 通过就绪探针启动依赖服务。`GET /api/health` 保留原有配置摘要；这三个接口都不验证付费供应商可用性，实际服务检测仍由用户点击刷新触发。
+`GET /api/live` 只检查进程响应；`GET /api/ready` 有限时地检查数据库连接、平台表及文件目录写入，失败返回 503。原生部署在启动 API 后检查就绪状态，再验证 Caddy 的公开入口。`GET /api/health` 保留原有配置摘要；这三个接口都不验证付费供应商可用性，实际服务检测仍由用户点击刷新触发。
 
-HTTP 请求使用独立的请求 ID，在响应头 `X-Request-ID` 与结构化日志中关联。日志只保存方法、路由模板、状态、耗时及异常类型和代码位置，不写入异常原文、请求正文、查询参数或 API Key；验证错误不回显被拒绝的输入。语音会话通过已保存的会话 ID 定位。Nginx 日志使用 URI 路径，不记录查询字符串，容器日志每份最多 10 MB、保留 3 份。
+HTTP 请求使用独立的请求 ID，在响应头 `X-Request-ID` 与结构化日志中关联。日志只保存方法、路由模板、状态、耗时及异常类型和代码位置，不写入异常原文、请求正文、查询参数或 API Key；验证错误不回显被拒绝的输入。语音会话通过已保存的会话 ID 定位。API 日志通过 systemd journal 查看，代理由原生 Caddy 管理；不要在排查中输出私有环境文件或请求正文。旧 Nginx 日志配置仅用于隔离 Compose 验证。
 
-API 在解析前限制实际请求体大小和接收等待时间，保留 Origin 校验。JSON 最多 8 MB，PDF 最多 20 MB；Nginx 的上传上限同步调整，避免默认 1 MB 阻断应用支持的上传。错误响应禁止缓存，HTML 每次重新验证，带内容哈希的构建资源长期缓存；不存在的资源返回 404，避免把 HTML 当成脚本。
+API 在解析前限制实际请求体大小和接收等待时间，保留 Origin 校验。JSON 最多 8 MB，PDF 最多 20 MB；Caddy 的请求体限制应与应用支持的上传类型一致。错误响应禁止缓存，HTML 每次重新验证，带内容哈希的构建资源长期缓存；不存在的资源返回 404，避免把 HTML 当成脚本。
 
 会话和检索文件使用唯一临时文件、0600 权限、原子替换及文件和目录同步；检索任务的启动、取消、关闭串行协调，关闭等待最终落盘。后台任务失败保留任务状态和类型日志；重启恢复中断状态，不自动重放模型请求。应用生命周期按逆序释放后台任务和连接池，即使一项清理失败也继续关闭存储。
 
@@ -144,6 +136,6 @@ TEST_DATABASE_URL='postgresql://测试用户:测试密码@127.0.0.1:测试端口
   uv run --directory backend --locked pytest -q
 ```
 
-测试需要仓库中的 `deploy/` 与 `backend/tools/`，仅挂载 tests 到生产镜像不能运行完整套件。CI 自动提供独立 PostgreSQL，并拒绝跳过数据库测试；部署任务使用无密钥的独立 Compose 项目验证健康、上传、缓存及重建后的文件保留。测试覆盖数据库往返、导入幂等、失败不部分写入、异常请求、配置校验、任务取消恢复及备份恢复边界。AgentScope 测试使用模拟传输，不调用收费服务。
+测试需要完整仓库中的 `deploy/` 与 `backend/tools/`。CI 提供独立 PostgreSQL并拒绝跳过数据库测试；部署集成任务使用原生 Uvicorn / Caddy 与一次性数据库，验证健康、上传、缓存、服务重启后的文件保留及数据库断连恢复。完整 `compose.yaml` 仅作为可选兼容验证，不能据其通过宣称原生生产已验收。测试覆盖数据库往返、导入幂等、失败不部分写入、异常请求、配置校验、任务取消恢复及备份恢复边界。AgentScope 测试使用模拟传输，不调用收费服务。
 
 实现参考：[AgentScope 源码与文档](https://github.com/agentscope-ai/agentscope)、[Psycopg 连接池](https://www.psycopg.org/psycopg3/docs/advanced/pool.html)、[Compose 健康依赖](https://docs.docker.com/compose/how-tos/startup-order/)。

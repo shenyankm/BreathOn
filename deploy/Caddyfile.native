@@ -1,0 +1,89 @@
+{
+	admin {$MEDVISIT_CADDY_ADMIN:localhost:2019}
+	log default {
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "[?].*$" ""
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+}
+
+{$MEDVISIT_SITE:openwook.cloud, www.openwook.cloud} {
+	root * {$MEDVISIT_WEB_ROOT:/srv/medvisit-coach/current/frontend/dist}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	log {
+		output file {$MEDVISIT_ACCESS_LOG:/var/log/caddy/medvisit-access.log} {
+			mode 0600
+			roll_size 10MiB
+			roll_keep 3
+			roll_keep_for 72h
+		}
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp "[?].*$" ""
+				request>headers delete
+				resp_headers delete
+			}
+		}
+	}
+	route {
+		@removed_user path /app /app/* /preview-visit.html
+		respond @removed_user 410
+		@apk_only path /_android /_android/*
+		respond @apk_only 404
+		@source path /src/* /node_modules/* /backend/* /deploy/* /.git/* /.env* /compose.yaml
+		respond @source 404
+
+		@audio path_regexp visit_audio ^/api/visits/[^/]+/audio$
+		handle @audio {
+			request_body {
+				max_size 100MiB
+			}
+			reverse_proxy {$MEDVISIT_API_UPSTREAM:127.0.0.1:8000} {
+				flush_interval -1
+				transport http {
+					dial_timeout 5s
+					response_header_timeout 900s
+					read_timeout 900s
+					write_timeout 900s
+				}
+			}
+		}
+		@api path /api /api/*
+		handle @api {
+			request_body {
+				max_size 20MiB
+			}
+			reverse_proxy {$MEDVISIT_API_UPSTREAM:127.0.0.1:8000} {
+				flush_interval -1
+				transport http {
+					dial_timeout 5s
+					response_header_timeout 660s
+					read_timeout 660s
+					write_timeout 660s
+				}
+			}
+		}
+		handle /assets/* {
+			@asset_exists file {path}
+			header @asset_exists Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+		handle {
+			try_files {path} /index.html
+			header Cache-Control no-cache
+			file_server
+		}
+	}
+}

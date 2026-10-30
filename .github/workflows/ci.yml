@@ -29,6 +29,13 @@ jobs:
       - run: npm --prefix frontend run lint
       - run: npm --prefix frontend run build
       - run: npm --prefix frontend run build:android
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: BreathOn-admin-dist-${{ github.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false
 
   backend:
     runs-on: ubuntu-latest
@@ -122,80 +129,48 @@ jobs:
   deployment:
     needs: [frontend, backend, android]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      COMPOSE_PROJECT_NAME: medvisit-ci
-      POSTGRES_PASSWORD: ci-only-password
-      BACKEND_ENV_FILE: /dev/null
-      WEB_PORT: '18080'
-      ALLOWED_ORIGINS: http://127.0.0.1:18080
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - run: docker compose config --quiet
-      - run: docker compose up --build --wait --wait-timeout 120
-      - run: python deploy/check-stack.py
-      - name: Check nonroot archive persistence across container replacement
-        run: |
-          docker compose exec -T api python -c 'import os; from pathlib import Path; assert os.getuid() == 10001; Path("/app/data/sessions/ci-marker").write_text("persistent")'
-          docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 api
-          docker compose exec -T api python -c 'from pathlib import Path; assert Path("/app/data/sessions/ci-marker").read_text() == "persistent"'
-          python deploy/check-stack.py
-      - name: Check database outage and recovery
-        run: |
-          docker compose stop db
-          python - <<'PY'
-          from urllib.request import urlopen
-          from urllib.error import HTTPError
-          origin = 'http://127.0.0.1:18080'
-          with urlopen(origin+'/api/live', timeout=5) as response:
-              assert response.status == 200
-          for path in ('/api/ready', '/api/sessions'):
-              try:
-                  urlopen(origin+path, timeout=8)
-              except HTTPError as error:
-                  assert error.code == 503
-                  error.close()
-              else:
-                  raise AssertionError('Database outage must return 503: '+path)
-          PY
-          docker compose up -d --no-deps --no-recreate --wait --wait-timeout 60 db
-          python deploy/check-stack.py
-      - name: Check authenticated account isolation
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install uv==0.12.13
+      - run: uv sync --directory backend --locked
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: BreathOn-admin-dist-${{ github.sha }}
+          path: frontend/dist
+      - name: Install verified native Caddy
         run: |
           set -euo pipefail
-          umask 077
-          smoke_dir=$(mktemp -d "$RUNNER_TEMP/medvisit-auth-smoke.XXXXXX")
-          trap 'rm -rf "$smoke_dir"' EXIT
-          docker compose exec -T api python - <<'PYCODE'
-          import json
-          import os
-          from pathlib import Path
-          import secrets
-          from medvisit.api.auth import hash_password
-          os.umask(0o077)
-          root = Path('/tmp/medvisit-auth-smoke')
-          root.mkdir(mode=0o700, exist_ok=True)
-          users = {'admin':'ci-auth-admin', 'representative_a':'ci-auth-a', 'representative_b':'ci-auth-b'}
-          credentials = {role:{'username':name, 'password':secrets.token_urlsafe(32)} for role,name in users.items()}
-          hashes = {item['username']:hash_password(item['password']) for item in credentials.values()}
-          (root/'credentials.json').write_text(json.dumps(credentials))
-          (root/'backend.env').write_text("LOGIN_USERS_JSON='"+json.dumps(hashes)+"'\nADMIN_USERS_JSON='"+json.dumps([users['admin']])+"'\n")
-          PYCODE
-          docker compose cp api:/tmp/medvisit-auth-smoke/credentials.json "$smoke_dir/credentials.json"
-          docker compose cp api:/tmp/medvisit-auth-smoke/backend.env "$smoke_dir/backend.env"
-          chmod 600 "$smoke_dir/credentials.json" "$smoke_dir/backend.env"
-          BACKEND_ENV_FILE="$smoke_dir/backend.env" AUTH_REQUIRED=true \
-            docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 api
-          DISPOSABLE_AUTH_SMOKE=1 AUTH_SMOKE_CREDENTIALS_FILE="$smoke_dir/credentials.json" \
-            python deploy/check-auth.py
-      - name: Deployment logs
-        if: failure()
-        run: docker compose logs --tail 100
-      - name: Remove disposable stack
-        if: always()
-        run: docker compose down --volumes
+          mkdir -p "$RUNNER_TEMP/caddy"
+          curl --fail --location --retry 3 --connect-timeout 10 --max-time 180 \
+            https://github.com/caddyserver/caddy/releases/download/v2.11.7/caddy_2.11.7_linux_amd64.tar.gz \
+            -o "$RUNNER_TEMP/caddy/caddy.tar.gz"
+          printf '%s  %s\n' '727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b' "$RUNNER_TEMP/caddy/caddy.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/caddy/caddy.tar.gz" -C "$RUNNER_TEMP/caddy" caddy
+          printf 'NATIVE_CADDY_BIN=%s/caddy/caddy\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - name: Check native API and Caddy with PostgreSQL
+        env:
+          NATIVE_DISPOSABLE: '1'
+          NATIVE_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/postgres
+          NATIVE_DB_CONTAINER: ${{ job.services.postgres.id }}
+        run: uv run --directory backend --locked python ../deploy/check-native.py
 
   production:
     needs: [frontend, backend, android, deployment]
@@ -223,6 +198,11 @@ jobs:
             printf 'deploy=false\n' >> "$GITHUB_OUTPUT"
             printf '%s\n' 'Skipping production deploy: a newer main revision exists.'
           fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: steps.latest.outputs.deploy == 'true'
+        with:
+          name: BreathOn-admin-dist-${{ github.sha }}
+          path: frontend/dist
       - name: Deploy production after all checks
         if: steps.latest.outputs.deploy == 'true'
         env:
@@ -239,20 +219,22 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$transport/key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
-          # The restricted receiver auto-detects gzip; retain its source.tar filename.
-          git archive --format=tar.gz HEAD -- . ':(exclude)frontend/src-tauri' ':(exclude)frontend/src/assets/library' > "$payload/source.tar"
+          # Native releases contain Python source and the tested, prebuilt admin assets.
+          git archive --format=tar.gz HEAD -- backend/medvisit backend/migrations backend/pyproject.toml backend/uv.lock deploy LICENSE THIRD_PARTY_NOTICES.md > "$payload/source.tar"
+          tar -czf "$payload/web.tar.gz" -C frontend/dist .
           python - "$payload/source.tar" <<'PYCODE'
           import sys
           import tarfile
           with tarfile.open(sys.argv[1]) as archive:
               names = set(archive.getnames())
-          required = {'LICENSE', 'compose.yaml', 'deploy/server-deploy.sh', 'deploy/backup.py',
-                      'deploy/frontend.Dockerfile', 'deploy/backend.Dockerfile',
-                      'frontend/src/admin-app.tsx', 'backend/medvisit/api/app.py'}
-          assert required <= names, 'Incomplete server source archive'
-          assert not any(name.startswith(('frontend/src-tauri/', 'frontend/src/assets/library/')) for name in names)
+          required = {'LICENSE', 'deploy/native-deploy.sh', 'deploy/native-backup.py',
+                      'deploy/Caddyfile.native', 'deploy/database.compose.yaml',
+                      'deploy/medvisit-coach.service', 'backend/pyproject.toml',
+                      'backend/uv.lock', 'backend/medvisit/api/app.py'}
+          assert required <= names, 'Incomplete native server source archive'
+          assert not any(name.startswith('frontend/') for name in names)
           PYCODE
-          tar -cf - -C "$payload" REVISION source.tar | \
+          tar -cf - -C "$payload" REVISION source.tar web.tar.gz | \
             ssh -i "$transport/key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$transport/known_hosts" -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=6 "$DEPLOY_USER@$DEPLOY_HOST"

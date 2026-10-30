@@ -1,0 +1,41 @@
+[Unit]
+Description=BreathOn FastAPI server
+Requires=docker.service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=10001
+Group=10001
+WorkingDirectory=/srv/medvisit-coach/current/backend
+EnvironmentFile=/etc/medvisit-coach/backend.env
+EnvironmentFile=/etc/medvisit-coach/native.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+# Keep stored absolute paths valid without copying or exposing the Docker volume roots.
+BindPaths=/var/lib/docker/volumes/medvisit-coach_research_data/_data:/app/data/sessions
+BindPaths=/var/lib/docker/volumes/medvisit-coach_visit_audio/_data:/app/data/visit-audio
+ReadWritePaths=/app/data/sessions /app/data/visit-audio
+ExecStart=/usr/bin/env AUTH_REQUIRED=true ALLOWED_ORIGINS=https://openwook.cloud,https://www.openwook.cloud DATABASE_URL=postgresql:// PGHOST=127.0.0.1 PGPORT=5432 RECORDS_DIR=/app/data/sessions PATH=/srv/medvisit-coach/current/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin /srv/medvisit-coach/current/backend/.venv/bin/python -m uvicorn medvisit.main:app --host 127.0.0.1 --port 8000 --workers 1 --ws-max-size 4096 --ws-max-queue 16 --timeout-graceful-shutdown 45 --no-access-log
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=90s
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+StandardOutput=journal
+StandardError=journal
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=200
+
+[Install]
+WantedBy=multi-user.target

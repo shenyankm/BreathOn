@@ -266,3 +266,15 @@ test('the web management entry rejects representative sessions but permits admin
   admin.render(); await settle()
   assert.equal(find(admin.render(), 'App').length, 1)
 })
+
+
+test('both login targets omit the removed footer notice', async () => {
+  for (const target of ['admin', 'android'] as const) {
+    const app = mount(async () => Response.json(anonymous), target)
+    app.render(); await settle()
+    const view = app.render()
+    assert.equal(find(view, 'form').length, 1)
+    assert.equal(find(view, 'Brand').length, 1)
+    assert.doesNotMatch(text(view), /管理员可查看演练和拜访记录|请勿输入未经授权的患者信息/)
+  }
+})

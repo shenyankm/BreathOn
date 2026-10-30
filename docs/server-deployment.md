@@ -1,6 +1,6 @@
 # 服务器与 CI/CD
 
-`https://openwook.cloud` 由主机 Caddy 终止 TLS，再转发到 `127.0.0.1:8080`。主域名和 `www` 只提供 Web 管理后台与同源 API，避免旧站点的永久重定向缓存形成循环；普通用户页面内置于 React + Tauri 2 Android APK，Web `/app` 返回 410、`/_android/` 返回 404。IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
+`https://openwook.cloud` 由原生 Caddy 终止 TLS、直接提供预构建的 Web 管理页面，并将 `/api/*` 转发到 systemd 管理的原生 FastAPI（`127.0.0.1:8000`）。只有 PostgreSQL 保留 Docker，数据库端口仅绑定 `127.0.0.1:5432`。主域名和 `www` 只提供 Web 管理后台与同源 API，避免旧站点的永久重定向缓存形成循环；普通用户页面内置于 React + Tauri 2 Android APK，Web `/app` 返回 410、`/_android/` 返回 404。IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
 
 ## 账号登录
 
@@ -18,17 +18,19 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 
 `.github/workflows/ci.yml` 同时用于 Pull Request 和推送检查，分为五个任务：
 
-- `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入。
+- `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入；管理页面上传为 `BreathOn-admin-dist-<commit>`，供同一次工作流的集成检查和发布下载。
 - `backend`：运行完整 Python 测试与真实 PostgreSQL 回归，并要求测试报告中没有跳过项。
 - `android`：在固定的 Ubuntu 24.04 环境中使用 Node 24、JDK 25、Rust 1.98.1、SDK 37.0、Build-Tools 36.0.0 与 NDK 28.2.13676358，按 `Cargo.lock` 编译真正的 ARM64 debug APK。检查包内原生库、用户资源和签名文件边界后，上传 `BreathOn-android-arm64-debug-<commit>` 工件，保留 14 天；不上传私钥或发布 keystore。
-- `deployment`：等待以上三个任务全部成功，运行隔离 Compose 栈的路由、缓存、上传边界、容器重建持久化及数据库故障恢复检查，再启用认证，验证管理员和两个普通代表的 Cookie 登录、角色限制、记录读写隔离、跨账号拒绝与退出后的旧 Cookie 撤销。
+- `deployment`：等待以上三个任务全部成功，使用独立 PostgreSQL 容器、真实原生 Uvicorn 与经 SHA-256 校验的 Caddy 2.11.7，检查路由、缓存、上传边界、API 进程重启持久化和数据库断连恢复，再验证管理员和两个普通代表的 Cookie 登录、角色限制、记录隔离与退出后的旧 Cookie 撤销。测试结束清理子进程、临时数据和凭据，不构建或启动 API/Web 容器。
 - `production`：等待前面四个任务全部成功，仅在推送 `main` 时进入串行部署队列；读取 GitHub 当前 `main` 的 SHA，只有仍为最新提交时才执行原有 SSH 部署，过时提交跳过部署。
 
-认证 smoke 只在显式标记的可丢弃本机栈运行。三个临时账号使用随机密码，凭据和哈希只写入私有临时文件，检查后删除，不使用生产账号或调用模型服务。临时数据库和音频卷在任务结束时清除。`deploy/check-stack.py` 要求旧 Web 用户入口为 410、Android 资源路径为 404；`deploy/check-auth.py` 验证实际 HTTP 与登录 Cookie，而非只检查配置开关。
+认证 smoke 只在显式标记的可丢弃本机栈运行。三个临时账号使用随机密码，凭据和哈希只写入私有临时文件，检查后删除，不使用生产账号或调用模型服务。PostgreSQL 服务容器由 GitHub Actions 在任务结束时清除。`deploy/check-native.py` 启动原生进程并复用 `deploy/check-stack.py`，要求旧 Web 用户入口为 410、Android 资源路径为 404；`deploy/check-auth.py` 验证实际 HTTP 与登录 Cookie，而非只检查配置开关。
 
 不同 `main` 提交的检查可并行运行，不会被正在执行的生产部署阻塞；Pull Request 和其他分支仍按分支取消旧检查。只有 `production` 使用固定并发组串行执行，且不自动取消正在运行的部署，主机文件锁继续避免同时更新。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。
 
-GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器构建镜像并按提交 SHA 标记。主机 Docker 配置腾讯云官方镜像缓存 `https://mirror.ccs.tencentyun.com`，避免大镜像经跨境 SSH 传输；主机 `compose.env` 同时设置 `DEBIAN_MIRROR=https://mirrors.cloud.tencent.com` 和 `PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple`；Node 与 Python 依赖仍按锁文件安装。`PYPI_DOWNLOAD_BASE=https://mirrors.cloud.tencent.com/pypi` 仅替换构建时的下载地址，保留所有版本和 SHA-256 校验，安装后恢复镜像内原始锁文件。服务器无需 GitHub 令牌。GitHub 仓库配置：
+GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
+
+GitHub 仓库配置：
 
 | 类型 | 名称 | 用途 |
 | --- | --- | --- |
@@ -37,28 +39,31 @@ GitHub 通过固定主机密钥的 SSH 传输 `git archive` 源码，服务器�
 | Secret | `DEPLOY_SSH_KEY` | 专用部署私钥 |
 | Secret | `DEPLOY_KNOWN_HOSTS` | 已核对的 SSH 主机公钥 |
 
-专用 SSH 密钥使用 `restrict` 和强制命令，仅可调用 root 所有的 `/usr/local/sbin/medvisit-deploy`。该脚本对应仓库的 `deploy/server-deploy.sh`；更新脚本时，需由服务器管理员重新安装到该位置。密钥不能获得交互 shell、转发端口或执行任意 SSH 命令。
+专用 SSH 密钥使用 `restrict` 和强制命令，仅可调用 root 所有的 `/usr/local/sbin/medvisit-deploy`。原生部署入口对应仓库的 `deploy/native-deploy.sh`；更新脚本时，需由服务器管理员重新安装到该位置。密钥不能获得交互 shell、转发端口或执行任意 SSH 命令。
 
-部署前构建新镜像，并对既有应用完整备份数据库和检索原文。新服务通过健康和登录检查后，才切换 `current` 并重载 Caddy；失败尝试恢复上一版镜像与代理配置，不自动回滚数据库。涉及不兼容的数据迁移时，应先停止自动部署并按恢复流程验证。
+首次从旧容器版迁移由服务器管理员完成：创建 `medvisit` 用户（UID 10001）、安装 `deploy/medvisit-coach.service` 与 `deploy/database.compose.yaml`、绑定既有持久卷并建立首个原生 `current`，然后安装新的受限入口。自动 CD 只处理原生版本之间的升级，不会重新启动旧 API/Web 容器。
+
+后续发布先在运行中服务之外接收源码与工件、安装锁定依赖并校验 Caddy。所有准备完成后短暂停止 API，调用 `deploy/native-backup.py` 验证备份，再原子切换 `current`、重启 API 并重载 Caddy。匿名就绪、登录开关、业务接口 401 及 Web 路由检查均通过才确认发布。失败或收到 TERM/HUP/INT 时恢复上一版链接、Caddy 配置并重启旧 API；接收、依赖安装、备份和健康检查均有超时。备份沿用格式 1，包含 PostgreSQL 与 sessions 原文，不包含 visit-audio 卷；不自动回滚数据库。涉及不兼容的数据迁移时，应先停止自动部署并按恢复流程验证。
 
 ## 主机路径
 
 - `/srv/medvisit-coach/current`：当前版本的符号链接；`releases/` 保存发布源码。
-- `/etc/medvisit-coach/compose.env`：数据库和来源配置。
+- `/etc/medvisit-coach/compose.env` 与 `database.compose.yaml`：仅 PostgreSQL 的容器配置，沿用既有外部数据库卷。
 - `/etc/medvisit-coach/backend.env`：语音、模型密钥与管理员密码哈希。
+- `/etc/medvisit-coach/native.env`：systemd 使用的 PostgreSQL 连接配置，由管理员从既有数据库配置生成，权限为 0600。
 - `/var/backups/medvisit-coach/`：升级前的数据库和原文备份。
-- `/etc/caddy/Caddyfile`：仓库 `deploy/Caddyfile` 的已部署副本。
+- `/etc/systemd/system/medvisit-coach.service`：原生 API 单元，使用非 root 用户运行，并将既有数据卷绑定到历史 `/app/data/` 路径。
+- `/etc/caddy/Caddyfile`：仓库 `deploy/Caddyfile.native` 的已部署副本。
 
-配置和备份目录仅 root 可读。数据库与原文仍位于 `medvisit-coach` 项目的命名卷。部署前会短暂停止 API 做一致性备份，正在进行的演练会中断，应安排在无演练时发布。旧版本镜像、源码和本机备份需按容量安排清理和异机保留；单机部署不提供高可用。
+配置和备份目录仅 root 可读。数据库与原文仍位于 `medvisit-coach` 项目的命名卷。部署前会短暂停止 API 做一致性备份，正在进行的演练会中断，应安排在无演练时发布。旧版本源码、虚拟环境和本机备份需按容量安排清理和异机保留；单机部署不提供高可用。
 
 ```sh
 sudo readlink -f /srv/medvisit-coach/current
-sudo docker compose --project-name medvisit-coach --project-directory /srv/medvisit-coach/current ps
+sudo systemctl status medvisit-coach.service caddy
+sudo docker compose --project-name medvisit-coach --env-file /etc/medvisit-coach/compose.env -f /etc/medvisit-coach/database.compose.yaml ps
 sudo journalctl -u caddy --since '15 minutes ago' --no-pager
 ```
 
-重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重建 API；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
+重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重启 `medvisit-coach.service`；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
 
-源码传输使用 gzip 压缩以减少跨境 SSH 上传时间，保留受限协议中的 `source.tar` 文件名；服务器通过 `tarfile` 自动识别压缩格式。传输完成前不会停止当前应用或切换版本。
-
-服务器源码包与 Docker 构建上下文排除 `frontend/src-tauri/` 和 `frontend/src/assets/library/`，这两部分仅供 Android APK 使用。GitHub 的完整源码下载不受影响；管理端与后端仍由 CI 构建、集成检查。
+源码与管理页面均在暂停 API 前完成 gzip 接收；Android 原生工程与用户页面不进入服务器发布包。旧 `deploy/server-deploy.sh`、Dockerfile 和整栈 Compose 配置仅供旧版本恢复参考，不属于当前生产 CD。

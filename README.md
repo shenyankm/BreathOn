@@ -7,17 +7,18 @@
 - **管理后台**：维护药品、医生、政策、场景和审核资料；审核拜访反馈并查看代表记录。
 - **拜访日记**：记录访后观察或导入已获授权的录音，确认脱敏后提交审核。
 
-技术栈：React / Vite / shadcn/ui Maia + Tauri 2 Android、FastAPI、AgentScope；服务器使用 PostgreSQL，本地开发兼容 JSON 存储。
+技术栈：React / Vite / shadcn/ui Maia + Tauri 2 Android、FastAPI、AgentScope。服务器原生运行 FastAPI（systemd）与 Caddy，只有 PostgreSQL 使用 Docker；本地开发兼容 JSON 存储。
 
 Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。用户界面内置于 APK，Web 只提供管理后台；后端仍由服务器运行。
 
 | 部分 | 部署与职责 |
 | --- | --- |
 | Android App | React 页面由 Tauri 2 打包；底栏为「练习、学习、我的」，日记与复盘位于「我的」 |
-| Web 管理端 | 服务器提供 `/admin`，管理员维护共享训练内容和审核记录；不提供 Web 用户端 |
-| 后端服务 | HTTPS API 与 WebSocket；校验登录、管理员权限及记录归属，密钥仅保留在服务器 |
+| Web 管理端 | Caddy 提供 `/admin` 静态构建产物；管理员维护共享训练内容和审核记录，不提供 Web 用户端 |
+| 后端服务 | FastAPI 由 `medvisit-coach.service` 原生运行，Caddy 代理同源 API / WebSocket；校验登录、管理员权限及记录归属 |
+| 数据库 | PostgreSQL 使用独立 Docker Compose 配置；API 与 Web 管理端不运行在容器中 |
 
-`main` 的自动部署在 CI 检查通过后执行，部署与恢复方式见[服务器与 CI/CD](docs/server-deployment.md)。
+`main` 的原生自动部署在 CI 检查通过后执行，接收同一提交的后端源码与已构建的管理端静态文件；服务器不再构建 API / Web 镜像。首次迁移、部署及回退方式见[服务器与 CI/CD](docs/server-deployment.md)。
 
 ## 本地运行
 
@@ -52,19 +53,19 @@ npm run dev -- --host 127.0.0.1
 
 管理员打开 <http://127.0.0.1:5173/admin>；代表端仅在 Android 客户端提供，不再提供 Web `/app` 页面。未配置密钥也可浏览后台；语音演练需要对应服务权限和麦克风。修改密钥后重启后端。
 
-## Docker 部署
+## 服务器运行与可选隔离验证
 
-先按上文配置 `backend/.env` 和管理员密码哈希，再执行：
+生产只将 PostgreSQL 放入 Docker，数据库配置使用 `deploy/database.compose.yaml`；API 由 systemd 管理，Web 管理端由 Caddy 提供。请按[服务器与 CI/CD](docs/server-deployment.md)完成首次原生迁移，升级前按[运维说明](docs/operations.md)备份数据库与检索原文。
+
+旧 `compose.yaml` 的完整 API / Web / 数据库组合仅保留作一次性兼容验证，不作为生产启动方式。需要检查旧组合时，在无真实数据和服务密钥的独立项目执行：
 
 ```sh
-cp -n .env.example .env
-# 将根目录 .env 中的 POSTGRES_PASSWORD 改为长随机密码。
-docker compose up -d --build --wait
+COMPOSE_PROJECT_NAME=medvisit-disposable BACKEND_ENV_FILE=/dev/null \
+  POSTGRES_PASSWORD=ci-only-password AUTH_REQUIRED=false WEB_PORT=18080 \
+  ALLOWED_ORIGINS=http://127.0.0.1:18080 docker compose up -d --build --wait
 ```
 
-打开 <http://127.0.0.1:8080>。Compose 使用 PostgreSQL，并将数据库和检索原文分别保存到命名卷。
-
-升级前按[运维说明](docs/operations.md)备份。旧 API 容器首次迁移到持久卷时，须先导出容器内原文；不要对需要保留的数据执行 `docker compose down -v`。
+该验证页面仅绑定本机 <http://127.0.0.1:18080>。不要对需要保留的数据执行 `docker compose down -v`；生产备份和恢复以原生部署接口为准。
 
 ## 验证
 
@@ -76,12 +77,12 @@ npm run build
 npm run build:android
 ```
 
-CI 还会运行真实 PostgreSQL 回归和 Docker Compose 部署、容器重建及数据库故障恢复检查。模拟测试不调用收费服务；真实服务与麦克风、外放效果需单独验收。
+CI 还会运行真实 PostgreSQL 回归、Android ARM64 APK 编译，以及原生 Uvicorn / Caddy 与 Docker PostgreSQL 的集成、重启持久化、数据库故障恢复和账号隔离检查。模拟测试不调用收费服务；真实服务与麦克风、外放效果需单独验收。
 
 ## 使用边界
 
 - 代表之间的记录隔离，管理员可查看所有代表的演练及拜访记录并留下访问审计。本机免登录模式不可对外开放。公网部署须启用登录并使用 HTTPS，配置见[服务器与 CI/CD](docs/server-deployment.md)。
-- 演练音频和文本会发送给配置的语音、模型服务。拜访录音及未脱敏转写保存在独立私有卷，首次确认后 7 天且不超过上传后 30 天清理；该卷不纳入长期备份。请勿输入未经授权的患者信息。
+- 演练音频和文本会发送给配置的语音、模型服务。拜访录音及未脱敏转写按私有数据处理；录音保存在独立私有目录，首次确认后 7 天且不超过上传后 30 天清理，`visit-audio` 目录不纳入长期备份。请勿输入未经授权的患者信息。
 - 模型输出需专业复核；语气分析仅覆盖措辞，不代表声音语调或情绪评估。资料来源核对不等于医学审核。
 
 ## 文档

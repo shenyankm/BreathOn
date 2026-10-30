@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ComponentType } from 'react'
-import { AudioLines, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import { Brand } from './brand'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Field } from './ui/form-field'
@@ -151,7 +152,7 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
 
   return <main className="flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12">
     <section className="w-full max-w-sm" aria-labelledby="login-title">
-      <a href={target === 'android' ? '#home' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><AudioLines className="size-6" />BreathOn</a>
+      <a href={target === 'android' ? '#home' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
       <h1 id="login-title" className="mb-6 text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录 BreathOn'}</h1>
       {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{error}</AlertDescription></Alert>}
       {!session ? error ? <Button className="h-11 w-full" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="h-11 w-full" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
@@ -159,7 +160,6 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
         <Field label="密码" htmlFor="password"><div className="relative"><Input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={512} className="h-11 pr-12" disabled={busy} /><Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-11 w-11" aria-label={visible ? '隐藏密码' : '显示密码'} aria-pressed={visible} disabled={busy} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</Button></div></Field>
         <Button type="submit" className="h-11 w-full" disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
       </form>}
-      <p className="mt-8 text-xs leading-6 text-muted-foreground">管理员可查看演练和拜访记录，请勿输入未经授权的患者信息。</p>
     </section>
   </main>
 }

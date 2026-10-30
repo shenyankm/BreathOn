@@ -1,5 +1,6 @@
 import { AudioLines, BookOpen, Play, UserRound } from 'lucide-react'
 import { Button } from './ui/button'
+import { Brand } from './brand'
 
 export function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
   const main = [
@@ -13,7 +14,7 @@ export function AppNavigation({ page, inSession }: { page: string; inSession: bo
   return <>
     <header className="fixed inset-x-0 top-0 z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-14 max-w-[960px] items-center justify-between gap-4 px-4 sm:px-6">
-        <a href={inSession ? '#start' : '#home'} aria-label="BreathOn 练习首页" className="flex min-h-11 items-center gap-2.5 font-semibold tracking-tight"><AudioLines aria-hidden="true" className="size-5 text-primary" />BreathOn<span className="ml-3 hidden border-l pl-5 text-sm font-normal tracking-normal text-muted-foreground sm:block">{currentTitle}</span></a>
+        <a href={inSession ? '#start' : '#home'} aria-label="BreathOn 练习首页" className="flex min-h-11 items-center gap-2.5 font-semibold tracking-tight"><Brand /><span className="ml-3 hidden border-l pl-5 text-sm font-normal tracking-normal text-muted-foreground sm:block">{currentTitle}</span></a>
         <div className="flex items-center gap-2">
           {inSession && <Button asChild variant="secondary" size="sm" className="h-11"><a href="#start"><AudioLines aria-hidden="true" />返回演练</a></Button>}
         </div>
