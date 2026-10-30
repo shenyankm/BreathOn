@@ -1,6 +1,9 @@
 import asyncio
+from contextlib import ExitStack
+from datetime import datetime, timedelta, timezone
 import json
 import logging
+from pathlib import Path
 import sqlite3
 from unittest.mock import AsyncMock, Mock, patch
 from threading import Event
@@ -15,8 +18,10 @@ from conftest import LocalClient
 from medvisit.api.app import create_app
 from medvisit.api.middleware import ApiMiddleware
 from medvisit.storage.records import FileRecords
+from medvisit.visits.api import visits_router
 from medvisit.voice.protocol import BridgeError
 from test_bridge import ORIGIN, receive_until, settings
+from test_storage import database_url
 
 
 async def test_actual_body_limit_prevents_parsing_understated_stream(monkeypatch):
@@ -118,6 +123,85 @@ def test_failed_background_shutdown_still_closes_records(tmp_path):
                 pass
         close.assert_called_once()
         assert not app.state.ready
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_scheduled_visit_cleanup_recovers_without_leaking_private_errors(tmp_path, monkeypatch, request, caplog, storage):
+    database = request.getfixturevalue('database_url') if storage == 'postgres' else ''
+    cleanup = None
+    def tracked_visits(*args):
+        nonlocal cleanup
+        router = visits_router(*args)
+        cleanup = Mock(wraps=router.visit_cleanup)
+        router.visit_cleanup = cleanup
+        return router
+    monkeypatch.setattr('medvisit.api.app.visits_router', tracked_visits)
+    app = create_app(settings(tmp_path / 'sessions', database_url=database))
+    ticks, sleeping = asyncio.Queue(), asyncio.Queue()
+    sleep = asyncio.sleep
+    async def scheduled_sleep(delay):
+        task = asyncio.current_task()
+        if delay == 3600 and task.get_coro().__qualname__.endswith('cleanup_visits'):
+            sleeping.put_nowait(task)
+            await ticks.get()
+        else:
+            await sleep(delay)
+    monkeypatch.setattr('medvisit.api.app.asyncio.sleep', scheduled_sleep)
+    directory = tmp_path / 'visit-audio'
+    directory.mkdir(mode=0o700)
+    raw, transcript = directory / ('a' * 32), directory / ('a' * 32 + '.transcript')
+    retained = {directory / ('b' * 32):b'other representative audio',
+                directory / ('b' * 32 + '.transcript'):b'{"text":"other representative text"}'}
+    original_unlink = Path.unlink
+    failed = False
+    def fail_once(path, *args, **kwargs):
+        nonlocal failed
+        if path == raw and not failed:
+            failed = True
+            raise OSError('synthetic-private-path-and-content')
+        return original_unlink(path, *args, **kwargs)
+    caplog.set_level(logging.ERROR, logger='medvisit')
+    async with app.router.lifespan_context(app):
+        worker = await asyncio.wait_for(sleeping.get(), 2)
+        raw.write_bytes(b'synthetic expired audio')
+        transcript.write_text('{"text":"synthetic expired text"}')
+        for path, content in retained.items():
+            path.write_bytes(content)
+        with app.state.platform.transaction('local') as tx:
+            expired = tx.create('local', 'visit', {'owner_id':'local', 'source':'recording',
+                'audio_path':raw.name, 'transcript_file':transcript.name, 'audio_status':'transcribed',
+                'audio_uploaded_at':(datetime.now(timezone.utc) - timedelta(days=31)).isoformat()})
+            unexpired = tx.create('local', 'visit', {'owner_id':'other-representative', 'source':'recording',
+                'audio_path':'b' * 32, 'transcript_file':'b' * 32 + '.transcript', 'audio_status':'transcribed'})
+        with ExitStack() as held:
+            if storage == 'postgres':
+                pool = app.state.records.pool
+                for _ in range(pool.max_size):
+                    held.enter_context(pool.connection())
+            else:
+                monkeypatch.setattr(Path, 'unlink', fail_once)
+            next_cycle = asyncio.create_task(sleeping.get())
+            ticks.put_nowait(None)
+            try:
+                done, _ = await asyncio.wait([worker, next_cycle], timeout=7, return_when=asyncio.FIRST_COMPLETED)
+                error = type(worker.exception()).__name__ if worker.done() and not worker.cancelled() else None
+                assert next_cycle in done, f'Scheduled cleanup stopped after {error}'
+                assert next_cycle.result() is worker and not worker.done()
+            finally:
+                next_cycle.cancel()
+                await asyncio.gather(next_cycle, return_exceptions=True)
+            assert cleanup.call_count == 2 and raw.is_file() and transcript.is_file()
+        ticks.put_nowait(None)
+        assert await asyncio.wait_for(sleeping.get(), 2) is worker
+        assert cleanup.call_count == 3 and not raw.exists() and not transcript.exists()
+        with app.state.platform.transaction('local', write=False) as tx:
+            assert tx.get('local', 'visit', expired['id'])['audio_status'] == 'deleted'
+            assert tx.get('local', 'visit', unexpired['id']) == unexpired
+        assert all(path.read_bytes() == content for path, content in retained.items())
+        errors = [record.getMessage() for record in caplog.records if record.name == 'medvisit']
+        assert errors == [f'visit_cleanup_failed error_type={"PoolTimeout" if storage == "postgres" else "OSError"}']
+        assert 'synthetic-private-path-and-content' not in caplog.text
+    assert worker.cancelled() and cleanup.call_count == 3 and not app.state.ready
 
 
 def test_pricing_preparation_failure_releases_the_voice_slot(tmp_path):
