@@ -188,3 +188,23 @@ uv run --directory backend pytest -q tests/test_auth.py -k 'cancelled_login or p
 实际执行错误密码、正常登录、退出取消与确认退出、首页后台/恢复、选择药品、独立选择医生、展开评分场景及详情、学习概述/返回、我的/空复盘列表、日记缺少必填校验/保存草稿/打开详情/返回、换账号隔离、HTTP 503 失败/恢复、原草稿保留。场景详情明确显示“评分标准尚未完成专家校准，仅作练习反馈”；产品/医生/资料均为标注虚构的软件文本，未提升医学或校准状态。截图/XML 在忽略验收目录，全部输入框值已遮盖；截图只含合成记录。
 
 AVD 以 `-no-audio` 启动，未点击开始练习、语音输入或录音；本节不等同真实麦克风、扬声器、声学中断、真机延迟或真人训练质量验收。用户确认暂时无真机，继续保留这些必需待验项。未进行合格的三轮最终无新增优化复查，goal 未完成。测试 APK 单独标记为 QA 产物；正在恢复默认原生构建配置及原来的两份 APK，并清理本次 AVD 和服务，完成后再记录结果。
+
+收尾结果：默认配置 ARM64 APK 编译成功，验证原生库包含默认 `https://openwook.cloud/_android/index.html` 且无测试 5179 URL，另存验证产物后按原 SHA-256 完全恢复两份原 APK（`android/apk-restore.json`）。仅本次 AVD/emulator-5556、8007/5179 服务已停止并删除 AVD，原 emulator-5554 保留；`android/cleanup.json` 验证清理。未安装或运行默认生产 URL 的验证 APK，未部署服务器。
+
+用户后续要求将优化合并 main，并明确回复“允许合并并自动部署”，更新了最初的范围。七项 [PR #6](https://github.com/shenyankm/BreathOn/pull/6) 的全部 CI 通过后已合并为 `ddb3af82165ce6296fb3ec7dbb348250b4419fd9`，本地 main 也已 fast-forward。远端实际采用 squash；合并树与验收 head `b5430dbfa1c41e8b0a03ea96d1b6b2987c26a73d` 完全一致，原七个独立提交和验收仍保留在优化分支。正文引用历史提交的共同作者行，最终 trailer 块经 `git interpret-trailers --parse` 核对恰好一条 Codex；不改写已发布历史。该 main 的 [CI/自动部署 41114733710](https://github.com/shenyankm/BreathOn/actions/runs/41114733710) 尚待全部完成，不能写成部署通过。
+
+## 8. 提交后的文件错误不能删除已提交附件（改动前标准）
+
+实际故障注入复现：编辑录音原文时，新转写文件已随数据库事务提交，随后旧文件 unlink 抛 OSError；外层回滚清理仍删除 replacement。SQLite/隔离真实 PG 均 **2 failed**，数据库 version 已为 2，但所引用的新文件不存在（`private-file-commit-probe-before.log`）。此控制流已存在于初始 main；前面移出线程的改动保留了原逻辑，没有把它当作已解决。
+
+调用方检查覆盖本模块所有 `private_write`/`private_delete`：创建和编辑返回 public、上传后的 public、后台 persist 的旧文件/提供商临时文件收尾均发生在 commit 之后，应退出回滚清理的 try 范围；真正事务/写入失败仍清理新文件。recover/到期删除/短期提供商转码不采用该回滚控制流，不做无关改动。最小改动只移动提交后的响应/清理到 except 之后，不新增抽象、重试、依赖、迁移或吞异常。回退 git revert 本项 SHA。
+
+预设验收：四种路径的提交后读取或清理故障仍以原 HTTP 409 或 OSError 报错，数据库已引用的附件必须存在、内容正确且可在故障解除后读取；遗留旧文件由现有 cleanup 删除，新引用文件保留。创建/编辑/上传提交前失败时，数据库和文件集合保持原值，不留下新文件；文件/真实 PG 两种模式均覆盖。后台取消/提交回滚、权限、保留期和令牌回归继续通过；完整后端与隔离真实原生部署集成通过。仅合成隔离文件与数据库，提供商响应模拟，外部请求为 0；不声称真实麦克风/扬声器或服务端到端验收。
+
+正式改动前回归 **8 failed、6 passed**，四种路径的两种存储均出现提交后文件被删，真正提交前失败的清理已正确。仅将 7 行提交后响应/清理移出回滚 except 的范围。修改后整个日记模块 **40 passed**；另补充上传响应丢失后的重复操作断言 **4 passed**：返回已有录音 409 且文件集合不变。故障仍明确返回 409 或抛出原 OSError，不以隐藏异常制造成功。
+
+完整仓库后端含隔离 PG **854 passed、0 skipped，81.07 秒**。首次全量 **856 passed** 中包含忽略目录的两个本地探针用例，已改探针文件名以免默认收集并重跑正式 854 项；保留首次日志，不将临时探针数量计为仓库回归。随后单独执行隔离原生部署检查通过（`private-files-native.log`）：实际 Caddy、Uvicorn、PG 停机/重启、Cookie 与账号隔离，未与全量回归重叠。前端和原生树与第七项完全相同，沿用其 100 项、lint、Web/Android 页面和实际 APK 编译结果，不重复无关测试。diff 已检查，本项提交推送后仍需自己的精确 SHA CI。
+
+前七项全部完成各自远程 CI：第六项 [41110086049](https://github.com/shenyankm/BreathOn/actions/runs/41110086049) 与第七项 [41110922966](https://github.com/shenyankm/BreathOn/actions/runs/41110922966) 的四项 job 均 success，逐项核对 head_sha（`admission-jobs-final.json`、`visit-retry-jobs-final.json`）。[PR #6 的合并验证 41111414851](https://github.com/shenyankm/BreathOn/actions/runs/41111414851) 四项也全部 success，head 为 b5430db、base 为 b8e766d；该分支生产 job 按规则 skipped。获得自动部署授权后才执行上述合并。
+
+本项初始提交 `682af8f1232b92ac99c29557cb7c1c5e52bf082f` 已推送。其 [首次 CI 41112965869](https://github.com/shenyankm/BreathOn/actions/runs/41112965869) 前端/后端成功、Android 失败，deployment 因依赖失败跳过，未关闭本项。日志显示 buildSrc 的 Kotlin 2.3.21 依赖在 Gradle Plugin Portal 未找到；当前同一 POM 在原仓库及 Maven Central 均恢复为 HTTP 200、SHA-256 相同，已仅重跑失败 job，尚待完整结果。未降低版本或跳过构建。为后续顺序合并，已将本项相同代码/测试原样整理到最新 main 的独立分支；保留原提交和失败证据，最终新 head 仍须自己的 CI 全绿。

@@ -576,3 +576,152 @@ def test_transcription_admission_preserves_http_guards(tmp_path, monkeypatch, re
     assert 'provider_token_hash' not in response.json() and 'audio_path' not in response.json()
     assert client.post(url).status_code == 409
     assert len(launched) == 1
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+def test_old_cleanup_failure_preserves_committed_transcript(tmp_path, monkeypatch, request, storage):
+    from pathlib import Path
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    item = client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'original synthetic text'}).json()
+    with store.transaction('local', write=False) as tx:
+        old = tx.get('local', 'visit', item['id'])['transcript_file']
+    unlink = Path.unlink
+    def fail_old(path, *args, **kwargs):
+        if path.name == old:
+            raise OSError('synthetic old-file cleanup failure')
+        return unlink(path, *args, **kwargs)
+    with monkeypatch.context() as fault:
+        fault.setattr(Path, 'unlink', fail_old)
+        with pytest.raises(OSError, match='synthetic old-file cleanup failure'):
+            client.put('/api/visits/' + item['id'], json={'version':item['version'], 'visited_at':'2026-10-31', 'text':'committed synthetic replacement'})
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    assert saved['version'] == 2
+    replacement = tmp_path / 'visit-audio' / saved['transcript_file']
+    assert replacement.is_file(), 'Post-commit cleanup deleted a committed attachment'
+    assert client.get('/api/visits/' + item['id']).json()['text'] == 'committed synthetic replacement'
+    router.visit_cleanup('local')
+    assert not (tmp_path / 'visit-audio' / old).exists()
+    assert replacement.is_file()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('operation', ['create', 'upload'])
+def test_response_failure_preserves_committed_visit_files(tmp_path, monkeypatch, request, storage, operation):
+    from pathlib import Path
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    body = {'source':'recording', 'visited_at':'2026-10-31', 'text':'private synthetic text'}
+    item = client.post('/api/visits', json=body).json() if operation == 'upload' else None
+    with store.transaction('local', write=False) as tx:
+        before = {row['id'] for row in tx.list('local', 'visit')}
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    read_text = Path.read_text
+    def fail_read(path, *args, **kwargs):
+        if path.suffix == '.transcript':
+            raise OSError('synthetic response read failure')
+        return read_text(path, *args, **kwargs)
+    with monkeypatch.context() as fault:
+        fault.setattr(Path, 'read_text', fail_read)
+        response = (client.post('/api/visits', json=body) if operation == 'create' else
+            client.post('/api/visits/' + item['id'] + '/audio', content=b'synthetic audio',
+                headers={'content-type':'audio/wav', 'x-recording-authorized':'true'}))
+        assert response.status_code == 409
+    with store.transaction('local', write=False) as tx:
+        saved = (next(row for row in tx.list('local', 'visit') if row['id'] not in before) if operation == 'create' else
+            tx.get('local', 'visit', item['id']))
+    directory = tmp_path / 'visit-audio'
+    assert (directory / saved['transcript_file']).is_file()
+    if operation == 'upload':
+        assert saved['audio_status'] == 'transcription_unavailable'
+        assert (directory / saved['audio_path']).read_bytes() == b'synthetic audio'
+        assert client.get('/api/visits/' + saved['id'] + '/audio').content == b'synthetic audio'
+        files = {path.name for path in directory.iterdir()}
+        assert client.post('/api/visits/' + saved['id'] + '/audio', content=b'synthetic audio',
+            headers={'content-type':'audio/wav', 'x-recording-authorized':'true'}).status_code == 409
+        assert {path.name for path in directory.iterdir()} == files
+    assert client.get('/api/visits/' + saved['id']).json()['text'] == body['text']
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+async def test_transcription_cleanup_failure_preserves_committed_result(tmp_path, monkeypatch, request, storage):
+    from pathlib import Path
+    import httpx
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    item = client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'original synthetic text'}).json()
+    settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    settings.asr_api_key = 'synthetic-key'
+    with store.transaction('local') as tx:
+        row = tx.get('local', 'visit', item['id'])
+        old = row['transcript_file']
+        tx.update('local', 'visit', item['id'], {**row, 'audio_status':'transcribing', 'transcription_job_id':'synthetic-job'}, row['version'])
+    requests = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            assert url.endswith('/query')
+            requests.append(url)
+            return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'synthetic provider result', 'utterances':[]}})
+    monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
+    unlink = Path.unlink
+    def fail_old(path, *args, **kwargs):
+        if path.name == old:
+            raise OSError('synthetic old-file cleanup failure')
+        return unlink(path, *args, **kwargs)
+    with monkeypatch.context() as fault:
+        fault.setattr(Path, 'unlink', fail_old)
+        with pytest.raises(OSError, match='synthetic old-file cleanup failure'):
+            await router.visit_run_job('local', item['id'])
+    with store.transaction('local', write=False) as tx:
+        saved = tx.get('local', 'visit', item['id'])
+    assert saved['version'] == 3 and saved['audio_status'] == 'transcribed'
+    replacement = tmp_path / 'visit-audio' / saved['transcript_file']
+    assert replacement.is_file(), 'Cleanup deleted the committed ASR result'
+    detail = client.get('/api/visits/' + item['id']).json()
+    assert detail['text'] == 'original synthetic text' and detail['transcription_text'] == 'synthetic provider result'
+    assert len(requests) == 1
+    router.visit_cleanup('local')
+    assert replacement.is_file() and not (tmp_path / 'visit-audio' / old).exists()
+    await router.visit_close()
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('operation', ['create', 'edit', 'upload'])
+def test_failed_visit_commit_cleans_only_uncommitted_files(tmp_path, monkeypatch, request, storage, operation):
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    client = TestClient(app)
+    body = {'source':'recording', 'visited_at':'2026-10-31', 'text':'private synthetic text'}
+    item = client.post('/api/visits', json=body).json() if operation != 'create' else None
+    directory = tmp_path / 'visit-audio'
+    before_files = {path.name:path.read_bytes() for path in directory.glob('*')} if directory.exists() else {}
+    with store.transaction('local', write=False) as tx:
+        before = tx.list('local', 'visit')
+    transaction = store.transaction
+    @contextmanager
+    def fail_commit(*args, **kwargs):
+        with transaction(*args, **kwargs) as tx:
+            yield tx
+            if kwargs.get('write', True):
+                raise RuntimeError('synthetic commit failure')
+    monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda *args: 10.0)
+    with monkeypatch.context() as fault:
+        fault.setattr(store, 'transaction', fail_commit)
+        with pytest.raises(RuntimeError, match='synthetic commit failure'):
+            if operation == 'create':
+                client.post('/api/visits', json=body)
+            elif operation == 'edit':
+                client.put('/api/visits/' + item['id'], json={'version':item['version'], 'visited_at':'2026-10-31', 'text':'replacement'})
+            else:
+                client.post('/api/visits/' + item['id'] + '/audio', content=b'synthetic audio',
+                    headers={'content-type':'audio/wav', 'x-recording-authorized':'true'})
+    with store.transaction('local', write=False) as tx:
+        assert tx.list('local', 'visit') == before
+    assert {path.name:path.read_bytes() for path in directory.glob('*')} == before_files

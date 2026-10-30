@@ -215,10 +215,10 @@ def visits_router(store, settings, current_user):
                     'status':'draft', 'redacted_text':'', 'speakers':[], 'audio_status':'none', 'audio_path':'',
                     'audio_uploaded_at':None, 'confirmed_at':None, 'review':None})
                 tx.audit(user['workspace'], user['id'], 'visit.create', 'visit', item['id'])
-            return public(item)
         except BaseException:
             private_delete(transcript_file)
             raise
+        return public(item)
 
     @router.get('/{item_id}')
     def detail(item_id: str, user=Depends(current_user)):
@@ -249,11 +249,11 @@ def visits_router(store, settings, current_user):
                     data['transcript_file'] = replacement
                 updated = tx.update(user['workspace'], 'visit', item_id, {**item, **data, 'status':'draft', 'review':None}, body.version)
                 tx.audit(user['workspace'], user['id'], 'visit.edit', 'visit', item_id)
-            private_delete(old_file)
-            return public(updated)
         except BaseException:
             private_delete(replacement)
             raise
+        private_delete(old_file)
+        return public(updated)
 
     @router.post('/{item_id}/confirm')
     def confirm(item_id: str, body: ConfirmVisit, user=Depends(current_user)):
@@ -360,10 +360,10 @@ def visits_router(store, settings, current_user):
                     'audio_duration':duration, 'audio_uploaded_at':now(), 'audio_status':'transcription_unavailable',
                     'recording_authorized':True}, item['version'])
                 tx.audit(user['workspace'], user['id'], 'visit.audio_upload', 'visit', item_id)
-            return public(updated)
         except BaseException:
             path.unlink(missing_ok=True)
             raise
+        return public(updated)
 
     @router.get('/{item_id}/audio')
     def audio(item_id: str, user=Depends(current_user)):
@@ -460,12 +460,12 @@ def visits_router(store, settings, current_user):
                                         replacement = private_write({'text':raw.get('text') or text, 'transcription_text':text, 'segments':segments})
                                         tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribed',
                                             'transcript_file':replacement, 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
-                                private_delete(old_file)
-                                if replacement:
-                                    remove_provider_files(item.get('audio_path', ''))
                             except BaseException:
                                 private_delete(replacement)
                                 raise
+                            private_delete(old_file)
+                            if replacement:
+                                remove_provider_files(item.get('audio_path', ''))
                         await work(persist)
                         return
                     except (httpx.HTTPError, ValueError, TypeError):
