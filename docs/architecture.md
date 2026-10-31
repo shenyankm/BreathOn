@@ -69,7 +69,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 ## 网络检索与DeepSeek限流
 
-教练通过AgentScope `FunctionTool`按需调用DeepSeek原生Search/Fetch接口，医生请求不使用搜索。搜索启用时，教练最多3次模型推理、2次网页工具尝试，整体等待上限45秒；关闭时保持单次教练推理、25秒上限。多轮工具调用的模型token用量会累加。普通沟通和已有数字的算术练习不要求联网。
+教练通过AgentScope `FunctionTool`按需调用DeepSeek原生Search/Fetch接口，医生请求不使用搜索。搜索启用时，教练最多3次模型推理、2次网页工具尝试，整体等待上限默认45秒（`DEEPSEEK_TIMEOUT_SECONDS`加25秒）；关闭时保持单次教练推理，默认25秒（该值加5秒）。可恢复的服务端错误（408/429/5xx、连接错误）每次模型调用最多重试一次；客户端超时不重试。多轮工具调用的模型token用量会累加。普通沟通和已有数字的算术练习不要求联网。
 
 开发配置见`backend/.env`及`backend/.env.example`；生产由systemd加载私有环境文件，路径见[服务器与CI/CD](server-deployment.md)。以下为配置项及示例值，不替代供应商实时额度：
 
@@ -78,6 +78,12 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 | `DEEPSEEK_SEARCH_ENABLED` | `true` | 给教练注册搜索与抓取工具 |
 | `DEEPSEEK_MAX_CONCURRENCY` | `2500` | 当前进程所有对话/Agent共享的模型请求信号量；当前Flash标准额度2500，切换Pro时改为500，定制额度按实际配置 |
 | `DEEPSEEK_SEARCH_QPS` | `100` | Search请求平滑限速，独立于模型并发 |
+| `DEEPSEEK_TIMEOUT_SECONDS` | `20` | 单次教练/医生模型请求的客户端超时，同时决定一轮的总等待上限 |
+| `SUMMARY_TIMEOUT_SECONDS` | `30` | 拜访评分卡等单次JSON补全的总超时 |
+| `DEEPSEEK_REVIEW_MODEL` | 空 | 资料适用性复核所用模型；空表示沿用评分模型，填不同模型可降低同源错误 |
+| `RESEARCH_MAX_CONCURRENCY` | `4` | 同时运行的检索任务数，每个任务启动一个MCP子进程，超出的排队 |
+| `CALIBRATION_MIN_SAMPLES` | `5` | 每个维度判定“已校准”所需的最少专家样本 |
+| `CALIBRATION_REPEATS` | `0` | 校准时每个样本额外重复运行的次数（0至3），用于测量运行间稳定性；会增加付费调用 |
 | `DEEPSEEK_FETCH_QPS` | `25` | Fetch请求平滑限速，独立于Search及模型并发 |
 
 这些是当前进程的保护上限，不能控制同账号其他应用或其他worker的请求；账号实际超限仍可能收到429。它们不改变本机的2个语音会话上限，也不代表系统已通过2500并发压测。额度依据[模型价格页](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)和[限速说明](https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/)，搜索/抓取依据[搜索指南](https://api-docs.deepseek.com/zh-cn/guides/search/)。

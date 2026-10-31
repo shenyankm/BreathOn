@@ -74,3 +74,32 @@ def test_failures_are_classified_by_cause_so_model_faults_and_source_faults_are_
 def test_classified_validation_errors_are_still_value_errors_for_existing_handlers():
     assert all(issubclass(cls, ValueError) and issubclass(cls, ResearchValidationError)
                for cls in (FieldNotAllowed, EvidenceNotReturned, SourceHostNotAllowed, NoArchivedSource, TooFewSearches))
+
+
+def test_nothing_archived_is_reported_as_such_even_when_the_model_cited_evidence():
+    from medvisit.research.agents import PROFILES, validate_result
+    from medvisit.research.models import ResearchResult
+    result = ResearchResult.model_validate({'findings': [{'title': 't', 'details': [{'label': '通用名', 'value': 'v',
+        'source_id': 'a'*24, 'evidence_id': 'E1-'+'b'*12}], 'caveats': []}], 'further_checks': []})
+    with pytest.raises(NoArchivedSource):
+        validate_result(result, PROFILES['drug'], None, {'archives': [], 'queries': ['a', 'b']})
+
+
+async def test_research_jobs_beyond_the_concurrency_limit_wait_instead_of_running(tmp_path):
+    import asyncio
+    from medvisit.research.service import ResearchService
+    running, peak = 0, 0
+    async def fake_run(*args, **kwargs):
+        nonlocal running, peak
+        running += 1; peak = max(peak, running)
+        await asyncio.sleep(0.05)
+        running -= 1
+        raise ValueError('stop after measuring')
+    config = settings(tmp_path, research_max_concurrency=2)
+    service = ResearchService.__new__(ResearchService)
+    service.settings, service._slots, service._closing = config, asyncio.Semaphore(config.research_max_concurrency), False
+    async def hold():
+        async with service._slots:
+            await fake_run()
+    await asyncio.gather(*[hold() for _ in range(6)], return_exceptions=True)
+    assert peak == 2

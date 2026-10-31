@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from openai import APIError
 
 from ..agents.completion import json_completion
+from ..agents.reliability import count, record_failure
 from ..knowledge.corpus import quotation_text
 from ..knowledge.live import checked_snapshot, validate_snapshot
 from ..voice.protocol import BridgeError
@@ -99,5 +100,7 @@ async def build_visit_summary(settings, record):
                   **({'free_context':record.data['free_context']} if record.data.get('free_context') else {})})
         await validate_snapshot(record, checks)
         return validate_summary(raw,record,settings.deepseek_model,medical_checks=checks)
-    except (APIError,TimeoutError,ValueError,TypeError,KeyError,IndexError,BridgeError):
+    except (APIError,TimeoutError,ValueError,TypeError,KeyError,IndexError,BridgeError) as exc:
+        record_failure('visit_summary', exc)
+        count('summary.unscored_fallback')
         return validate_summary({},record,settings.deepseek_model,medical_checks=await checked_snapshot(record))

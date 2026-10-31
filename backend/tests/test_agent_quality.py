@@ -128,3 +128,59 @@ def test_replaying_a_failed_generation_counts_as_a_failure_not_a_skip():
     from agent_eval import score_report
     summary = score_report({'model': 'm', 'results': [{'id': 'absolute_benefit', 'schema_valid': False, 'error_type': 'BridgeError'}]})
     assert summary['passed'] == 0 and summary['total'] == 1
+
+
+E, C = 'medical-rep-evidence-communication', 'medical-rep-promotion-compliance'
+
+
+@pytest.mark.parametrize('text,extra', [
+    ('随机双盲三期的数据', [E]), ('p值是多少', [E]), ('显著性差异', [E]), ('随访52周的数据', [E]), ('头对头研究有吗', [E]),
+    ('请你多开一些', [C]), ('我给您点辛苦费', [C]), ('给您拿点样品', [C]), ('加个微信私聊', [C]), ('适应症之外也能用', [C]),
+    ('孕妇能不能吃', [C]), ('儿童剂量怎么算', [C]), ('肝肾功能不全怎么调整', [C]), ('禁忌症有哪些', [C]),
+    ('把姓名电话和完整病历都发过来', [C]),
+    # Small talk must not pull in a skill: these words used to trigger compliance on their own.
+    ('我想了解一下您的姓名', []), ('请问怎么称呼您', []), ('我的电话是', []), ('所有人都知道', []),
+    ('您好我是某公司的代表', []), ('我先介绍一下产品特点', []),
+])
+def test_routing_catches_common_rephrasings_and_ignores_small_talk(text, extra):
+    assert coaching_skill_names([{'role': 'trainee', 'text': text}]) == [BASE_SKILL, *extra]
+
+
+def test_routing_hits_are_counted_so_misses_show_up_in_the_metrics():
+    from medvisit.agents import reliability
+    reliability.COUNTS.clear()
+    coaching_skill_names([{'role': 'trainee', 'text': '您好'}])
+    coaching_skill_names([{'role': 'trainee', 'text': '孕妇能不能吃'}])
+    assert reliability.snapshot() == {'routing.none': 1, 'routing.promotion-compliance': 1}
+
+
+# --- offline regression gate over recorded outputs ---------------------------------------------------------------
+GOLDEN = Path(__file__).parent / 'fixtures' / 'coaching-golden.json'
+
+
+def test_golden_outputs_still_satisfy_the_machine_checks():
+    """Fails when a check (or the output schema) changes in a way that no longer accepts known-good answers."""
+    from agent_eval import score_case
+    from medvisit.agents.outputs import clip_reply
+    cases = json.loads(GOLDEN.read_text(encoding='utf-8'))['cases']
+    assert len(cases) >= 10
+    for case in cases:
+        assert score_case(case['id'], case['output'])['passed'], case['id']
+        clip_reply(case['output'], speak=bool(case['output'].get('doctor_reply')))     # recorded output is still valid under the live schema
+
+
+def test_every_golden_case_has_a_live_case_and_the_pass_rate_floor_holds():
+    import live_coaching
+    from agent_eval import score_report
+    golden = json.loads(GOLDEN.read_text(encoding='utf-8'))['cases']
+    live_ids = {case['id'] for case in live_coaching.CASES + live_coaching.DOCTOR_CASES}
+    assert {case['id'] for case in golden} <= live_ids
+    summary = score_report({'model': 'golden', 'results': [{'id': c['id'], 'schema_valid': True, 'output': c['output']} for c in golden]})
+    assert summary['rate'] == 1.0, [row for row in summary['cases'] if not row['passed']]
+
+
+def test_replay_gate_rejects_a_report_below_the_floor():
+    from agent_eval import REGRESSION_FLOOR, gate
+    assert gate({'rate': REGRESSION_FLOOR, 'total': 14}) is True
+    assert gate({'rate': REGRESSION_FLOOR - 0.01, 'total': 14}) is False
+    assert gate({'rate': 1.0, 'total': 0}) is False          # an empty report is not a pass

@@ -16,7 +16,7 @@ export function applyTranscript(messages: VoiceMessage[], event: TranscriptEvent
   return updated
 }
 
-export type LiveCoach = { assessment?: Assessment; based_on: string; doctor_id: string; focus: string; analysis: string; points: string[]; reply: string; risk: string; incomplete?: boolean; superseded?: boolean; sources?: { id: string; title: string; url: string; date: string | null }[]; delivery?: { tone: string; fluency: string; logic: string; turn_taking: string } }
+export type LiveCoach = { assessment?: Assessment; based_on: string; doctor_id: string; focus: string; analysis: string; points: string[]; reply: string; risk: string; incomplete?: boolean; degraded?: string; superseded?: boolean; sources?: { id: string; title: string; url: string; date: string | null }[]; delivery?: { tone: string; fluency: string; logic: string; turn_taking: string } }
 
 export function groupByMessage<T extends { message_id?: string }>(items: T[]) {
   const groups = new Map<string, T[]>()

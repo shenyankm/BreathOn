@@ -169,3 +169,35 @@ async def test_cancelling_an_inflight_search_closes_client_and_preserves_model_c
     assert client.is_closed
     async with config._deepseek_slots:
         pass
+
+
+@pytest.mark.parametrize('query', [
+    '患者电话13812345678', '手机 138 1234 5678', '张三 住院号 123456', '病历号 A20260101', '某某医院3床王芳',
+    '患者李明 糖尿病 用药', '患者 女 45岁 BMI 32 肝功能异常', '姓名：王芳 肝功能', '110101-19900101-1234',
+])
+async def test_personal_or_record_like_queries_never_reach_the_provider(tmp_path, query):
+    requests = []
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={'results': []})
+    async with AsyncClient(api_key='fake-deepseek-key', base_url='https://api.deepseek.com', max_retries=0,
+                           http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler))) as client:
+        web = WebSearch(client, settings(tmp_path))
+        assert 'error' in await web.search_web(query)
+    assert not requests and web.calls == {'search': 0, 'fetch': 0}
+
+
+@pytest.mark.parametrize('query', [
+    '玛仕度肽 说明书', '司美格鲁肽 适应症 2型糖尿病', '患者报告结局 量表', '病人安全 药物警戒 规定', '患者教育 糖尿病 指南',
+    '受试者招募 入组标准 肥胖试验', '住院医师规范化培训 政策', '18岁以上成人 BMI≥28', '医保目录 2026 谈判药品',
+])
+async def test_generic_public_queries_are_not_blocked(tmp_path, query):
+    requests = []
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={'results': []})
+    async with AsyncClient(api_key='fake-deepseek-key', base_url='https://api.deepseek.com', max_retries=0,
+                           http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler))) as client:
+        web = WebSearch(client, settings(tmp_path))
+        assert 'error' not in await web.search_web(query)
+    assert len(requests) == 1

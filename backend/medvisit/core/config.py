@@ -25,6 +25,13 @@ def integer_env(name, default):
         raise ValueError(f"{name} must be a positive integer") from None
 
 
+def float_env(name, default):
+    try:
+        return float(os.getenv(name, default))
+    except ValueError:
+        raise ValueError(f"{name} must be a finite positive number") from None
+
+
 def login_users_env():
     try:
         return json.loads(os.getenv('LOGIN_USERS_JSON', '{}'))
@@ -58,6 +65,14 @@ class Settings:
     deepseek_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL", "deepseek-flash"))
     deepseek_endpoint: str = DEEPSEEK_URL
     doctor_temperature: float = field(default_factory=lambda: float(os.getenv("DOCTOR_TEMPERATURE", "0.3")))
+    # Empty means the evidence-admissibility check reuses deepseek_model; set a different model to decorrelate its errors.
+    deepseek_review_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_REVIEW_MODEL", ""))
+    model_timeout: float = field(default_factory=lambda: float_env("DEEPSEEK_TIMEOUT_SECONDS", "20"))
+    summary_timeout: float = field(default_factory=lambda: float_env("SUMMARY_TIMEOUT_SECONDS", "30"))
+    research_max_concurrency: int = field(default_factory=lambda: integer_env("RESEARCH_MAX_CONCURRENCY", "4"))
+    calibration_min_samples: int = field(default_factory=lambda: integer_env("CALIBRATION_MIN_SAMPLES", "5"))
+    # Extra paid runs per sample to measure run-to-run stability; 0 keeps the cost of a calibration unchanged.
+    calibration_repeats: int = field(default_factory=lambda: integer_env("CALIBRATION_REPEATS", "0"))
     deepseek_search_enabled: bool = field(default_factory=lambda: os.getenv("DEEPSEEK_SEARCH_ENABLED", "true").lower() == "true")
     deepseek_max_concurrency: int = field(default_factory=lambda: integer_env("DEEPSEEK_MAX_CONCURRENCY", "2500"))
     deepseek_search_qps: int = field(default_factory=lambda: integer_env("DEEPSEEK_SEARCH_QPS", "100"))
@@ -75,13 +90,16 @@ class Settings:
     handshake_seconds: float = 15
 
     def __post_init__(self):
-        for name in ("deepseek_max_concurrency", "deepseek_search_qps", "deepseek_fetch_qps", "max_sessions"):
+        for name in ("deepseek_max_concurrency", "deepseek_search_qps", "deepseek_fetch_qps", "max_sessions",
+                     "research_max_concurrency", "calibration_min_samples"):
             value = getattr(self, name)
             if type(value) is not int or value <= 0:
                 raise ValueError(f"{name.upper()} must be a positive integer")
+        if type(self.calibration_repeats) is not int or not 0 <= self.calibration_repeats <= 3:
+            raise ValueError("CALIBRATION_REPEATS must be an integer from 0 to 3")
         if type(self.doctor_temperature) not in (int, float) or not 0 <= self.doctor_temperature <= 1:
             raise ValueError("DOCTOR_TEMPERATURE must be between 0 and 1")
-        for name in ("session_seconds", "handshake_seconds"):
+        for name in ("session_seconds", "handshake_seconds", "model_timeout", "summary_timeout"):
             value = getattr(self, name)
             if type(value) not in (int, float) or not 0 < value < math.inf:
                 raise ValueError(f"{name.upper()} must be finite and positive")

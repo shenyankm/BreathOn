@@ -17,6 +17,7 @@ from ..core.tasks import drain, work
 from ..platform.store import now
 from ..platform.models import Policy
 from ..platform.pdf_extract import extract_pdf
+from ..agents.reliability import count
 from .agents import PROFILES, failure_kind, observations, run_agent, validate_result
 from .archive import canonical_url, read_source, write_private
 from .doctor import doctor_draft, candidate_draft, doctor_evidence, matched_finding
@@ -35,6 +36,8 @@ class ResearchService:
         self.job_tasks = {}
         self.scheduler = None
         self._lifecycle = asyncio.Lock()
+        # Each job starts a STDIO MCP subprocess; bound how many run at once so a burst queues instead of exhausting the host.
+        self._slots = asyncio.Semaphore(settings.research_max_concurrency)
         self._closing = False
         self._shutdown_task = None
 
@@ -297,7 +300,10 @@ class ResearchService:
         try:
             if self._closing:
                 raise asyncio.CancelledError
-            result, usage = await run_agent(self.settings, job['kind'], job['query'], self.archives, job_dir, job['seed_urls'])
+            async with self._slots:
+                if self._closing:
+                    raise asyncio.CancelledError
+                result, usage = await run_agent(self.settings, job['kind'], job['query'], self.archives, job_dir, job['seed_urls'])
         except asyncio.CancelledError:
             interrupted, error = True, '本次检索已停止，已归档的原件保留。'
         except (ValueError, TimeoutError) as exc:
@@ -307,6 +313,7 @@ class ResearchService:
         if kind:
             # One greppable line per failed job: count by kind to tell model/config faults from source-quality faults.
             logger.warning('research_job_failed_kind job_id=%s kind=%s agent=%s', job['id'], kind, job['kind'])
+            count(f'failed.research.{kind}')
         captured = self._observations(job['id'])
         if not usage:
             try:

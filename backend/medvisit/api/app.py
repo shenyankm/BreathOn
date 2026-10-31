@@ -4,6 +4,7 @@ import contextlib
 import json
 import logging
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryFile
 from time import monotonic
@@ -20,6 +21,7 @@ from websockets.exceptions import ConnectionClosed, InvalidStatus
 from ..voice.asr import AsrStream, asr_connection, request_packet, run_practice
 from ..services.practice import PracticeDialogue
 from ..services.final_review import review_training
+from ..agents.reliability import snapshot as agent_counters
 from ..services.visit_summary import build_visit_summary
 from ..services.service_status import check_services
 from ..voice.protocol import BridgeError, DUPLEX_MODEL, GREETING, MAX_MESSAGE_BYTES, event, parse_client_message, session_config
@@ -126,6 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.medical_corpus = medical_corpus
     app.state.medical_verifier = medical_verifier
     app.state.ready = False
+    process_started = datetime.now(timezone.utc).isoformat()
     auth = Authentication(settings)
     app.include_router(auth.router)
     app.include_router(router)
@@ -201,6 +204,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         analysis = bool(settings.deepseek_api_key and settings.deepseek_model)
         tts = bool(settings.tts_api_key and settings.tts_voice)
         return {"status": "ok", "storage": "postgresql" if settings.database_url else "json", "agent_framework": "agentscope", "voice_configured": bool(settings.api_key), "asr_configured": bool(settings.asr_api_key), "tts_configured": tts, "analysis_configured": analysis, "practice_configured": bool(settings.asr_api_key and analysis and tts), "combat_configured": bool(settings.api_key and settings.asr_api_key and analysis), "analysis_model": settings.deepseek_model, "model": DUPLEX_MODEL}
+
+    @app.get('/api/admin/agent-metrics')
+    async def agent_metrics():
+        # Behind the /api/admin/ prefix: the auth middleware already limits it to administrators when auth is on.
+        return {'scope': 'process', 'since': process_started, 'counters': agent_counters()}
 
     @app.get("/api/doctor")
     async def doctor_profile():

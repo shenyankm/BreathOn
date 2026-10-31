@@ -161,7 +161,8 @@ async def test_assessment_repairs_once_and_keeps_strict_evidence_checks(tmp_path
     checked = result['coach']['assessment']
     assert bool(usage.get('incomplete')) == (repair == 'unavailable')
     assert checked['initial_validation_errors'] == ['accuracy资料引文无法核对。', 'accuracy评分缺少原话或审核资料。']
-    assert sum('assessment_validation' in json.dumps(p) for p in seen) == 1
+    # One logical repair; a 503 is transient, so the transport retries that single repair request exactly once.
+    assert sum('assessment_validation' in json.dumps(p) for p in seen) == (2 if repair == 'unavailable' else 1)
     if repair == 'valid':
         assert checked['total'] == 90 and checked['validation_errors'] == []
         assert checked['applicability_review'] == 'completed'
@@ -196,3 +197,23 @@ def test_natural_doctor_rules_reach_realtime_and_text_prompts(training, configur
     assert DOCTOR_VOICE in prompt
     assert '不逼其猜诊疗标准' in prompt and '不强行追加问题' in prompt
     assert DOCTOR_CONVERSATION in doctor_instructions(training, with_evidence=False)
+
+
+async def test_applicability_review_can_use_a_different_model_and_records_which(tmp_path, training):
+    seen = []
+    def handler(request):
+        payload = json.loads(request.content)
+        seen.append(payload)
+        system = json.dumps(payload['messages'][0], ensure_ascii=False)
+        content = {'dimensions': [{'key': 'accuracy', 'admissible': True}]} if '资料适用性核对' in system else {**copy.deepcopy(REPLY), 'assessment': assessment()}
+        return httpx.Response(200, json={'choices': [{'message': {'role': 'assistant', 'content': json.dumps(content)}, 'finish_reason': 'stop', 'index': 0}]})
+    messages = [{'id': m['id'], 'role': m['speaker'], 'text': m['text'], 'final': m['final']} for m in HISTORY]
+    real_client = httpx.AsyncClient
+    with patch('openai.AsyncClient', lambda **kw: AsyncClient(http_client=real_client(transport=httpx.MockTransport(handler)), **kw)):
+        result, _ = await generate_reply(settings(tmp_path, deepseek_review_model='other-model'), messages, speak=False, training=training)
+    review = [p for p in seen if '资料适用性核对' in json.dumps(p['messages'][0], ensure_ascii=False)]
+    scoring = [p for p in seen if p not in review]
+    assert review and all(p['model'] == 'other-model' for p in review)
+    assert scoring and all(p['model'] == 'fake-model' for p in scoring)
+    checked = result['coach']['assessment']
+    assert checked['review_model'] == 'other-model' and checked['model'] == 'fake-model'

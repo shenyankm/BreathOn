@@ -44,12 +44,33 @@ class CalibrationSample(Input):
         return self
 
 
-def metrics(samples, results, dimensions):
+def weighted_kappa(pairs, levels=5):
+    """Quadratic-weighted Cohen's kappa for 0..4 scores; None when chance agreement leaves nothing to measure."""
+    if len(pairs) < 2:
+        return None
+    n = len(pairs)
+    observed = [[0] * levels for _ in range(levels)]
+    for expert, model in pairs:
+        observed[expert][model] += 1
+    rows = [sum(r) for r in observed]
+    cols = [sum(observed[i][j] for i in range(levels)) for j in range(levels)]
+    weight = lambda i, j: (i - j) ** 2 / (levels - 1) ** 2
+    disagree = sum(weight(i, j) * observed[i][j] for i in range(levels) for j in range(levels)) / n
+    chance = sum(weight(i, j) * rows[i] * cols[j] for i in range(levels) for j in range(levels)) / n ** 2
+    return None if chance == 0 else round(1 - disagree / chance, 3)
+
+
+def metrics(samples, results, dimensions, *, minimum=5, repeats=None):
+    """Agreement between expert scores and the model's.
+
+    `repeats` maps sample_id -> list of assessments from extra runs of the same sample; it measures run-to-run
+    stability. Calibrated needs enough samples, low error, and (when computable) kappa and stability above the floors.
+    """
     paired={r['sample_id']:r for r in results}
     expert=[s for s in samples if s['label_type']=='expert']
     rows=[]
     for dimension in dimensions:
-        key=dimension['key'];pairs=[];expected_count=0
+        key=dimension['key'];pairs=[];scored=[];expected_count=0;stable=[];compared=0
         for sample in expert:
             expected=sample['expected_scores'].get(key)
             if expected is None: continue
@@ -57,14 +78,24 @@ def metrics(samples, results, dimensions):
             result=paired.get(sample['id'],{}).get('assessment',{})
             predicted=next((d.get('score') for d in result.get('dimensions',[]) if d['key']==key),None)
             if predicted is not None and not result.get('validation_errors'):
-                pairs.append(abs(expected-predicted))
+                pairs.append(abs(expected-predicted));scored.append((expected,predicted))
+                for again in (repeats or {}).get(sample['id'],[]):
+                    second=next((d.get('score') for d in again.get('dimensions',[]) if d['key']==key),None)
+                    if second is not None and not again.get('validation_errors'):
+                        compared+=1;stable.append(abs(second-predicted)<=1)
         rows.append({'key':key,'label':dimension['label'],'expected_count':expected_count,'paired_count':len(pairs),
                      'mae':round(sum(pairs)/len(pairs),3) if pairs else None,
-                     'within_one':round(sum(e<=1 for e in pairs)/len(pairs),3) if pairs else None})
-    calibrated=bool(rows) and len(expert)>=5 and all(r['expected_count']>=5 and r['paired_count']==r['expected_count']
+                     'within_one':round(sum(e<=1 for e in pairs)/len(pairs),3) if pairs else None,
+                     'kappa':weighted_kappa(scored),
+                     'bias':round(sum(m-e for e,m in scored)/len(scored),3) if scored else None,
+                     'stability':round(sum(stable)/len(stable),3) if stable else None,'repeat_comparisons':compared})
+    complete=bool(rows) and len(expert)>=minimum and all(r['expected_count']>=minimum and r['paired_count']==r['expected_count']
         and r['mae']<=.5 and r['within_one']>=.9 for r in rows)
+    # Kappa and stability only veto when they could be computed; sparse small sets are reported, not silently trusted.
+    consistent=all((r['kappa'] is None or r['kappa']>=.6) and (r['stability'] is None or r['stability']>=.9) for r in rows)
     return {'expert_samples':len(expert),'synthetic_samples':len(samples)-len(expert),'dimensions':rows,
-            'calibrated':calibrated,'criteria':{'minimum_expert_samples_per_dimension':5,'maximum_mae':.5,'minimum_within_one':.9}}
+            'calibrated':complete and consistent,'criteria':{'minimum_expert_samples_per_dimension':minimum,'maximum_mae':.5,
+            'minimum_within_one':.9,'minimum_weighted_kappa':.6,'minimum_stability':.9}}
 
 
 async def _write(action):
@@ -143,7 +174,7 @@ class Calibrator:
     async def execute(self,user,run_id):
         from ..agents.coach import generate_reply
         # shortcut: a process-local worker; leases expose interrupted jobs after restart without replaying paid calls.
-        results=[];status='completed';error=None;rubric=None
+        results=[];repeats={};status='completed';error=None;rubric=None
         try:
             def load():
                 with self.store.transaction(user['workspace'],write=False) as tx:
@@ -160,6 +191,9 @@ class Calibrator:
                     await asyncio.to_thread(check_materials,self.store,user['workspace'],training)
                     results.append({'sample_id':sample['id'],'sample_version':sample['version'],
                                     'assessment':response['coach']['assessment'],'usage':usage})
+                    for _ in range(self.settings.calibration_repeats):
+                        again,_usage=await generate_reply(self.settings,sample['messages'],speak=False,training=training)
+                        repeats.setdefault(sample['id'],[]).append(again['coach']['assessment'])
                     def progress():
                         with self.store.transaction(user['workspace']) as tx:
                             current=require_item(tx,user['workspace'],'calibration_run',run_id)
@@ -175,7 +209,7 @@ class Calibrator:
             def finish():
                 with self.store.transaction(user['workspace']) as tx:
                     current=require_item(tx,user['workspace'],'calibration_run',run_id)
-                    summary=metrics(current['samples'],results,rubric['dimensions']) if rubric else None
+                    summary=metrics(current['samples'],results,rubric['dimensions'],minimum=self.settings.calibration_min_samples,repeats=repeats) if rubric else None
                     final_status='cancelled' if current['status']=='cancel_requested' else status
                     if current['status']=='interrupted':final_status='interrupted'
                     tx.update(user['workspace'],'calibration_run',run_id,{**current,'status':final_status,'error':error,

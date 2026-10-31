@@ -8,6 +8,7 @@
     "search_results": 5,
     "archive_requests": 8
   },
+  "run": {"job_seconds": 240, "mcp_call_seconds": 75, "model_seconds": 45, "max_iterations": 12},
   "agents": {
     "doctor": {
       "name": "doctor_research_agent",

@@ -7,6 +7,7 @@ import type { LiveCoach } from '@/lib/voice-events'
 
 export const CoachAnalysis = memo(function CoachAnalysis({ coach, review = false, expanded = false }: { coach: LiveCoach; review?: boolean; expanded?: boolean }) {
   if (coach.superseded) return <p role="status" className="text-sm text-muted-foreground">转录已修正，这条提示已失效，请以更新后的建议或最终复盘为准。</p>
+  if (coach.degraded) return <p role="status" className="text-sm text-muted-foreground">本轮教练提示暂时不可用，医生的回应不受影响。你可以继续发言，整场复盘会重新分析。</p>
   if (!review && !expanded) return <div className="space-y-3"><p className="text-sm font-medium leading-6">{coach.points[0] || coach.focus}</p>{coach.risk && <p className="text-sm leading-6 text-muted-foreground">需核实：{coach.risk}</p>}<Collapsible><CollapsibleTrigger>查看分析与参考表达</CollapsibleTrigger><CollapsibleContent><CoachAnalysis coach={coach} expanded /></CollapsibleContent></Collapsible></div>
   return <div className="space-y-5">
     {coach.incomplete && <p className="text-sm text-muted-foreground">本次记录不完整，复盘仅覆盖已收到的内容。</p>}

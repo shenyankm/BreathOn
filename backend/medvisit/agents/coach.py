@@ -17,7 +17,9 @@ from openai import APIError
 
 from ..voice.protocol import BridgeError
 from .doctor import OPENING  # noqa: F401  re-exported
+from .outputs import clip_reply, parse_doctor_reply  # noqa: F401  parse_reply is defined here for existing callers
 from .quotes import apply_quote_check
+from .reliability import call_with_retry, count, record_failure
 from .routing import coaching_skill_names  # noqa: F401  re-exported
 from . import prompts
 from .prompts import (  # noqa: F401  re-exported
@@ -55,7 +57,7 @@ class CoachModel(OpenAIChatModel):
 
     async def _call_api(self, *args, **kwargs):
         async with self.concurrency:
-            return await super()._call_api(*args, **kwargs)
+            return await call_with_retry(lambda: super(CoachModel, self)._call_api(*args, **kwargs), purpose='agent_call')
 
     def _parse_completion_response(self, started, response, audio_format="wav"):
         # AgentScope 2.0.11 drops finish_reason; reject truncated JSON before parsing.
@@ -65,12 +67,12 @@ class CoachModel(OpenAIChatModel):
 
 
 
-def make_model(settings, *, temperature: float, timeout: float, max_tokens: int, extra: dict | None = None) -> "CoachModel":
+def make_model(settings, *, temperature: float, timeout: float, max_tokens: int, extra: dict | None = None, model: str = "") -> "CoachModel":
     """One construction point for every DeepSeek-backed agent: same credential, concurrency gate and JSON mode."""
     return CoachModel(
         concurrency=settings._deepseek_slots,
         credential=OpenAICredential(api_key=settings.deepseek_api_key, base_url=settings.deepseek_endpoint.removesuffix("/chat/completions")),
-        model=settings.deepseek_model, stream=False, max_retries=0, context_size=1_000_000,
+        model=model or settings.deepseek_model, stream=False, max_retries=0, context_size=1_000_000,
         parameters=CoachModel.Parameters(temperature=temperature),
         client_kwargs={"timeout": timeout, "max_retries": 0},
         extra_body={**JSON_ONLY, "max_tokens": max_tokens, **(extra or {})},
@@ -78,30 +80,8 @@ def make_model(settings, *, temperature: float, timeout: float, max_tokens: int,
 
 
 def parse_reply(content: str, *, speak=True) -> dict:
-    data = json.loads(content)
-    if not isinstance(data, dict) or not isinstance(data.get("coach"), dict):
-        raise ValueError("无效的医生/教练结构")
-    coach = data["coach"]
-    fields = [coach.get("focus"), coach.get("analysis"), coach.get("reply")]
-    if speak:
-        fields.append(data.get("doctor_reply"))
-    if any(not isinstance(value, str) or not value.strip() or len(value) > 1200 for value in fields):
-        raise ValueError("无效的医生/教练文字")
-    points, risk = coach.get("points"), coach.get("risk", "")
-    if not isinstance(points, list) or not 1 <= len(points) <= 4 or any(not isinstance(p, str) or not p.strip() or len(p) > 300 for p in points):
-        raise ValueError("无效的教练建议")
-    if not isinstance(risk, str) or len(risk) > 1200:
-        raise ValueError("无效的风险提示")
-    delivery = coach.get("delivery")
-    keys = ("tone", "fluency", "logic", "turn_taking")
-    if not isinstance(delivery, dict) or any(not isinstance(delivery.get(k), str) or not delivery[k].strip() or len(delivery[k]) > 1200 for k in keys):
-        raise ValueError("无效的表达分析")
-    return {"doctor_reply": data["doctor_reply"].strip() if speak else "", "coach": {
-        **{key: coach[key].strip() for key in ("focus", "analysis", "reply")},
-        "points": [point.strip() for point in points], "risk": risk.strip(),
-        "delivery": {key: delivery[key].strip() for key in keys},
-    }}
-
+    """Validate the coach JSON. Over-long prose is clipped instead of failing the turn; structure errors still raise."""
+    return clip_reply(json.loads(content), speak=speak)
 
 
 def _visible_history(messages: list[dict], speak: bool):
@@ -178,17 +158,23 @@ def build_agents(model, doctor_model, web, settings, *, prompt, skill_parts, tra
     return agents
 
 
-async def run_agents(agents, record: str, coach_record: str) -> list:
-    """Run coach and doctor concurrently on the same record; the first failure aborts the turn."""
-    replies = await asyncio.gather(*[
-        agent.reply(Msg(name="practice_record", role="user", content=[TextBlock(text=coach_record if index == 0 else record)]))
-        for index, agent in enumerate(agents)
-    ], return_exceptions=True)
-    for reply in replies:
-        if isinstance(reply, BaseException):
-            raise reply
+async def run_agents(agents, record: str, coach_record: str, *, coach_deadline: float | None = None) -> list:
+    """Run coach and doctor concurrently on the same record and return one outcome per agent (reply or exception).
+
+    The caller decides what a failure means: a live turn can still deliver the doctor without the coach, but a review
+    cannot. Cancellation is never swallowed.
+    """
+    async def run(index, agent):
+        text = coach_record if index == 0 else record
+        async with asyncio.timeout(coach_deadline if index == 0 else None):
+            return await agent.reply(Msg(name="practice_record", role="user", content=[TextBlock(text=text)]))
+
+    replies = await asyncio.gather(*[run(index, agent) for index, agent in enumerate(agents)], return_exceptions=True)
     if asyncio.current_task().cancelling():
         raise asyncio.CancelledError
+    for reply in replies:
+        if isinstance(reply, asyncio.CancelledError):
+            raise reply
     return replies
 
 
@@ -222,7 +208,10 @@ async def score_with_repair(coach_agent, model, replies, result, training, train
     required = {d['key'] for d in training['rubric']['dimensions'] if d['requires_content']}
     candidates = [d for d in assessment['dimensions'] if d['key'] in required and d['score'] is not None]
     if candidates:
-        review_agent = Agent(name='evidence_admissibility_reviewer', system_prompt=APPLICABILITY_PROMPT, model=model,
+        # A different model family decorrelates review errors from scoring errors; empty config reuses the scorer.
+        reviewer = make_model(settings, temperature=COACH_TEMPERATURE, timeout=settings.model_timeout, max_tokens=800,
+            model=settings.deepseek_review_model) if settings.deepseek_review_model else model
+        review_agent = Agent(name='evidence_admissibility_reviewer', system_prompt=APPLICABILITY_PROMPT, model=reviewer,
             injection_config=InjectionConfig(inject_runtime_state=False),
             react_config=ReActConfig(max_iters=1, interruption_raise_cancelled_error=True))
         review_input = [{'key': d['key'], 'label': d['label'], 'utterances': d['utterances'], 'materials': d['citations']} for d in candidates]
@@ -231,8 +220,13 @@ async def score_with_repair(coach_agent, model, replies, result, training, train
             reviewed = await review_agent.reply(Msg(name='evidence_check', role='user', content=[TextBlock(text=json.dumps(review_input, ensure_ascii=False))]))
             replies.append(reviewed)
             assessment = apply_applicability(assessment, json.loads(reviewed.get_text_content() or '{}'), keys)
-        except (APIError, ValueError, TypeError, KeyError):
+        except (APIError, ValueError, TypeError, KeyError) as exc:
+            record_failure('applicability_review', exc)
             assessment = apply_applicability(assessment, {}, keys, available=False)
+        finally:
+            if reviewer is not model:
+                await reviewer.client.close()
+        assessment['review_model'] = settings.deepseek_review_model or settings.deepseek_model
     return assessment, repair_usage_unknown
 
 
@@ -249,6 +243,15 @@ def summarise_usage(replies, web, settings, started, repair_usage_unknown) -> di
     return totals
 
 
+def degraded_coach(kind: str) -> dict:
+    """Shown when only the coach failed during a live turn: no invented analysis, just an honest placeholder."""
+    return {"focus": "本轮教练分析暂未完成", "analysis": "医生已回应，本轮教练提示暂时不可用；你可以继续发言，最终复盘不受影响。",
+            "points": ["继续按原计划回应医生的问题。"], "risk": "", "reply": "本轮暂无参考话术。",
+            "delivery": {"tone": "本轮未分析；声音语调未评估。", "fluency": "本轮未分析。", "logic": "本轮未分析。",
+                         "turn_taking": "本轮未分析。"},
+            "degraded": kind}
+
+
 async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=(), free_context=None, reference_context=None) -> tuple[dict, dict]:
     started = monotonic()
     history, visible, selected, remaining = _visible_history(messages, speak)
@@ -258,48 +261,69 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
         visible=visible, selected=selected, remaining=remaining, search_enabled=settings.deepseek_search_enabled)
     training_view = training_context(training, history) if training else None
     max_tokens = 4000 if training else 2000
-    model = make_model(settings, temperature=COACH_TEMPERATURE, timeout=20, max_tokens=max_tokens)
+    model = make_model(settings, temperature=COACH_TEMPERATURE, timeout=settings.model_timeout, max_tokens=max_tokens)
     # The doctor speaks, so it gets a little sampling variety; the coach scores, so it stays at 0. Everything else is shared.
-    doctor_model = make_model(settings, temperature=settings.doctor_temperature, timeout=20, max_tokens=max_tokens) if speak else model
+    doctor_model = make_model(settings, temperature=settings.doctor_temperature, timeout=settings.model_timeout, max_tokens=max_tokens) if speak else model
     web = WebSearch(model.client, settings)
     agents = build_agents(model, doctor_model, web, settings, prompt=prompt, skill_parts=skill_parts, training=training, free_context=free_context, speak=speak)
+    turn_budget = settings.model_timeout + (25 if settings.deepseek_search_enabled else 5)
+    purpose = "practice_turn" if speak else "review"
     try:
-        async with asyncio.timeout(45 if settings.deepseek_search_enabled else 25):
+        async with asyncio.timeout(turn_budget):
             record = json.dumps({"transcript": history, "interaction_events": list(interactions[-30:]),
                 **({'medical_checks': list(medical_checks)[-12:]} if medical_checks else {}),
                 **({'training': training_view} if training_view else {}),
                 **({'free_context': free_context} if free_context else {})}, ensure_ascii=False)
             coach_record = json.dumps({**json.loads(record), 'reference_context': reference_context}, ensure_ascii=False) if reference_context else record
-            replies = await run_agents(agents, record, coach_record)
-            result = parse_reply(replies[0].get_text_content() or "", speak=False)
-            repair_usage_unknown = False
-            if training:
-                assessment, repair_usage_unknown = await score_with_repair(agents[0], model, replies, result, training, training_view, history, settings)
-                result['coach']['assessment'] = assessment
-                if assessment['validation_errors']:
-                    result['coach'].update(analysis='本轮评价的原话或资料引用未通过完整校验，暂不展示未经核对的纠错结论。',
-                        reply='我会先核对研究原文和适用范围，再回应这个问题。',
-                        points=['核对原话、资料版本与引用页码后重练。'], risk='本轮结构化评分存在校验问题，暂不形成能力结论。')
+            # A live coach that overruns is dropped so the doctor still answers; a review has no such fallback.
+            replies = await run_agents(agents, record, coach_record, coach_deadline=turn_budget - 10 if speak else None)
+            doctor_reply = None
             if speak:
-                doctor_data = json.loads(replies[1].get_text_content() or "")
-                if not isinstance(doctor_data, dict):
-                    raise ValueError("无效的医生结构")
-                doctor_reply = doctor_data.get("doctor_reply")
-                if not isinstance(doctor_reply, str) or not doctor_reply.strip() or len(doctor_reply) > 1200:
-                    raise ValueError("无效的医生文字")
-                result["doctor_reply"] = doctor_reply.strip()
+                if isinstance(replies[1], BaseException):
+                    raise replies[1]
+                doctor_reply = parse_doctor_reply(json.loads(replies[1].get_text_content() or ""))
+            coach_failure = replies[0] if isinstance(replies[0], BaseException) else None
+            if coach_failure is not None and not speak:
+                raise coach_failure
+            repair_usage_unknown = False
+            if coach_failure is not None:
+                kind = record_failure("coach_degraded", coach_failure)
+                result = {"doctor_reply": "", "coach": degraded_coach(kind)}
+                replies = [replies[1]]
+            else:
+                try:
+                    result = parse_reply(replies[0].get_text_content() or "", speak=False)
+                    if training:
+                        assessment, repair_usage_unknown = await score_with_repair(agents[0], model, replies, result, training, training_view, history, settings)
+                        result['coach']['assessment'] = assessment
+                        if assessment['validation_errors']:
+                            result['coach'].update(analysis='本轮评价的原话或资料引用未通过完整校验，暂不展示未经核对的纠错结论。',
+                                reply='我会先核对研究原文和适用范围，再回应这个问题。',
+                                points=['核对原话、资料版本与引用页码后重练。'], risk='本轮结构化评分存在校验问题，暂不形成能力结论。')
+                            count("assessment.validation_failed")
+                except (APIError, TimeoutError, ValueError, KeyError, IndexError, TypeError, RuntimeError) as exc:
+                    if not speak:
+                        raise
+                    kind = record_failure("coach_degraded", exc)
+                    result = {"doctor_reply": "", "coach": degraded_coach(kind)}
+                    replies = [replies[1]]
+            if speak:
+                result["doctor_reply"] = doctor_reply
             # Quotation marks in the review must come from the transcript, not from the model's memory.
             removed = apply_quote_check(result["coach"], history)
             if removed:
                 result["coach"]["quotes_removed"] = len(removed)
+                count("quotes.removed", len(removed))
             # These are captured facts, not model judgments about the generated dialogue.
             result["coach"]["delivery"]["turn_taking"] = interaction_summary(interactions)
             if "声音语调未评估" not in result["coach"]["delivery"]["tone"]:
                 result["coach"]["delivery"]["tone"] += "；声音语调未评估。"
             if web.sources:
                 result["coach"]["sources"] = web.sources
+            count(f"ok.{purpose}")
             return result, summarise_usage(replies, web, settings, started, repair_usage_unknown)
     except (APIError, TimeoutError, ValueError, KeyError, IndexError, TypeError, RuntimeError) as exc:
+        record_failure(purpose, exc)
         raise BridgeError("practice_model_error", "AI 分析暂时未完成，请重试或继续发言，并核对 DeepSeek 模型权限和配置。") from exc
     finally:
         await model.client.close()

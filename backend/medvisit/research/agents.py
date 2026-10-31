@@ -63,7 +63,7 @@ def failure_kind(error: BaseException) -> str:
 
 def research_mcp(settings, root, job_dir, seeds=()):
     return MCPClient(name=CONFIG['mcp']['name'], is_stateful=True,
-        execution_timeout=75, enable_tools=CONFIG['mcp']['tools'],
+        execution_timeout=CONFIG['run']['mcp_call_seconds'], enable_tools=CONFIG['mcp']['tools'],
         mcp_config=StdioMCPConfig(command=sys.executable, args=['-m', CONFIG['mcp']['module']],
             cwd=Path(__file__).resolve().parents[2], env={
                 'PATH': os.environ.get('PATH', os.defpath),
@@ -82,6 +82,8 @@ def observations(job_dir):
 
 
 def validate_result(result, profile, root, captured):
+    if not captured['archives']:
+        raise NoArchivedSource('本次未获取到可归档的原文，请核对来源或稍后重试。')
     evidence = {}
     versions = {}
     for source in captured['archives']:
@@ -107,8 +109,6 @@ def validate_result(result, profile, root, captured):
             if hosts and not any(host == primary or host.endswith('.'+primary) for primary in hosts):
                 raise SourceHostNotAllowed('药品事实需要政府、监管机构或已配置厂家官网原文；新闻与行业转载仅保留为线索。')
             detail.update(quote=quote, source_version=source['raw_sha256'])
-    if not captured['archives']:
-        raise NoArchivedSource('本次未获取到可归档的原文，请核对来源或稍后重试。')
     if len(set(captured['queries'])) < profile['minimum_searches']:
         raise TooFewSearches(f'本次需完成{profile["minimum_searches"]}次不同查询；医生核对机构来源，药品查监管原文与厂家说明书。')
     return output
@@ -143,7 +143,7 @@ async def run_agent(settings, kind, query, root, job_dir, seeds=()):
         credential=OpenAICredential(api_key=settings.deepseek_api_key,
             base_url=settings.deepseek_endpoint.removesuffix('/chat/completions')),
         model=settings.deepseek_model, stream=False, max_retries=0, context_size=1_000_000,
-        parameters=CoachModel.Parameters(temperature=0), client_kwargs={'timeout':45, 'max_retries':0},
+        parameters=CoachModel.Parameters(temperature=0), client_kwargs={'timeout':CONFIG['run']['model_seconds'], 'max_retries':0},
         extra_body={'response_format':{'type':'json_object'}, 'thinking':{'type':'disabled'},
                     'parallel_tool_calls':False, 'max_tokens':5000})
     mcp = research_mcp(settings, root, job_dir, seeds)
@@ -152,7 +152,7 @@ async def run_agent(settings, kind, query, root, job_dir, seeds=()):
         tool_name=name, rule_content=None, behavior=PermissionBehavior.ALLOW, source='medvisit_public_research')]
         for name in names})
     try:
-        async with asyncio.timeout(240):
+        async with asyncio.timeout(CONFIG['run']['job_seconds']):
             await mcp.connect()
             seed_results = []
             archive = await mcp.get_tool('archive_source')
@@ -162,7 +162,7 @@ async def run_agent(settings, kind, query, root, job_dir, seeds=()):
             agent = Agent(name=profile['name'], system_prompt=prompt, model=model,
                 toolkit=Toolkit(mcps=[mcp]), state=AgentState(permission_context=permissions),
                 injection_config=InjectionConfig(inject_runtime_state=False),
-                react_config=ReActConfig(max_iters=12, interruption_raise_cancelled_error=True))
+                react_config=ReActConfig(max_iters=CONFIG['run']['max_iterations'], interruption_raise_cancelled_error=True))
             reply = await agent.reply(Msg(name='public_research_brief', role='user', content=[TextBlock(
                 text=json.dumps({'query':query, 'previous_source_checks':seed_results}, ensure_ascii=False))]))
             usage = {'prompt_tokens':reply.usage.input_tokens, 'completion_tokens':reply.usage.output_tokens,

@@ -97,6 +97,7 @@ CI 还会运行真实 PostgreSQL 回归、Android ARM64 APK 编译，以及原�
 
 - [使用手册](docs/user-manual.md)：配置、演练与常见问题
 - [架构与部署](docs/architecture.md)：目录结构、存储与测试
+- [Agent 可靠性与评分校准](docs/agent-reliability.md)：失败处理、指标、评测与待决事项
 - [部署运维](docs/operations.md)：备份、恢复、升级与排查
 - [检索助手](docs/research-agents.md) · [药品资料库](docs/drug-library.md) · [医生角色](docs/doctor-agent.md)
 - [训练交付记录](docs/training-delivery.md)：验收范围与已知限制

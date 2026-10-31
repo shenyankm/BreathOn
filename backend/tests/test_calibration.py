@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from conftest import LocalClient as TestClient
 from medvisit.api.app import create_app
+from medvisit.core.config import Settings
 from medvisit.platform.calibration import Calibrator, metrics
 from medvisit.platform.evaluation import EVALUATOR_VERSION
 from test_bridge import settings
@@ -252,3 +253,55 @@ def test_metrics_require_complete_predictions_and_enough_experts():
     results[0]['assessment']['validation_errors']=['fake source']
     assert not metrics(samples,results,dimensions)['calibrated']
     assert not metrics(samples[:4],results,dimensions)['calibrated']
+
+
+def test_kappa_bias_and_stability_are_reported_and_can_veto_calibration():
+    from medvisit.platform.calibration import weighted_kappa
+    dims=[{'key':'a','label':'A'}]
+    scores=[0,1,2,3,4,0,1,2,3,4]
+    samples=[{'id':str(i),'label_type':'expert','expected_scores':{'a':v}} for i,v in enumerate(scores)]
+    def run(values):
+        return [{'sample_id':str(i),'assessment':{'dimensions':[{'key':'a','score':v}],'validation_errors':[]}} for i,v in enumerate(values)]
+    perfect=metrics(samples,run(scores),dims)
+    assert perfect['calibrated'] and perfect['dimensions'][0]['kappa']==1.0 and perfect['dimensions'][0]['bias']==0
+    # Every score one point high: within_one still passes but MAE 1 > .5 fails; bias exposes the direction.
+    high=metrics(samples,run([min(4,v+1) for v in scores]),dims)
+    assert not high['calibrated'] and high['dimensions'][0]['bias']>0
+    # A model that agrees on average yet flips between runs must not calibrate.
+    flaky={str(i):[{'dimensions':[{'key':'a','score':(v+3)%5}],'validation_errors':[]}] for i,v in enumerate(scores)}
+    unstable=metrics(samples,run(scores),dims,repeats=flaky)
+    assert not unstable['calibrated'] and unstable['dimensions'][0]['stability']<.9
+    assert weighted_kappa([(1,1)]) is None and weighted_kappa([(2,2),(2,2)]) is None    # no variance: undefined, not 1.0
+
+
+def test_minimum_sample_floor_is_configurable():
+    dims=[{'key':'a','label':'A'}]
+    samples=[{'id':str(i),'label_type':'expert','expected_scores':{'a':v}} for i,v in enumerate([0,1,2,3,4,4,3,2])]
+    results=[{'sample_id':str(i),'assessment':{'dimensions':[{'key':'a','score':s['expected_scores']['a']}],'validation_errors':[]}} for i,s in enumerate(samples)]
+    assert metrics(samples,results,dims)['calibrated']
+    assert not metrics(samples,results,dims,minimum=20)['calibrated']
+
+
+def test_calibration_repeats_setting_is_bounded():
+    with pytest.raises(ValueError, match='CALIBRATION_REPEATS'):
+        Settings(calibration_repeats=4)
+    assert Settings(calibration_repeats=0).calibration_repeats == 0
+
+
+def test_repeat_runs_measure_stability_and_an_unstable_model_is_not_calibrated(tmp_path):
+    calls = []
+    async def flip(*args, **kwargs):
+        calls.append(1)
+        score = 4 if len(calls) % 2 else 0          # first run of each sample agrees with the expert, the repeat does not
+        return {'coach':{'assessment':{'dimensions':[{'key':'expression','score':score}],'validation_errors':[]}}},{'total_tokens':10}
+    with TestClient(create_app(settings(tmp_path, calibration_repeats=1))) as client:
+        rubric,scene=setup_scene(client);add_samples(client,scene)
+        with patch('medvisit.agents.coach.generate_reply',side_effect=flip):
+            response=client.post('/api/rubrics/'+rubric['id']+'/calibration',json={'version':rubric['version']})
+        run=client.get('/api/calibration/runs/'+response.json()['id']).json()
+        status=client.get('/api/catalog/rubric/'+rubric['id']).json()['calibration_status']
+    assert len(calls) == 10                          # 5 samples x (1 scored run + 1 repeat)
+    row = run['metrics']['dimensions'][0]
+    assert row['repeat_comparisons'] == 5 and row['stability'] == 0.0
+    assert row['mae'] == 0 and not run['metrics']['calibrated']
+    assert status == 'uncalibrated'
