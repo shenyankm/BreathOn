@@ -4,7 +4,7 @@ import binascii
 import json
 from uuid import uuid4
 
-from ..agents.doctor import DOCTOR_PROMPT, GREETING
+from ..agents.doctor import DOCTOR_PROMPT, GREETING  # noqa: F401  re-exported
 
 UPSTREAM_URL = "wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue"
 DUPLEX_MODEL = "1.2.6.1"

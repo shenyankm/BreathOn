@@ -116,3 +116,34 @@ test('storage failures keep practice usable and explain that persistence failed'
   assert.equal(app.render().preset.id, 'combat')
   assert.match(app.render().storageError, /未能保存/)
 })
+
+
+test('visit draft writes recover after failure and restore only the requested account', async () => {
+  const values = new Map<string, string>()
+  let fail = true
+  const storage = loadModule('../src/lib/visit-drafts.ts', {
+    '@tauri-apps/api/core': { invoke: async (command: string, args: any) => {
+      if (command === 'load_visit_draft') return values.get(args.account) ?? null
+      if (fail) throw new Error('disk full')
+      if (args.payload === null) values.delete(args.account)
+      else values.set(args.account, args.payload)
+    } },
+  })
+  await assert.rejects(storage.saveVisitDraft('a', 'first'))
+  fail = false
+  const save = storage.saveVisitDraft('a', 'latest')
+  assert.equal(await storage.loadVisitDraft('a'), 'latest')
+  await save
+  assert.equal(await storage.loadVisitDraft('b'), null)
+  await storage.saveVisitDraft('a', null)
+  assert.equal(await storage.loadVisitDraft('a'), null)
+})
+
+test('visit drafts reject unknown formats and malformed restored edits', () => {
+  const storage = loadModule('../src/lib/visit-drafts.ts', { '@tauri-apps/api/core': {} })
+  const draft = { doctor_id: 'doctor', drug_id: 'drug', visited_at: '2026-10-31', source: 'self_report', text: '未提交内容' }
+  assert.equal(storage.parseVisitDraft(JSON.stringify({ format: 1, draft })).draft.text, draft.text)
+  for (const value of [{ format: 2, draft }, { format: 1, draft: {} }, { format: 1, draft, edit: { id: 'id', version: 1, text: '', redacted: '', speakers: [{ speaker_id: 'one', role: 'invalid' }] } }]) {
+    assert.throws(() => storage.parseVisitDraft(JSON.stringify(value)))
+  }
+})

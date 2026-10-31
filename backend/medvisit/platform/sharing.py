@@ -1,6 +1,5 @@
 """Portable training configurations import atomically as unreviewed drafts."""
 import hashlib
-import json
 from typing import Literal
 from uuid import uuid4
 

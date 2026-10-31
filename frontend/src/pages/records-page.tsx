@@ -77,7 +77,7 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
                 {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载复盘…</p> : <>
                   {detail.coaching?.length ? <section className="space-y-5"><h2 className="text-base font-medium">{detail.experience === 'combat' ? 'AI 复盘' : '教练分析记录'}</h2>{detail.coaching.map((coach,index)=><CoachAnalysis key={index} coach={coach} review />)}</section> : <p className="text-sm leading-6 text-muted-foreground">{detail.analysis_status === 'no_speech' ? '没有可分析的学员发言。' : '本次未保存教练复盘。'}</p>}
                   {!!detail.medical_checks?.length && <section className="space-y-4"><h2 className="text-base font-medium">逐句医学依据核验</h2>{detail.medical_checks.map((check,index)=><div key={index}><p className="text-sm leading-7">{check.text}</p><MedicalCheckView check={check}/></div>)}</section>}
-                  <ReviewPanel key={detail.id} record={detail} onRetrain={()=>setRefresh(value=>value+1)}/>
+                  <>{detail.free_context && <Button className="min-h-12 w-full" onClick={() => onStart({ scenario_id: '', stage: 'full', drug_id: detail.free_context!.drug.id, doctor_id: detail.free_context!.doctor.id, experience: detail.experience === 'combat' ? 'combat' : 'practice', mode: detail.experience === 'combat' ? 'independent' : 'assisted' })}>按此组合再练<ArrowRight /></Button>}</><ReviewPanel key={detail.id} record={detail} onRetrain={()=>setRefresh(value=>value+1)}/>
                 </>}
               </div>
             </ScrollArea>

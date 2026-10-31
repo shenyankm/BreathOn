@@ -28,6 +28,7 @@ export class BrowserAudio {
   private playing = new Set<AudioBufferSourceNode>()
   private nextPlayback = 0
   private stopped = false
+  onPlaybackChange?: (playing: boolean) => void
   muted = false
 
   async open(onFrame: (buffer: ArrayBuffer) => void, onDeviceLost: () => void) {
@@ -72,11 +73,13 @@ export class BrowserAudio {
     const source = context.createBufferSource()
     source.buffer = buffer
     source.connect(this.output ?? context.destination)
-    source.onended = () => { this.playing.delete(source); source.disconnect() }
+    source.onended = () => { this.playing.delete(source); source.disconnect(); if (!this.playing.size) this.onPlaybackChange?.(false) }
     const start = Math.max(context.currentTime + 0.03, this.nextPlayback)
     try { source.start(start) }
     catch (error) { source.disconnect(); throw error }
+    const wasPlaying = this.isPlaying
     this.playing.add(source)
+    if (!wasPlaying) this.onPlaybackChange?.(true)
     this.nextPlayback = start + buffer.duration
   }
 
@@ -84,7 +87,9 @@ export class BrowserAudio {
 
   interrupt() {
     for (const source of this.playing) { source.onended = null; source.stop(); source.disconnect() }
+    const wasPlaying = this.isPlaying
     this.playing.clear()
+    if (wasPlaying) this.onPlaybackChange?.(false)
     this.nextPlayback = 0
   }
 

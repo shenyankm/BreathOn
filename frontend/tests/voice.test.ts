@@ -100,6 +100,8 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
   Object.defineProperty(globalThis, 'AudioWorkletNode', { configurable: true, value: class { port: any = { close() {} }; disconnect() {}; connect(target: any) { return target }; constructor() { captures.push(this) } } })
   try {
     const audio = new BrowserAudio()
+    const playback: boolean[] = []
+    audio.onPlaybackChange = value => playback.push(value)
     const frames: ArrayBuffer[] = []
     await audio.open(frame => frames.push(frame), () => { lost = true })
   audio.setOutputMuted(true)
@@ -111,9 +113,11 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
     const encoded = encodeAudio(new ArrayBuffer(4800))
     audio.play(encoded); audio.play(encoded)
     assert.ok(audio.isPlaying)
+    assert.deepEqual(playback, [true])
     assert.deepEqual(starts, [0.03, 0.13])
     audio.interrupt()
     assert.equal(sourceStops, 2); assert.equal(audio.isPlaying, false)
+    assert.deepEqual(playback, [true, false])
     audio.play(encoded)
     assert.equal(starts[2], 0.03)
     audio.interrupt()
@@ -215,5 +219,25 @@ test('failed playback scheduling still releases the microphone and audio context
   assert.throws(() => audio.play('AAA='), /playback scheduling failed/)
   assert.doesNotThrow(() => audio.stop())
   assert.ok(stopped && closed && disconnected)
+  assert.equal(audio.isPlaying, false)
+})
+
+test('playback status stays active until the last queued audio segment ends', () => {
+  const events: boolean[] = []
+  const sources: any[] = []
+  const audio = new BrowserAudio()
+  audio.onPlaybackChange = value => events.push(value)
+  Object.assign(audio, { context: {
+    state: 'running', currentTime: 0, destination: {},
+    createBuffer: (_channels: number, length: number) => ({ duration: length / 24000, getChannelData: () => new Float32Array(length) }),
+    createBufferSource: () => { const node = { connect() {}, disconnect() {}, start() {}, stop() {}, onended: null }; sources.push(node); return node },
+  } })
+  audio.play(encodeAudio(new ArrayBuffer(4800)))
+  audio.play(encodeAudio(new ArrayBuffer(4800)))
+  sources[0].onended()
+  assert.deepEqual(events, [true])
+  assert.equal(audio.isPlaying, true)
+  sources[1].onended()
+  assert.deepEqual(events, [true, false])
   assert.equal(audio.isPlaying, false)
 })

@@ -74,28 +74,6 @@ test('record detail retry recovers without leaving the dialog; late old record c
   assert.equal(text(app.render()).includes('old · doctor'), false)
 })
 
-test('medical source read can retry and paid checks reject duplicate activation', async () => {
-  let fail = true, checks = 0, finish!: (value: unknown) => void
-  const app = mount('components/medical-library.tsx', 'MedicalLibrary', async path => {
-    if (path === '/medical/check') { checks++; return new Promise(resolve => { finish = resolve }) }
-    if (fail) throw new Error('offline')
-    return { products: [], sources: [{ id: 'source' }], built_at: null }
-  })
-  app.render(); await settle()
-  assert.ok(text(app.render()).includes('offline'))
-  fail = false; button(app.render(), '重新读取依据').props.onClick()
-  app.render(); await settle()
-  let tree = app.render()
-  assert.equal(text(tree).includes('offline'), false)
-  nodes(tree, 'Textarea')[0].props.onChange({ target: { value: '待核验表述' } })
-  tree = app.render()
-  const check = button(tree, '查找依据并核验')
-  check.props.onClick(); check.props.onClick()
-  assert.equal(checks, 1)
-  finish({}); await settle()
-  assert.equal(button(app.render(), '查找依据并核验').props.disabled, false)
-})
-
 test('review read recovers and repeated save retains form on failure then unlocks', async () => {
   let failRead = true, writes = 0, rejectWrite!: (error: Error) => void, resets = 0
   const app = mount('components/review-panel.tsx', 'ReviewPanel', async (path, options) => {

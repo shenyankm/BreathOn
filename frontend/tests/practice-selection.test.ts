@@ -133,7 +133,7 @@ test('free practice starts with published drugs and enables matching doctors aft
   const options = find(view, 'SelectItem').map(node => node.props.value)
   for (const id of ['drug-a', 'drug-b', 'doctor-a', 'doctor-b']) assert.ok(options.includes(id), id)
   for (const id of ['draft-drug', 'retired-doctor', 'draft-scene']) assert.ok(!options.includes(id), id)
-  assert.deepEqual(plain(app.value), { scenario_id: '', stage: 'full' })
+  assert.deepEqual(plain(app.value), { scenario_id: '', stage: 'full', drug_id: 'drug-a' })
   assert.equal(app.readiness.at(-1), false)
   app.choose('练习药品', 'drug-b')
   await app.flush()
@@ -376,7 +376,7 @@ test('pair information follows selection and clearing without repeating the full
   const app = picker(async () => freeContext('drug-a', 'doctor-a'))
   app.render(); let view = await app.flush()
   const info = () => find(view, 'div').find(node => node.props['aria-label'] === '练习组合信息')!
-  assert.match(textOf(info()), /药品、医生均可先选/)
+  assert.match(textOf(info()), /可选科室/)
   app.choose('练习药品', 'drug-a'); view = await app.flush()
   assert.match(textOf(info()), /可选科室/)
   app.choose('模拟医生', 'doctor-a'); view = await app.flush()
@@ -400,4 +400,14 @@ test('App limits drugs to mazdutide while keeping multiple doctors and rejecting
   assert.ok(options.includes('doctor-a') && options.includes('doctor-b'))
   assert.equal(app.readiness.at(-1), false)
   assert.ok(!app.calls.some(path => path.startsWith('/practice/preview')))
+})
+
+
+test('default mazdutide preserves a compatible doctor and waits for the verified preview', async () => {
+  const app = picker(async () => freeContext('drug-a', 'doctor-a'), { scenario_id: '', stage: 'full', doctor_id: 'doctor-a' })
+  app.render(); await app.flush(); await app.flush()
+  assert.equal(app.value.drug_id, 'drug-a')
+  assert.equal(app.value.doctor_id, 'doctor-a')
+  assert.equal(app.readiness.at(-1), true)
+  assert.equal(app.calls.filter(path => path.startsWith('/practice/preview')).length, 1)
 })

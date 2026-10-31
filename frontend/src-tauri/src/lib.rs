@@ -1,3 +1,4 @@
+mod drafts;
 mod preferences;
 
 use tauri::Manager;
@@ -49,6 +50,27 @@ fn save_training_preference(
     preferences::save(&preference_path(&app)?, &account, &experience)
 }
 
+#[tauri::command]
+fn load_visit_draft(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    account: String,
+) -> Result<Option<String>, String> {
+    check_page(&window)?;
+    drafts::load(&preference_path(&app)?, &account)
+}
+
+#[tauri::command]
+fn save_visit_draft(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    account: String,
+    payload: Option<String>,
+) -> Result<(), String> {
+    check_page(&window)?;
+    drafts::save(&preference_path(&app)?, &account, payload.as_deref())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -61,7 +83,9 @@ pub fn run() {
                     .local(true)
                     .remote("https://openwook.cloud/_android/index.html".into())
                     .permission("allow-load-training-preference")
-                    .permission("allow-save-training-preference");
+                    .permission("allow-save-training-preference")
+                    .permission("allow-load-visit-draft")
+                    .permission("allow-save-visit-draft");
                 #[cfg(debug_assertions)]
                 let capability = capability
                     .remote("http://127.0.0.1:*/_android/index.html".into())
@@ -73,7 +97,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             load_training_preference,
-            save_training_preference
+            save_training_preference,
+            load_visit_draft,
+            save_visit_draft
         ])
         .run(tauri::generate_context!())
         .expect("error while running BreathOn");

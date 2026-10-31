@@ -1,3 +1,4 @@
+import { loadVisitDraft, saveVisitDraft, parseVisitDraft, type VisitEdit } from '@/lib/visit-drafts'
 import { isAppDrug } from '@/lib/app-drugs'
 import { doctorLabel } from '@/lib/doctor-label'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
@@ -38,7 +39,7 @@ function visitSpeakers(item: Visit): Speaker[] {
 }
 function message(error: unknown) { return error instanceof Error ? error.message : '操作未完成，请重试。' }
 
-export function VisitsPage() {
+export function VisitsPage({ account }: { account?: string } = {}) {
   const [today] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [view, setView] = useState<VisitView>(readView)
   const [draft, setDraft] = useState({ doctor_id: '', drug_id: '', visited_at: today, source: 'self_report', text: '' })
@@ -60,6 +61,40 @@ export function VisitsPage() {
   const [notice, setNotice] = useState('')
   const [recording, setRecording] = useState(false)
   const recognition = useRef<Recognition | null>(null)
+  const loadedAccount = useRef<string | undefined>(undefined)
+  const [draftLoaded, setDraftLoaded] = useState(!account)
+  const [draftStatus, setDraftStatus] = useState('')
+  const [draftRetry, setDraftRetry] = useState(0)
+  const [pendingEdit, setPendingEdit] = useState<VisitEdit | null>(null)
+  useEffect(() => {
+    if (!account || loadedAccount.current === account) return
+    loadedAccount.current = undefined
+    setDraftLoaded(false)
+    let live = true
+    loadVisitDraft(account).then(raw => {
+      if (!live) return
+      if (raw) { const saved = parseVisitDraft(raw); setDraft(saved.draft); setPendingEdit(saved.edit); setDraftStatus('已恢复本机草稿') }
+      else { setDraft({ doctor_id: '', drug_id: '', visited_at: today, source: 'self_report', text: '' }); setPendingEdit(null) }
+      loadedAccount.current = account
+      setDraftLoaded(true)
+    }).catch(() => { if (live) setDraftStatus('无法读取本机草稿，请重试。') })
+    return () => { live = false }
+  }, [account, draftRetry, today])
+  useEffect(() => {
+    if (!pendingEdit || selected?.id !== pendingEdit.id) return
+    setText(pendingEdit.text); setRedacted(pendingEdit.redacted); setSpeakers(pendingEdit.speakers as Speaker[])
+    if (selected.version !== pendingEdit.version) setNotice('服务器记录已更新，已恢复本机修改供核对；保存前请确认内容。')
+    setPendingEdit(null)
+  }, [selected, pendingEdit])
+  const localEdit = pendingEdit ?? (selected && (text !== selected.text || redacted !== (selected.redacted_text || '') || JSON.stringify(speakers) !== JSON.stringify(visitSpeakers(selected))) ? { id: selected.id, version: selected.version, text, redacted, speakers } : null)
+  const draftPayload = draft.text || draft.doctor_id || draft.drug_id || localEdit ? JSON.stringify({ format: 1, draft, edit: localEdit }) : null
+  useEffect(() => {
+    if (!account || !draftLoaded || loadedAccount.current !== account) return
+    let live = true
+    setDraftStatus('正在保存本机草稿…')
+    saveVisitDraft(account, draftPayload).then(() => { if (live) setDraftStatus(draftPayload ? '草稿已保存在本机' : '') }).catch(() => { if (live) setDraftStatus('本机草稿保存失败，请勿关闭页面。') })
+    return () => { live = false }
+  }, [account, draftLoaded, draftPayload, draftRetry])
   const reload = useCallback(async () => {
     const list = await api<Visit[]>('/visits')
     setRows(list)
@@ -209,13 +244,16 @@ export function VisitsPage() {
     {notice && <Alert role="status"><CheckCircle2 /><AlertTitle>日记状态已更新</AlertTitle><AlertDescription>{notice}</AlertDescription></Alert>}
   </>
   return <div className="mx-auto max-w-3xl space-y-5">
+    {account && <div role="status" className="text-sm text-muted-foreground">{draftLoaded ? draftStatus : draftStatus || '正在恢复本机草稿…'}{draftStatus.includes('失败') || draftStatus.includes('无法') ? <Button variant="link" onClick={() => setDraftRetry(value => value + 1)}>重试草稿存储</Button> : null}</div>}
+    {pendingEdit && view.kind !== 'detail' && <Button variant="outline" className="min-h-11" onClick={() => navigate({ kind: 'detail', id: pendingEdit.id })}>继续上次未提交的修改</Button>}
+
     <header className="space-y-4">
       <div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">拜访记录</h1></div><Button className="h-11 shrink-0" variant="ghost" aria-label="刷新日记列表" disabled={busy} onClick={() => void reload().catch(e => setError(message(e)))}><RotateCcw /></Button></div>
-      <Button className="h-11 w-full sm:w-auto" disabled={busy || recording} onClick={() => navigate({ kind: 'new' })}><Plus />{draft.text || draft.doctor_id || draft.drug_id ? '继续未保存的日记' : '新建日记'}</Button>
+      <Button className="h-11 w-full sm:w-auto" disabled={busy || recording || !draftLoaded} onClick={() => navigate({ kind: 'new' })}><Plus />{draft.text || draft.doctor_id || draft.drug_id ? '继续未保存的日记' : '新建日记'}</Button>
     </header>
     {view.kind === 'list' && feedback}
     <section aria-label="我的拜访记录">
-      {rows === null ? <p role="status" className="py-4 text-sm text-muted-foreground">正在加载日记…</p> : rows.length === 0 ? <div className="flex items-start gap-3 rounded-xl border bg-card p-5 text-sm leading-6 text-muted-foreground"><NotebookPen className="mt-0.5 size-5 shrink-0" /><p>暂无拜访日记</p></div> : <Card className="gap-0 py-0"><ul className="divide-y">{rows.map(row => <li key={row.id}><Button type="button" variant="ghost" disabled={busy || recording} className="h-auto min-h-20 w-full justify-between gap-3 rounded-none px-4 py-4 text-left font-normal" onClick={() => navigate({ kind: 'detail', id: row.id })}><span className="min-w-0 space-y-1"><span className="block font-medium tabular-nums">{row.visited_at}</span><span className="block text-xs text-muted-foreground">{row.source === 'recording' ? '真实拜访录音' : '访后自述'} · {row.status}</span><span className="block whitespace-normal text-xs leading-5 text-muted-foreground">{audioLabel(row.audio_status)}</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></Button></li>)}</ul></Card>}
+      {rows === null ? <p role="status" className="py-4 text-sm text-muted-foreground">正在加载日记…</p> : rows.length === 0 ? <div className="flex items-start gap-3 rounded-xl border bg-card p-5 text-sm leading-6 text-muted-foreground"><NotebookPen className="mt-0.5 size-5 shrink-0" /><p>暂无拜访日记</p></div> : <Card className="gap-0 py-0"><ul className="divide-y">{rows.map(row => <li key={row.id}><Button type="button" variant="ghost" disabled={busy || recording || !draftLoaded} className="h-auto min-h-20 w-full justify-between gap-3 rounded-none px-4 py-4 text-left font-normal" onClick={() => navigate({ kind: 'detail', id: row.id })}><span className="min-w-0 space-y-1"><span className="block font-medium tabular-nums">{row.visited_at}</span><span className="block whitespace-normal text-sm">{[doctors.find(d => d.id === row.doctor_id)?.name, drugs.find(d => d.id === row.drug_id)?.name].filter(Boolean).join(' · ')}</span><span className="block line-clamp-2 whitespace-normal text-sm text-muted-foreground">{(row.redacted_text || row.text || '').slice(0,100)}</span><span className="block text-xs text-muted-foreground">{row.source === 'recording' ? '真实拜访录音' : '访后自述'} · {row.status}</span><span className="block whitespace-normal text-xs leading-5 text-muted-foreground">{audioLabel(row.audio_status)}</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></Button></li>)}</ul></Card>}
     </section>
     <Dialog open={view.kind !== 'list'} onOpenChange={open => { if (!open) returnToList() }}>
       <DialogContent fullscreen showCloseButton={false} className="inset-0 top-0 left-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none bg-background p-0 sm:max-w-none">
@@ -230,8 +268,8 @@ export function VisitsPage() {
     {view.kind === 'new' && catalogError && <Alert role="alert" variant="destructive"><AlertTitle>医生和药品暂时无法加载</AlertTitle><AlertDescription>{catalogError}<Button variant="outline" onClick={() => { setCatalogError(''); setCatalogRetry(value => value + 1) }}>重试选项</Button></AlertDescription></Alert>}
     {view.kind === 'detail' && selected?.id !== visitId && error && <Button variant="outline" onClick={() => { setError(''); setDetailRetry(value => value + 1) }}>重新读取日记</Button>}
     {view.kind === 'new' && <Card className="min-w-0">
-        <CardContent><form onSubmit={create} className="space-y-5"><fieldset disabled={busy} className="space-y-5">
-          <Field label="访后观察" htmlFor="visit-observation"><Textarea id="visit-observation" className="min-h-36 leading-7" value={draft.text} disabled={busy || recording} onChange={e => setDraft(current => ({ ...current, text: e.target.value }))} maxLength={20000} placeholder="记下拜访情境、医生关注的问题，以及下一步计划。不要填写患者身份或病历细节。" /></Field>
+        <CardContent><form onSubmit={create} className="space-y-5"><fieldset disabled={busy || !draftLoaded} className="space-y-5">
+          <Field label="访后观察" htmlFor="visit-observation"><Textarea id="visit-observation" className="min-h-36 leading-7" value={draft.text} disabled={busy || recording || !draftLoaded} onChange={e => setDraft(current => ({ ...current, text: e.target.value }))} maxLength={20000} placeholder="记下拜访情境、医生关注的问题，以及下一步计划。不要填写患者身份或病历细节。" /></Field>
           <Button className="h-11" type="button" variant="outline" onClick={dictate}><Mic />{recording ? '停止语音输入' : '语音输入'}</Button>
           <div className="grid grid-cols-2 gap-3 border-t pt-5">
             <Field label="拜访医生" htmlFor="visit-doctor"><Select name="doctor_id" required value={draft.doctor_id} onValueChange={doctor_id => setDraft(current => ({ ...current, doctor_id }))}><SelectTrigger id="visit-doctor" className="w-full"><SelectValue placeholder="选择医生" /></SelectTrigger><SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{doctorLabel(d.display_name || d.name)}</SelectItem>)}</SelectContent></Select></Field>
@@ -239,7 +277,7 @@ export function VisitsPage() {
             <Field label="拜访日期" htmlFor="visit-date"><Input id="visit-date" className="h-11" type="date" name="visited_at" required value={draft.visited_at} onChange={e => setDraft(current => ({ ...current, visited_at: e.target.value }))} /></Field>
             <Field label="记录来源" htmlFor="visit-source"><Select name="source" value={draft.source} onValueChange={source => setDraft(current => ({ ...current, source }))}><SelectTrigger id="visit-source" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="self_report">访后文字</SelectItem><SelectItem value="voice">访后语音自述</SelectItem><SelectItem value="recording">真实拜访录音</SelectItem></SelectContent></Select></Field>
           </div>
-          <div className="space-y-3 border-t pt-5"><Button className="h-11 w-full sm:w-auto" type="submit" disabled={busy || recording}>{busy ? '正在保存…' : '保存草稿'}</Button><p className="text-xs leading-6 text-muted-foreground">管理员可查看全部记录；只有经脱敏和审核的内容可用于团队训练。语音输入由设备或浏览器服务商处理，请核对文字。</p></div>
+          <div className="space-y-3 border-t pt-5"><Button className="h-11 w-full sm:w-auto" type="submit" disabled={busy || recording || !draftLoaded}>{busy ? '正在保存…' : '保存草稿'}</Button><p className="text-xs leading-6 text-muted-foreground">管理员可查看全部记录；只有经脱敏和审核的内容可用于团队训练。语音输入由设备或浏览器服务商处理，请核对文字。</p></div>
         </fieldset></form></CardContent>
       </Card>}
     {view.kind === 'detail' && (selected?.id !== visitId ? !error && <p role="status" className="py-6 text-sm text-muted-foreground">正在读取拜访记录…</p> : <Card className="min-w-0">

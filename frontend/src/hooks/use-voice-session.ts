@@ -31,6 +31,7 @@ export function useVoiceSession() {
   const medicalText = useRef(new Map<string, string>())
   const [practiceState, setPracticeState] = useState<'listening' | 'thinking' | 'error'>('listening')
   const [analysisStatus, setAnalysisStatus] = useState('not_started')
+  const [playing, setPlaying] = useState(false)
   const [speechState, setSpeechState] = useState('idle')
   const [training, setTraining] = useState<TrainingSnapshot | null>(null)
   const [freeContext, setFreeContext] = useState<FreePracticeContext | null>(null)
@@ -56,6 +57,8 @@ export function useVoiceSession() {
     if (old) { old.startup.abort(); old.closing = true; old.audio.stop(); old.ws?.close() }
     const current: Connection = { startup: new AbortController(), audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
+    setPlaying(false)
+    current.audio.onPlaybackChange = value => { if (connection.current === current) setPlaying(value) }
     setSaving(false); setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setOutputMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
     medicalText.current.clear()
     setAnalysisStatus('not_started')
@@ -329,5 +332,5 @@ export function useVoiceSession() {
     }
   }
 
-  return { saving, retrySave, retryingSave, outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
+  return { playing, saving, retrySave, retryingSave, outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
 }

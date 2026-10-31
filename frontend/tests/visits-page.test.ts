@@ -21,7 +21,7 @@ function textOf(node: any): string {
 }
 const button = (tree: Node, label: string) => find(tree, 'Button').find(node => textOf(node) === label)!
 const visit = (id: string) => ({ id, version: 1, source: 'self_report', status: 'draft', text: `原文 ${id}`, redacted_text: '', doctor_id: 'doctor', drug_id: 'drug', visited_at: '2026-10-30', speakers: [], audio_status: 'none' })
-function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
+function mount(hash = '#visits', records = [visit('one'), visit('two')], storage: any = {}, account?: string) {
   const slots: any[] = [], effects: (() => void)[] = [], listeners: Record<string, () => void> = {}, calls: { path: string; options?: RequestInit }[] = []
   let cursor = 0
   let interval: (() => void) | undefined
@@ -33,7 +33,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   let listFailure: string | null = null
   const location = { get hash() { return hash }, set hash(value: string) { hash = value.startsWith('#') ? value : `#${value}` } }
   const jsx = (type: string, props: any) => ({ type, props })
-  const exports: { VisitsPage?: () => Node } = {}
+  const exports: { VisitsPage?: (props: { account?: string }) => Node } = {}
   const api = async (path: string, options?: RequestInit) => {
     calls.push({ path, options })
     if (options?.method) { writes++; if (writeFailure) throw new Error('write failed'); if (path === '/visits') return visit('created/id') }
@@ -54,6 +54,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
     document,
     window: { setInterval(callback: () => void) { interval = callback; return 1 }, clearInterval() { interval = undefined }, location, history: { replaceState(_state: unknown, _title: string, path: string) { location.hash = path } }, addEventListener(name: string, listener: () => void) { listeners[name] = listener }, removeEventListener() {} },
     require(name: string) {
+      if (name === '@/lib/visit-drafts') return { ...storage, parseVisitDraft: JSON.parse }
       if (name === '@/lib/app-drugs') return { isAppDrug }
       if (name === '@/lib/doctor-label') return { doctorLabel }
       if (name === 'react') return {
@@ -84,7 +85,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
     deferDetail(promise: Promise<unknown>) { detailPending = promise },
     unmount() { slots.forEach(slot => slot?.cleanup?.()) },
     failList(message: string | null) { listFailure = message },
-    render() { cursor = 0; const tree = exports.VisitsPage!(); effects.splice(0).forEach(effect => effect()); return tree },
+    render() { cursor = 0; const tree = exports.VisitsPage!({ account }); effects.splice(0).forEach(effect => effect()); return tree },
     hash(value: string) { location.hash = value; listeners.hashchange() },
   }
 }
@@ -239,4 +240,32 @@ test('transcription polling recovers after a failed poll and clears the old erro
   app.deferDetail(Promise.resolve(record))
   app.poll(); await settle()
   assert.equal(textOf(app.render()).includes('poll failed'), false)
+})
+
+
+test('native draft recovery blocks edits until loaded and save retry preserves new input', async () => {
+  let reads = 0, fail = false
+  const saved: string[] = []
+  const storage = {
+    loadVisitDraft: async () => {
+      reads++
+      return JSON.stringify({ draft: { doctor_id: '', drug_id: '', visited_at: '2026-10-31', source: 'self_report', text: '恢复内容' }, edit: null })
+    },
+    saveVisitDraft: async (_account: string, payload: string) => { if (fail) throw new Error('disk full'); saved.push(payload) },
+  }
+  const app = mount('#visits?new=1', [], storage, 'alice')
+  let tree = app.render()
+  assert.equal(find(tree, 'fieldset')[0].props.disabled, true)
+  await settle(); tree = app.render(); await settle()
+  assert.equal(find(tree, 'Textarea')[0].props.value, '恢复内容')
+  fail = true
+  find(tree, 'Textarea')[0].props.onChange({ target: { value: '更新内容' } })
+  app.render(); await settle(); tree = app.render()
+  assert.match(textOf(tree), /本机草稿保存失败/)
+  fail = false
+  button(tree, '重试草稿存储').props.onClick()
+  app.render(); await settle(); tree = app.render()
+  assert.equal(reads, 1)
+  assert.equal(find(tree, 'Textarea')[0].props.value, '更新内容')
+  assert.equal(JSON.parse(saved.at(-1)!).draft.text, '更新内容')
 })

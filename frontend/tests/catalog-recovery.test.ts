@@ -559,3 +559,18 @@ test('doctor cards open full details and preserve the doctor category on return'
   assert.equal(find(tree, 'Tabs')[0].props.value, 'doctors')
   assert.equal(focused, true)
 })
+
+test('library carries the viewed doctor into practice without losing the reading context', async () => {
+  const choices: unknown[] = []
+  const props = { onPractice: (choice: unknown) => choices.push(choice) }
+  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [{ id: 'doctor-ji', status: 'published', name: '纪立农', specialty: '内分泌科', sources: [] }] : [])
+  app.render(props); await settle()
+  find(app.render(props), 'Tabs')[0].props.onValueChange('doctors')
+  app.render(props); await settle()
+  find(app.render(props), 'Button').find(node => node.props['aria-label'] === '查看纪立农的资料')!.props.onClick({ currentTarget: { focus() {} } })
+  const button = find(app.render(props), 'Button').find(node => JSON.stringify(node.props.children).includes('用这个'))!
+  assert.ok(button)
+  button.props.onClick()
+  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{ doctor_id: 'doctor-ji' }])
+  assert.equal(find(app.render(props), 'Dialog')[0].props.open, false)
+})

@@ -29,6 +29,7 @@ export function ScenarioPicker({ value, onChange, onReady }: {value:TrainingChoi
   const [loaded,setLoaded]=useState(false)
   const [refresh,setRefresh]=useState(0)
   const requestVersion=useRef(0)
+  const defaultApplied=useRef(false)
   const drugId=useId(),doctorId=useId()
   const selectedDrug=drugs.find(drug=>drug.id===value.drug_id)
   const selectedDoctor=doctors.find(doctor=>doctor.id===value.doctor_id)
@@ -55,6 +56,14 @@ export function ScenarioPicker({ value, onChange, onReady }: {value:TrainingChoi
     })
     return()=>controller.abort()
   },[refresh,onReady])
+
+  useEffect(()=>{
+    if(!loaded||catalogError||kind!=='free'||defaultApplied.current)return
+    defaultApplied.current=true
+    if(value.drug_id)return
+    const drug=drugs.find(item=>!value.doctor_id||matches(item,selectedDoctor))
+    if(drug)onChange({...value,drug_id:drug.id})
+  },[loaded,catalogError,kind,value,drugs,selectedDoctor,onChange])
 
   useEffect(()=>{
     const version=++requestVersion.current

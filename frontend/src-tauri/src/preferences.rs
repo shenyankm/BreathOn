@@ -3,13 +3,13 @@ use std::{path::Path, time::Duration};
 
 const STORAGE_ERROR: &str = "本机练习偏好存储暂不可用";
 
-fn account_valid(account: &str) -> bool {
+pub(crate) fn account_valid(account: &str) -> bool {
     !account.trim().is_empty()
         && account.chars().count() <= 100
         && !account.chars().any(char::is_control)
 }
 
-fn open(path: &Path) -> Result<Connection, String> {
+pub(crate) fn open(path: &Path) -> Result<Connection, String> {
     let mut connection = Connection::open(path).map_err(|_| STORAGE_ERROR)?;
     connection
         .busy_timeout(Duration::from_secs(2))

@@ -22,14 +22,14 @@ export function PracticeStage({ actions, practice, doctorName, seconds, status, 
     {!practice && <Button variant="ghost" className="absolute top-3 right-3 size-12 rounded-full text-white hover:bg-white/15 hover:text-white" aria-label={expanded ? '收起通话界面' : '展开通话界面'} onClick={() => setExpanded(value => !value)}>{expanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}</Button>}
     {!practice && <div className="absolute top-3 right-16">{actions}</div>}
     {identity}
-    {practice ? <div className="grid min-h-0 flex-1 grid-rows-2 gap-3">
+    {practice ? <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
       <section aria-label="对话记录" className="flex min-h-0 flex-col">{transcript}</section>
       <section aria-label="AI 分析与建议" className="flex min-h-0 flex-col border-t pt-3">
         <h3 className="mb-2 shrink-0 text-sm font-medium">AI 分析与建议</h3>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{coach}</div>
       </section>
-    </div> : <div data-slot="call-status" className="flex flex-1 flex-col items-center justify-center gap-4 py-8"><p className="text-4xl font-light tabular-nums" aria-label="通话时长">{formatTime(seconds)}</p><p role="status" className="text-sm">{policyPaused ? '收音已暂停' : muted && active ? '麦克风已静音' : status}</p>{error && <p role="alert" className="max-w-md px-6 text-center text-sm leading-6">{error}</p>}<div className="flex gap-2"><Dialog><DialogTrigger asChild><Button variant="ghost" className="h-12 rounded-full px-5 text-white hover:bg-white/15 hover:text-white">对话</Button></DialogTrigger><DialogContent className="max-h-[85svh] overflow-y-auto"><DialogHeader><DialogTitle>实战对话</DialogTitle><DialogDescription className="sr-only">与模拟医生的对话记录</DialogDescription></DialogHeader><div className="h-[60svh] min-h-0">{transcript}</div></DialogContent></Dialog>{active && onInterrupt && <Button variant="ghost" className="h-12 rounded-full px-5 text-white hover:bg-white/15 hover:text-white" onClick={onInterrupt}>打断医生</Button>}</div></div>}
-    {practice && <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{status} · {formatTime(seconds)}{muted && active ? ' · 麦克风已静音' : ''}</p>}
+    </div> : <div data-slot="call-status" className="flex flex-1 flex-col items-center justify-center gap-4 py-8"><p className="text-4xl font-light tabular-nums" aria-label="通话时长">{formatTime(seconds)}</p><p role="status" className="text-sm">{status}</p>{error && <p role="alert" className="max-w-md px-6 text-center text-sm leading-6">{error}</p>}<div className="flex gap-2"><Dialog><DialogTrigger asChild><Button variant="ghost" className="h-12 rounded-full px-5 text-white hover:bg-white/15 hover:text-white">对话</Button></DialogTrigger><DialogContent className="max-h-[85svh] overflow-y-auto"><DialogHeader><DialogTitle>实战对话</DialogTitle><DialogDescription className="sr-only">与模拟医生的对话记录</DialogDescription></DialogHeader><div className="h-[60svh] min-h-0">{transcript}</div></DialogContent></Dialog>{active && onInterrupt && <Button variant="ghost" className="h-12 rounded-full px-5 text-white hover:bg-white/15 hover:text-white" onClick={onInterrupt}>打断医生</Button>}</div></div>}
+    {practice && <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{status} · {formatTime(seconds)}</p>}
     {controls}
   </section>
 }

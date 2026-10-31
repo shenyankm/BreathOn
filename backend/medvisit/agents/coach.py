@@ -13,7 +13,7 @@ from agentscope.skill import LocalSkillLoader
 from openai import APIError
 
 from ..voice.protocol import BridgeError
-from .doctor import DOCTOR_PROMPT, OPENING
+from .doctor import OPENING  # noqa: F401  re-exported
 from ..platform.training import context as training_context, doctor_instructions
 from ..platform.evaluation import ASSESSMENT_PROMPT, APPLICABILITY_PROMPT, validate_assessment, apply_applicability
 from .web_search import WebSearch

@@ -9,7 +9,7 @@ from tempfile import TemporaryFile
 from time import monotonic
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from psycopg import Error as DatabaseError
