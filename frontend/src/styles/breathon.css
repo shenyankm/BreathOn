@@ -6,18 +6,19 @@
   --card-foreground: #293d37;
   --popover: #fffefb;
   --popover-foreground: #293d37;
-  --primary: #ad501f;
+  --primary: #171717;
+  --brand-heading: #bd511b;
   --primary-foreground: #fffefb;
-  --secondary: #e2eee5;
-  --secondary-foreground: #28594b;
+  --secondary: #e7f7f4;
+  --secondary-foreground: #246c61;
   --muted: #edf0e6;
   --muted-foreground: #5c6b61;
   --accent: #f8e8d6;
   --accent-foreground: #8f411b;
-  --border: #d9dfd4;
-  --input: #8b9a8e;
+  --border: #eee9df;
+  --input: #a4ada3;
   --ring: #ad501f;
-  --radius: 1rem;
+  --radius: .75rem;
   --level-blue: #e4edf9;
   --level-blue-ink: #345f8a;
   --level-purple: #eee7f9;
@@ -28,7 +29,7 @@
   --level-green-ink: #3c6534;
 }
 .breathon-app { background: linear-gradient(155deg, #d3eee3 0%, #faf6e9 42%, #faf0ca 72%, #e0efdb 100%); }
-.breathon-app h1 { color: var(--primary); }
+.breathon-app h1 { color: var(--brand-heading); }
 .breathon-eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .14em; color: var(--muted-foreground); }
 .breathon-hero { background: linear-gradient(125deg, #d3ecdf, #f6efcb 70%, #f9dfc2); border: 1px solid #fff9; border-radius: 1.75rem; padding: 1.5rem; }
 .breathon-orb { width: 6rem; height: 6rem; border-radius: 50%; margin: 0 auto 1rem; background: radial-gradient(circle at 30% 25%, #fff4ba, #f6b3a4 30%, #b5e5d6 58%, #a8cce7 78%, #c1b4e4); box-shadow: inset 0 0 20px #fff8, 0 12px 28px #6d9b8520; }
@@ -39,3 +40,31 @@
 .breathon-level[data-level="L4"] { background: var(--level-green); color: var(--level-green-ink); }
 .breathon-app [data-slot="card"] { box-shadow: 0 5px 24px #3c594007; }
 .breathon-app a, .breathon-app button { -webkit-tap-highlight-color: transparent; }
+
+/* The legacy pages and portalled controls use the same Android prototype surfaces. */
+:root{color-scheme:light}
+[data-slot="button"]{min-height:48px;border-radius:12px}
+[data-slot="button"][data-size^="icon"]{min-width:48px}
+[data-slot="button"][data-variant="outline"],[data-slot="button"][data-variant="secondary"]{background:#e7f7f4;color:#246c61;border-color:transparent}
+[data-slot="button"][data-variant="ghost"]{border-radius:12px}
+[data-slot="input"],[data-slot="textarea"],[data-slot="select-trigger"]{background:#fffdf9;border-radius:12px;font-size:16px}
+[data-slot="input"],[data-slot="select-trigger"]{min-height:48px}
+[data-slot="card"]{background:#fffdf9;border-color:#eee9df;border-radius:18px;box-shadow:0 8px 18px #82796408}
+[data-slot="card-header"],[data-slot="card-content"]{padding-inline:16px}
+.bp [data-slot="page-header"] h1{font-size:30px;font-weight:500;line-height:1.2;letter-spacing:-.03em;color:var(--brand-heading)}
+[data-slot="dialog-overlay"]{background:#263c335c;backdrop-filter:none}
+[data-slot="dialog-content"]{border-radius:20px;background:#fffdf9;gap:20px;padding:20px}
+[data-slot="dialog-title"]{font-size:20px;line-height:1.35;font-weight:650;color:var(--foreground)}
+[data-slot="dialog-description"]{font-size:14px;line-height:1.6}
+[data-slot="dialog-content"][data-fullscreen="true"]{border-radius:0;padding:0;gap:0;background:linear-gradient(155deg,#bfe9e3,#faf6e9 55%,#edf3ce)}
+[data-slot="dialog-content"][data-fullscreen="true"]>[data-slot="dialog-header"]{background:transparent;border-color:#dce7db}
+[data-slot="dialog-content"][data-fullscreen="true"] [data-slot="dialog-title"]{color:var(--brand-heading);font-size:26px}
+[data-slot="dialog-close"]{min-width:48px;min-height:48px}
+[data-slot="select-content"],[data-slot="popover-content"]{border-radius:16px;background:#fffdf9}
+[data-slot="select-item"]{min-height:48px}
+[data-slot="tabs-list"]{background:#e7f7f4;border-radius:14px}
+[data-slot="tabs-trigger"]{min-height:48px;border-radius:12px}
+.bp-login{background:radial-gradient(circle at 8% 52%,#ffd7b688,transparent 45%),linear-gradient(155deg,#bfe9e3,#e9f4dc 50%,#f3e8c4)}
+.bp-login>section{background:#fffdf9;border:1px solid #eee9df;border-radius:24px;padding:24px;box-shadow:0 16px 35px #382e1f14}
+.bp-login h1{color:var(--brand-heading);font-weight:600}
+.bp-login>section>a{margin-bottom:24px}

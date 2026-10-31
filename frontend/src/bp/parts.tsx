@@ -1,18 +1,19 @@
 import type { ReactNode } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function Back({ label, href }: { label: string; href: string }) {
-  return <a className="mobile-back" href={href}><b aria-hidden="true">‹</b>{label}</a>
+  return <a className="mobile-back" href={href}><ChevronLeft size={20} aria-hidden="true" />{label}</a>
 }
 
-export function Topline({ eyebrow, tag, tone = 'teal' }: { eyebrow: string; tag?: string; tone?: 'teal' | 'orange' | 'lilac' | '' }) {
-  return <div className="topline"><span className="eyebrow">{eyebrow}</span>{tag && <span className={`tag ${tone}`}>{tag}</span>}</div>
+export function Topline({ tag, tone = 'teal' }: { tag?: string; tone?: 'teal' | 'orange' | 'lilac' | '' }) {
+  return <div className="topline">{tag && <span className={`tag ${tone}`}>{tag}</span>}</div>
 }
 
 export function Row({ index, title, note, href, onClick }: { index?: string; title: string; note?: string; href?: string; onClick?: () => void }) {
   const body = <>
     {index && <span className="row-icon">{index}</span>}
     <span className="row-copy"><strong>{title}</strong>{note && <small>{note}</small>}</span>
-    <span className="row-end" aria-hidden="true">›</span>
+    <ChevronRight className="row-end" size={20} aria-hidden="true" />
   </>
   return href ? <a className="mobile-row" href={href}>{body}</a> : <button type="button" className="mobile-row" onClick={onClick}>{body}</button>
 }

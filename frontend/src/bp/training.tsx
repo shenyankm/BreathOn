@@ -15,11 +15,11 @@ export function BpTraining() {
   const level = home.data?.level
   const streak = home.data?.streak_days
   return <section className="screen active" id="training" aria-label="训练">
-    <Topline eyebrow="REP ACADEMY" tag={streak ? `${streak} DAY STREAK` : '开始你的第一天'} />
+    <Topline tag={streak ? `${streak} 天连续练习` : '开始你的第一天'} />
     <h1 className="page-title">能力训练</h1>
     <p className="sub">从产品底盘，到疾病线，再到真实医生沟通。</p>
     <div className="progress-card">
-      <div className="row"><span className="eyebrow" style={{ color: '#63716b' }}>CURRENT LEVEL</span><b>{level ? `${level.percent}%` : '—'}</b></div>
+      <div className="row"><span>当前学习进度</span><b>{level ? `${level.percent}%` : '—'}</b></div>
       <h2>{level ? `${level.level} · ${level.title}` : '正在加载…'}</h2>
       <p>{level ? progressLine(level) : ' '}</p>
       <div className="progress"><i style={{ width: `${level?.percent ?? 0}%` }} /></div>
@@ -36,7 +36,7 @@ export function BpTraining() {
           const expanded = !!open[item.level]
           return <div key={item.level} className={`level-card ${expanded ? 'open' : ''}`}>
             {direct ? <a className="level-head" href={`#level/${item.level}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="level-left"><span className={`level-badge ${levelTone(item.level)}`}>{item.level}</span><div><strong>{item.title}</strong><small>{item.summary}</small></div></div><span className="level-chevron">＋</span></a>
+              <div className="level-left"><span className={`level-badge ${levelTone(item.level)}`}>{item.level}</span><div><strong>{item.title}</strong><small>{item.summary}</small></div></div><span className="level-chevron" aria-hidden="true">›</span></a>
               : <button type="button" className="level-head" aria-expanded={expanded} style={{ width: '100%', background: 'transparent', textAlign: 'left' }} onClick={() => setOpen(previous => ({ ...previous, [item.level]: !previous[item.level] }))}>
                 <div className="level-left"><span className={`level-badge ${levelTone(item.level)}`}>{item.level}</span><div><strong>{item.title}</strong><small>{item.summary}</small></div></div><span className="level-chevron">{expanded ? '−' : '＋'}</span></button>}
             <div className="level-body">
@@ -56,7 +56,7 @@ export function BpLevel({ level }: { level: string }) {
   const item = curriculum.data?.levels.find(row => row.level === level)
   return <section className="screen active" id="training-level-detail" aria-label={`${level} 课程目录`}>
     <Back label="能力训练" href="#training" />
-    <Topline eyebrow={`${level} · CURRICULUM`} tag="课程目录" />
+    <Topline tag="课程目录" />
     <Status loading={curriculum.loading} error={curriculum.error} retry={curriculum.reload}>
       {item ? <><h1 className="page-title">{item.level} · {item.title}</h1><p className="sub">{item.subtitle}</p>
         <div className="mobile-list">{item.lessons.map((lesson, index) => <Row key={lesson.id} index={String(index + 1).padStart(2, '0')} title={lesson.title} note={lesson.summary} href={`#lesson/${lesson.id}`} />)}</div></>

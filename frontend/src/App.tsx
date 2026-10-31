@@ -24,6 +24,7 @@ import { PracticeStage } from '@/components/practice-stage'
 import { presetFor, trainingPresets, type TrainingPreset } from '@/lib/training-setup'
 import { BpProvider } from '@/bp/data'
 import { BpShell } from '@/bp/shell'
+import { BpBack } from '@/bp/back'
 import type { Route } from '@/bp/route'
 import { parseRoute } from '@/bp/route'
 const LibraryPage = lazy(() => import('@/pages/library-page').then(module => ({ default: module.LibraryPage })))
@@ -223,11 +224,12 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
     visits={<Suspense fallback={<LoadingBlock label="正在加载拜访日记…" />}><VisitsPage key={username} account={username} /></Suspense>}
     library={<Suspense fallback={<LoadingBlock label="正在加载学习资料…" />}><LibraryPage companyOnly onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining({scenario_id:'',stage:'full',...choice});window.location.hash='coach' }} /></Suspense>}
     inSession={inSession} />
-  return <BpProvider account={username}><div className={`bp bp-ambient flex h-svh flex-col pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`}>
+  return <BpProvider account={username}><BpBack route={route} /><div className={`bp bp-ambient flex h-svh flex-col pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`}>
     <ScrollArea ref={pageScrollRef} className="min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[560px] px-5 py-3 outline-none">
       {storageError && <Alert className="mb-4"><Info /><AlertTitle>本机存储提示</AlertTitle><AlertDescription>{storageError}</AlertDescription></Alert>}
       {page !== 'start' && pageContent}
+      {page === 'start' && voice.status === 'idle' && <section className="soft-card space-y-4"><h1 className="text-xl font-semibold">暂无进行中的演练</h1><p className="sub">选择医生和练习重点后，即可开始新的演练。</p><Button asChild><a href="#coach">返回 AI 教练</a></Button></section>}
       {voice.status !== 'idle' && <section hidden={page !== 'start'} className={page !== 'start' ? 'hidden' : undefined}>
       {practice && <div className="mb-3 flex items-center justify-between gap-2"><Button asChild variant="ghost" className="size-12 shrink-0 rounded-full" aria-label="返回练习配置"><a href="#practice"><ArrowLeft aria-hidden="true" /></a></Button>{sessionActions}</div>}
       {practice && voice.error && <Alert className="mb-5" role="alert"><Info /><AlertTitle>语音提示</AlertTitle><AlertDescription>{voice.error}</AlertDescription></Alert>}

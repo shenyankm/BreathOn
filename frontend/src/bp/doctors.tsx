@@ -14,15 +14,15 @@ export function BpDoctors({ selectedId, onSelect, onStart }: { selectedId: strin
   const current = list.find(row => row.id === selectedId) ?? list[1] ?? list[0]
   return <section className="screen active" id="doctors" aria-label="我的医生 IP">
     <Back label="返回 L3 医生 IP" href="#level/L3" />
-    <div className="topline"><span className="eyebrow">DOCTOR IP LIBRARY</span><button type="button" className="chip" onClick={() => notify('医生 IP 已同步')}>同步</button></div>
+    <div className="topline"><button type="button" className="chip" disabled={doctors.loading} onClick={doctors.reload}>刷新医生资料</button></div>
     <h1 className="page-title">我的医生 IP</h1>
     <p className="sub">同一份资料，先匹配医生的科室、问题和沟通偏好。</p>
     <div className="chips" role="group" aria-label="按领域筛选">{AREAS.map(item => <button key={item} type="button" className={`chip ${area === item ? 'active' : ''}`} aria-pressed={area === item} onClick={() => setArea(item)}>{item}</button>)}</div>
     <Status loading={doctors.loading} error={doctors.error} retry={doctors.reload}>
       {list.length === 0 ? <p className="sub">暂无已发布的医生 IP。</p> : <>
-        <div className="doctor-grid" id="doctorGrid">{shown.map(row => <IpCard key={row.id} row={row} active={row.id === current?.id} onPick={() => onSelect(row.id)} />)}</div>
+        <div className="doctor-grid" id="doctorGrid">{shown.map(row => <IpCard key={row.id} row={row} active={row.id === current?.id} onPick={() => { onSelect(row.id); requestAnimationFrame(() => document.getElementById('doctorDetail')?.scrollIntoView({ block: 'start', behavior: 'instant' })) }} />)}</div>
         {shown.length === 0 && <p className="sub" style={{ marginTop: 12 }}>这个领域暂时没有医生 IP。</p>}
-        {current && <IpDetail row={current} onStart={() => onStart(current.id)} onDraft={() => notify('已生成个性化话术')} />}
+        {current && <IpDetail row={current} onStart={() => onStart(current.id)} onDraft={async () => { const ip = current.ip_profile!; try { await navigator.clipboard.writeText(`${current.name}\n切入方式：${ip.entry}\n常见追问：${ip.question}\n推荐证据入口：${ip.match}`); notify('已复制沟通要点') } catch { notify('复制失败，请长按沟通要点手动复制') } }} />}
       </>}
     </Status>
   </section>
@@ -43,7 +43,7 @@ function IpDetail({ row, onStart, onDraft }: { row: DoctorRecord; onStart: () =>
     <div className="doctor-head"><img src={ipImage(ip.ip_key)} alt="" /><div><h3>{row.name}</h3><p>{ip.role} · {ip.style}<br />关注：{row.focus}</p></div></div>
     <div className="tag-row" style={{ marginTop: 12 }}>{ip.tags.map(tag => <span key={tag} className="tag lilac">{tag}</span>)}</div>
     <div className="quote"><b>切入方式：</b>{ip.entry}<br /><b>常见追问：</b>{ip.question}<br /><b>推荐证据入口：</b>{ip.match}</div>
-    <div className="btn-row"><button type="button" className="mini-btn" onClick={onStart}>开始模拟拜访</button><button type="button" className="mini-btn soft" onClick={onDraft}>生成话术</button></div>
+    <div className="btn-row"><button type="button" className="mini-btn" onClick={onStart}>开始模拟拜访</button><button type="button" className="mini-btn soft" onClick={onDraft}>复制沟通要点</button></div>
     <div className="detail-callout">医生 IP 是训练角色模型，用于帮助代表理解不同科室的关注点，不代表任何具体医生。</div>
   </div>
 }
@@ -55,7 +55,7 @@ export function BpL3({ onOpen }: { onOpen: (id: string) => void }) {
   const lesson = curriculum.data?.levels.find(level => level.level === 'L3')?.lessons[0]
   return <section className="screen active" id="training-level-detail" aria-label="L3 课程目录">
     <Back label="能力训练" href="#training" />
-    <Topline eyebrow="L3 · CURRICULUM" tag="课程目录" />
+    <Topline tag="课程目录" />
     <h1 className="page-title">L3 · 医生 IP 与偏好识别</h1>
     <p className="sub">同一份资料，换一个医生就要换一种入口。</p>
     <Status loading={doctors.loading || curriculum.loading} error={doctors.error || curriculum.error} retry={() => { doctors.reload(); curriculum.reload() }}>

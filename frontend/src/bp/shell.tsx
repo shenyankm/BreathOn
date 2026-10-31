@@ -11,7 +11,6 @@ import { BpNav } from './nav'
 import { ipDoctors } from './logic'
 import type { Route } from './route'
 import { BpLevel, BpTraining } from './training'
-import { BpBack } from './back'
 import type { ScenarioKey } from './types'
 
 type Props = {
@@ -68,7 +67,6 @@ export function BpShell({ route, username, onLogout, logoutDisabled, sessionLine
   }
   return <>
     {screen}
-    <BpBack route={route} />
     <BpNav route={route} sessionActive={sessionActive} />
   </>
 }

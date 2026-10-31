@@ -21,7 +21,7 @@ Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打�
 
 | 部分 | 部署与职责 |
 | --- | --- |
-| Android App | React 页面由 Tauri 2 打包；底栏为「首页、医生、训练、教练、我的」，日记与复盘位于「我的」 |
+| Android App | React 页面由 Tauri 2 打包；底栏为「首页、训练、教练、我的」，日记与复盘位于「我的」 |
 | Web 管理端 | Caddy 提供 `/admin` 静态构建产物；管理员维护共享训练内容和审核记录，不提供 Web 用户端 |
 | 后端服务 | FastAPI 由 `medvisit-coach.service` 原生运行，Caddy 代理同源 API / WebSocket；校验登录、管理员权限及记录归属 |
 | 数据库 | PostgreSQL 使用独立 Docker Compose 配置；API 与 Web 管理端不运行在容器中 |

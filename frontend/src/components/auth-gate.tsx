@@ -163,7 +163,7 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
     </>
   }
 
-  return <main className="flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12">
+  return <main className={`flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12 ${target === 'android' ? 'bp-login' : ''}`}>
     <section className="w-full max-w-sm" aria-labelledby="login-title">
       <a href={target === 'android' ? '#home' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
       <h1 id="login-title" className="mb-6 text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录 BreathOn'}</h1>
