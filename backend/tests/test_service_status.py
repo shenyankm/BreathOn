@@ -185,3 +185,60 @@ async def test_concurrent_checks_share_work_and_one_cancelled_request_does_not_c
         mock.assert_awaited_once()
         await endpoint()
         assert mock.await_count == 2
+
+
+async def test_duplex_continues_silence_until_server_vad_finishes_reply(tmp_path, monkeypatch):
+    fixture = checks.CHECK_AUDIO.read_bytes()
+    late_bytes = math.ceil((len(fixture) + 96000) / 640) * 640
+    received = bytearray()
+    closed = asyncio.Event()
+    real_sleep = asyncio.sleep
+
+    async def yield_frame(_):
+        await real_sleep(0)
+
+    async def vendor(ws):
+        try:
+            async for raw in ws:
+                data = json.loads(raw)
+                if data['type'] == 'session.create':
+                    await ws.send(json.dumps({'type':'session.created'}))
+                elif data['type'] == 'input_audio_buffer.append':
+                    received.extend(base64.b64decode(data['audio'],validate=True))
+                    if len(received) == late_bytes:
+                        await ws.send(json.dumps({'type':'response.output_audio.delta','delta':'AAA='}))
+                        await ws.send(json.dumps({'type':'response.done'}))
+                elif data['type'] == 'session.close':
+                    return
+        finally:
+            closed.set()
+
+    async with serve(vendor,'127.0.0.1',0) as server:
+        config=settings(tmp_path,endpoint=f'ws://127.0.0.1:{server.sockets[0].getsockname()[1]}')
+        monkeypatch.setattr(checks.asyncio,'sleep',yield_frame)
+        await asyncio.wait_for(checks.check_duplex(config),1)
+        await asyncio.wait_for(closed.wait(),1)
+    assert len(received)>=late_bytes and received.startswith(fixture)
+    assert not any(received[len(fixture):])
+
+
+async def test_cancelling_duplex_probe_closes_the_streaming_connection(tmp_path):
+    started,closed=asyncio.Event(),asyncio.Event()
+    async def vendor(ws):
+        try:
+            async for raw in ws:
+                data=json.loads(raw)
+                if data['type']=='session.create':
+                    await ws.send(json.dumps({'type':'session.created'}))
+                elif data['type']=='input_audio_buffer.append':
+                    started.set()
+        finally:
+            closed.set()
+    async with serve(vendor,'127.0.0.1',0) as server:
+        config=settings(tmp_path,endpoint=f'ws://127.0.0.1:{server.sockets[0].getsockname()[1]}')
+        checking=asyncio.create_task(checks.check_duplex(config))
+        await asyncio.wait_for(started.wait(),1)
+        checking.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await checking
+        await asyncio.wait_for(closed.wait(),1)

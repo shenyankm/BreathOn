@@ -74,27 +74,37 @@ async def check_duplex(settings):
                 raise BridgeError('provider_error', '实战语音服务拒绝请求，请核对权限、音色和额度。')
             if data.get('type') == 'session.created':
                 break
-        audio = CHECK_AUDIO.read_bytes() + bytes(16000 * 2 * 2)
-        for offset in range(0, len(audio), 640):
-            await upstream.send(json.dumps({'type': 'input_audio_buffer.append',
-                'audio': base64.b64encode(audio[offset:offset + 640].ljust(640, b'\0')).decode()}))
-            await asyncio.sleep(0.02)
+        async def send_audio():
+            audio, offset = CHECK_AUDIO.read_bytes(), 0
+            while True:
+                # Server VAD needs continuing silence until it finishes the reply.
+                frame = audio[offset:offset + 640].ljust(640, b'\0') if offset < len(audio) else bytes(640)
+                await upstream.send(json.dumps({'type': 'input_audio_buffer.append',
+                    'audio': base64.b64encode(frame).decode()}))
+                offset += 640
+                await asyncio.sleep(0.02)
+
+        sending = asyncio.create_task(send_audio())
         audio_bytes = 0
-        while True:
-            data = json.loads(await upstream.recv())
-            kind = data.get('type')
-            if kind == 'error':
-                raise BridgeError('provider_error', '实战语音服务返回错误，请核对权限、音色和额度。')
-            if kind == 'response.output_audio.delta':
-                pcm = base64.b64decode(data.get('delta', ''), validate=True)
-                if not pcm or len(pcm) % 2:
-                    raise ValueError('Invalid duplex audio')
-                audio_bytes += len(pcm)
-            if kind == 'response.done':
-                if not audio_bytes:
-                    raise ValueError('No duplex audio')
-                await upstream.send(json.dumps(event('session.close')))
-                return
+        try:
+            while True:
+                data = json.loads(await upstream.recv())
+                kind = data.get('type')
+                if kind == 'error':
+                    raise BridgeError('provider_error', '实战语音服务返回错误，请核对权限、音色和额度。')
+                if kind == 'response.output_audio.delta':
+                    pcm = base64.b64decode(data.get('delta', ''), validate=True)
+                    if not pcm or len(pcm) % 2:
+                        raise ValueError('Invalid duplex audio')
+                    audio_bytes += len(pcm)
+                if kind == 'response.done':
+                    if not audio_bytes:
+                        raise ValueError('No duplex audio')
+                    break
+        finally:
+            sending.cancel()
+            await asyncio.gather(sending, return_exceptions=True)
+        await upstream.send(json.dumps(event('session.close')))
 
 
 async def check_provider(settings, probe, required):

@@ -45,3 +45,7 @@ frontend/dist-android/
 
 # Local walkthrough videos, speech samples, and emulator evidence
 /output/
+
+# Local end-to-end reports and traces
+frontend/test-results/
+frontend/playwright-report/

@@ -16,6 +16,7 @@
     "android:build": "npm --prefix frontend run android:build --",
     "dev:api": "uv run --directory backend uvicorn medvisit.main:app --host 127.0.0.1 --port 8000 --ws-max-size 4096 --ws-max-queue 16",
     "test:api": "uv run --directory backend pytest",
-    "build:android": "npm --prefix frontend run build:android --"
+    "build:android": "npm --prefix frontend run build:android --",
+    "test:e2e": "npm --prefix frontend run test:e2e --"
   }
 }
