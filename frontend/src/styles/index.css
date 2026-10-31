@@ -142,9 +142,20 @@
   }
 }
 
-@media (max-width: 640px) {
-  [data-slot="button"] { min-height: 2.75rem; }
+@media (pointer: coarse) {
+  [data-slot="button"], [data-slot="dialog-close"], [data-slot="sheet-close"], [data-slot="select-trigger"], [data-slot="select-item"],
+  [data-slot="tabs-trigger"], [data-slot="accordion-trigger"], [data-slot="input"] {
+    min-height: 3rem;
+  }
+  [data-slot="button"], [data-slot="dialog-close"], [data-slot="sheet-close"], [data-slot="select-trigger"] { min-width: 3rem; }
+  [data-slot="tabs-list"] { min-height: 3.5rem; }
 }
+
+@keyframes call-surface-enter {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+.combat-stage { animation: call-surface-enter 180ms ease-out; }
 
 /* The call surface keeps controls distinct from the conversation canvas. */
 .combat-stage {

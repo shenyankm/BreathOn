@@ -13,7 +13,7 @@ test('page motion is cancellable and respects reduced motion and missing browser
       return { matches: reduced }
     },
   } })
-  const element = { animate: () => { started++; return { cancel: () => { cancelled++ } } } } as unknown as HTMLElement
+  const element = { animate: (frames: Keyframe[]) => { assert.ok(frames.every(frame => !('transform' in frame))); started++; return { cancel: () => { cancelled++ } } } } as unknown as HTMLElement
   try {
     const cleanup = animatePageTransition(element)
     assert.equal(started, 1)
