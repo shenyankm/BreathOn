@@ -29,6 +29,9 @@ jobs:
       - run: npm --prefix frontend run lint
       - run: npm --prefix frontend run build
       - run: npm --prefix frontend run build:android
+      - run: npm --prefix user-app ci
+      - run: npx --prefix user-app playwright install --with-deps chromium
+      - run: npm run test:user
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: BreathOn-admin-dist-${{ github.sha }}
@@ -122,6 +125,20 @@ jobs:
         with:
           name: BreathOn-android-arm64-debug-${{ github.sha }}
           path: frontend/src-tauri/gen/android/app/build/outputs/apk/**/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false
+
+      - run: npm --prefix user-app ci
+      - name: Compile offline user prototype APK
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/frontend/src-tauri/target
+        run: npm run android:user:build -- --debug --ci -- --locked
+      - run: git diff --exit-code -- user-app/package-lock.json user-app/src-tauri/Cargo.lock
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: BreathOn-user-android-arm64-debug-${{ github.sha }}
+          path: user-app/src-tauri/gen/android/app/build/outputs/apk/**/debug/*.apk
           if-no-files-found: error
           retention-days: 14
           include-hidden-files: false

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import logo from '@/assets/brand/breathon-logo.png'
 import { useBp } from './data'
 import { deltaText, formatDate, greeting, scoreText } from './logic'
 import { ipImage } from './images'
@@ -13,7 +14,7 @@ export function BpHome({ username, sessionLine }: { username?: string; sessionLi
   const name = username || '同事'
   return <section className="screen active" id="home" aria-label="首页">
     <div className="topline">
-      <div className="brandline"><div className="brandmark" aria-hidden="true">灵</div><div><strong>灵息 BREATHON</strong></div></div>
+      <div className="brandline"><img className="brandmark" src={logo} alt="" aria-hidden="true" width={40} height={40} /><div><strong>灵息 BREATHON</strong></div></div>
       <a className="profile-avatar profile-initials" href="#me" aria-label="我的账号">{name.slice(0, 1)}</a>
     </div>
     <h1 className="hero-title">{greeting(now)}，<span>{name}</span></h1>

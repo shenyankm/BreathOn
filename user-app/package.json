@@ -1,0 +1,14 @@
+{
+  "name": "breathon-user-android",
+  "private": true,
+  "version": "0.1.1",
+  "scripts": {
+    "tauri": "tauri",
+    "android:build": "tauri android build --apk --target aarch64",
+    "test": "node smoke.cjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4",
+    "@playwright/test": "1.64.1"
+  }
+}

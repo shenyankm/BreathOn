@@ -7,6 +7,7 @@
 | 目录 | 内容 |
 | --- | --- |
 | `frontend/src/` | React 用户界面与 Web 管理后台；优先复用现有 shadcn/ui 组件 |
+| `user-app/` | 独立呼气代谢 Android 离线原型；构建与验证见其 README.txt |
 | `frontend/src-tauri/` | Tauri 2 Android 客户端、原生权限和打包配置 |
 | `backend/medvisit/` | FastAPI、语音、训练、资料与存储服务 |
 | `frontend/tests/`、`backend/tests/` | 前后端回归测试 |

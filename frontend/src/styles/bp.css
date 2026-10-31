@@ -6,7 +6,7 @@
 .bp .topline{display:flex;justify-content:space-between;align-items:center}
 .bp .eyebrow{font-size:10px;letter-spacing:.1em;color:var(--bp-muted);text-transform:uppercase;font-weight:800}
 .bp .brandline{display:flex;align-items:center;gap:8px}
-.bp .brandmark{width:27px;height:27px;border-radius:10px;background:linear-gradient(135deg,#82d9d4,#f2b7a7);display:grid;place-items:center;color:#fff;font-weight:900;font-size:12px}
+.bp .brandmark{width:40px;height:40px;border-radius:10px;background:#fff;object-fit:contain}
 .bp .brandline strong{font-size:14px}
 .bp .brandline small{display:block;font-size:8px;color:var(--bp-muted);letter-spacing:.08em;margin-top:2px}
 .bp .profile-avatar{width:35px;height:35px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 3px 10px #52483322}
@@ -168,7 +168,7 @@ body{background:#e9e7e2}
 .bp .brandline{gap:9px}
 .bp .brandline strong{font-size:13px;letter-spacing:-.02em}
 .bp .brandline small{font-size:8px;letter-spacing:.12em;color:#999991}
-.bp .brandmark{width:28px;height:28px;border-radius:10px;background:linear-gradient(145deg,#9bd9d0,#edc5ad);box-shadow:0 4px 9px #8eb9ad33}
+
 .bp .profile-avatar{width:34px;height:34px;border:0;box-shadow:none}
 .bp .profile-initials{display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#d9eee3,#f0d5c0);color:#486a62;font-weight:850;font-size:13px}
 .bp .hero-title{font-size:27px;line-height:1.15;margin:25px 0 7px;letter-spacing:-.06em}
