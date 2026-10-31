@@ -47,21 +47,33 @@ def _save(tx, user, state):
     return tx.update(user['workspace'], 'member_state', _key(user), {**data, 'owner_id': user['id']}, state['version'])
 
 
+def workspace_curriculum(store, user):
+    with store.transaction(user['workspace'], write=False) as tx:
+        saved = sorted(tx.list(user['workspace'], 'lesson'), key=lambda row: row['id'])
+    if not saved:
+        return CURRICULUM
+    return {'levels': [{**level, 'lessons': [row for row in saved if row['level'] == level['level'] and row['status'] == 'published']}
+                       for level in CURRICULUM['levels']]}
+
+
 def curriculum(store, user):
     """The four levels with each lesson's state for this account; practice lessons link to the real coach flow."""
     with store.transaction(user['workspace'], write=False) as tx:
         state = _load(tx, user)
+    source = workspace_curriculum(store, user)
+    lessons_by_id = {lesson['id']:lesson for level in source['levels'] for lesson in level['lessons']}
     rows = []
-    for level in CURRICULUM['levels']:
+    for level in source['levels']:
         lessons = [{**lesson, 'state': 'completed' if lesson['id'] in state['completed'] else 'planned' if lesson['id'] in state['plan'] else 'none'}
                    for lesson in level['lessons']]
         rows.append({**{key: level[key] for key in ('level', 'title', 'subtitle', 'summary')}, 'lessons': lessons,
                      'completed': sum(item['state'] == 'completed' for item in lessons), 'total': len(lessons)})
-    return {'levels': rows, 'plan': [LESSONS[item] | {'state': 'planned'} for item in state['plan'] if item in LESSONS]}
+    return {'levels': rows, 'plan': [lessons_by_id[item] | {'state': 'planned'} for item in state['plan'] if item in lessons_by_id]}
 
 
 def set_lesson(store, user, lesson_id, body):
-    if lesson_id not in LESSONS:
+    available = {lesson['id'] for level in workspace_curriculum(store, user)['levels'] for lesson in level['lessons']}
+    if lesson_id not in available:
         raise HTTPException(404, '课程不存在。')
     with store.transaction(user['workspace']) as tx:
         state = _load(tx, user)
@@ -81,10 +93,16 @@ def set_lesson(store, user, lesson_id, body):
 def member_settings(store, user):
     with store.transaction(user['workspace'], write=False) as tx:
         state = _load(tx, user)
-    return {**SETTING_DEFAULTS, **state['settings']}
+    from .management import service_enabled
+    result = {**SETTING_DEFAULTS, **state['settings']}
+    result['doctor_recommendation'] = result['doctor_recommendation'] and service_enabled(store, user['workspace'], 'doctor_recommendation')
+    return result
 
 
 def update_settings(store, user, body):
+    from .management import service_enabled
+    if body.doctor_recommendation is True and not service_enabled(store, user['workspace'], 'doctor_recommendation'):
+        raise HTTPException(409, '管理员已关闭工作区医生推荐，暂时无法启用。')
     changes = {key: value for key, value in body.model_dump().items() if value is not None}
     with store.transaction(user['workspace']) as tx:
         state = _load(tx, user)
@@ -112,16 +130,17 @@ def streak(days, today):
     return count
 
 
-def level_status(completed):
+def level_status(completed, source=None):
     """Current level = the first level with an unfinished lesson; progress is the share of its lessons done."""
-    for level in CURRICULUM['levels']:
+    source = source or CURRICULUM
+    for level in source['levels']:
         ids = [lesson['id'] for lesson in level['lessons']]
         done = sum(item in completed for item in ids)
         if done < len(ids):
             return {'level': level['level'], 'title': level['title'], 'done': done, 'total': len(ids),
                     'remaining': len(ids) - done, 'percent': round(100 * done / len(ids)),
-                    'next_level': next((item['level'] for item in CURRICULUM['levels'] if item['level'] > level['level']), None)}
-    last = CURRICULUM['levels'][-1]
+                    'next_level': next((item['level'] for item in source['levels'] if item['level'] > level['level']), None)}
+    last = source['levels'][-1]
     return {'level': last['level'], 'title': last['title'], 'done': len(last['lessons']), 'total': len(last['lessons']),
             'remaining': 0, 'percent': 100, 'next_level': None}
 
@@ -151,6 +170,9 @@ def home_summary(store, records, user, today=None):
     this_average, last_average = average(this_week), average(last_week)
     with store.transaction(user['workspace'], write=False) as tx:
         state = _load(tx, user)
+    source = workspace_curriculum(store, user)
+    lessons_by_id = {lesson['id']:lesson for level in source['levels'] for lesson in level['lessons']}
+    completed = {key:value for key,value in state['completed'].items() if key in lessons_by_id}
     days = _practice_days(rows)
     recent = [{'id': row['id'], 'title': row.get('scenario_title') or '自由演练', 'score': total, 'started_at': started}
               for started, total, row in reversed(scored[-3:])]
@@ -158,9 +180,9 @@ def home_summary(store, records, user, today=None):
             'latest_score': scored[-1][1] if scored else None,
             'week_average': this_average,
             'week_delta': this_average - last_average if this_average is not None and last_average is not None else None,
-            'mastery_percent': round(100 * len(state['completed']) / len(LESSONS)) if LESSONS else 0,
-            'level': level_status(state['completed']), 'recent': recent,
-            'tasks': [LESSONS[item] for item in state['plan'] if item in LESSONS][:3]}
+            'mastery_percent': round(100 * len(completed) / len(lessons_by_id)) if lessons_by_id else 0,
+            'level': level_status(completed, source), 'recent': recent,
+            'tasks': [lessons_by_id[item] for item in state['plan'] if item in lessons_by_id][:3]}
 
 
 VISIT_STATES = {'draft': '草稿', 'submitted': '待审核', 'reviewed': '已审核', 'confirmed': '已确认'}

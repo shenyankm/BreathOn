@@ -245,6 +245,8 @@ class PracticeDialogue:
             reference = await coaching_snapshot(self.record)
             if reference is not None:
                 options['reference_context'] = reference
+            if not await asyncio.to_thread(getattr(self.record, 'scoring_enabled', lambda: True)):
+                options['scoring_enabled'] = False
             result, usage = await generate_reply(self.settings, history, speak=not self.combat, interactions=list(self.record.data["interaction_events"]), **options)
             if usage:
                 self.record.data["usage"].append({"provider": "deepseek", **usage})
@@ -268,6 +270,8 @@ class PracticeDialogue:
         item_id = "" if self.combat else f"practice-d-{uuid4()}"
         if not self.combat:
             self.record.transcript(item_id, "doctor", result["doctor_reply"], final=True)
+        if not await asyncio.to_thread(getattr(self.record, 'scoring_enabled', lambda: True)):
+            result['coach'].pop('assessment', None)
         coaching = {"based_on": based_on, "doctor_id": item_id, **result["coach"]}
         if reference is not None:
             coaching["reference_context"] = reference

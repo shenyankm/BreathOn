@@ -160,7 +160,7 @@ def list_records(directory: Path, *, workspace=None, owner_id=None, team=None, a
                     **{key: data.get(key) for key in ("id", "experience", "mode", "started_at", "ended_at", "status")},
                     "message_count": len(data["messages"]),
                     "scenario_title": (data.get('training') or {}).get('scenario', {}).get('title'),
-                    **({'owner_id': data.get('owner_id')} if include_owner else {})})
+                    **({'owner_id': data.get('owner_id'), 'doctor': data.get('doctor')} if include_owner else {})})
         except (OSError, ValueError, TypeError, AttributeError, KeyError):
             continue
         if limit is not None and len(records) == limit:

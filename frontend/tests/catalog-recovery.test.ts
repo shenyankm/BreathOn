@@ -1,3 +1,4 @@
+import { overviewSources, overviewSummary } from '../src/lib/admin-overview.ts'
 import { isAppDrug } from '../src/lib/app-drugs.ts'
 import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
@@ -36,7 +37,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   vm.runInNewContext(ts.transpileModule(source + (name === 'CatalogPage' ? '\nexport { CatalogPage }' : ''), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
-    exports, AbortController, URL, URLSearchParams, location: { hash },
+    exports, Error, AbortController, URL, URLSearchParams, location: { hash },
     window: { addEventListener() {}, removeEventListener() {} },
     setTimeout(callback: () => void) { timers.set(++nextTimer, callback); return nextTimer },
     clearTimeout(id: number) { timers.delete(id) },
@@ -47,6 +48,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
     },
     require: (module: string) => {
       if (module === '@/lib/practice-images') return { doctorIllustration: '/doctor.png' }
+      if (module === '@/lib/admin-overview') return { overviewSources, overviewSummary }
       if (module === '@/lib/app-drugs') return { isAppDrug }
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
@@ -623,4 +625,56 @@ test('clinical scenarios recover from load errors, hide drafts, search diseases 
   tree = app.render(props)
   find(tree,'Button').find(node => JSON.stringify(node.props.children).includes('选择此场景')).props.onClick()
   assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{scenario_id:'scenario-real',stage:'full'}])
+})
+
+test('admin overview distinguishes unavailable totals from zero and refreshes failed sources', async () => {
+  let failed = true
+  const app = page('admin-overview.tsx', 'AdminOverview', async path => {
+    if (path === '/catalog/policy' && failed) throw new Error('政策服务离线')
+    return path === '/catalog/drug' ? [{ id: 'real-drug', name: '真实药品', status: 'draft', updated_at: '2026-10-31T01:00:00Z' }] : []
+  })
+  app.render(); await settle()
+  let tree = app.render()
+  assert.ok(JSON.stringify(tree).includes('政策服务离线'))
+  assert.ok(find(tree, 'strong').some(node => node.props.children === '—'))
+  assert.ok(JSON.stringify(tree).includes('真实药品'))
+  failed = false
+  find(tree, 'Button').find(node => typeof node.props.onClick === 'function').props.onClick()
+  app.render(); await settle(); tree = app.render()
+  assert.equal(find(tree, 'div').some(node => node.props.role === 'alert'), false)
+  assert.equal(find(tree, 'strong').filter(node => node.props.children === 1).length, 2)
+})
+
+test('audience saves through the catalog API, preserves failed forms, and edits with current version', async () => {
+  const calls: {path:string; options?:RequestInit}[] = []
+  let conflict = false
+  const saved = {id:'audience-real', version:1, name:'肿瘤线代表', audience_type:'representative', task:'准备循证拜访', needs:['正确证据'], metrics:['证据匹配度'], updated_at:'2026-10-31T01:00:00Z'}
+  const app = page('admin-audiences.tsx', 'AdminAudiences', async (path, options) => {
+    calls.push({path, options})
+    if (!options?.method) return []
+    if (conflict) throw new Error('记录已被修改，请刷新后重试。')
+    return saved
+  })
+  app.render(); await settle()
+  let tree = app.render()
+  assert.ok(JSON.stringify(tree).includes('暂无'))
+  find(tree, 'Button').find(node => node.props.children === '创建画像').props.onClick()
+  tree = app.render()
+  await find(tree, 'form')[0].props.onSubmit({preventDefault(){}, currentTarget:{name:saved.name, audience_type:'representative', task:saved.task, needs:'正确证据\n', metrics:'证据匹配度'}})
+  tree = app.render()
+  assert.equal(find(tree, 'Dialog')[0].props.open, false)
+  const create = calls.find(call => call.options?.method === 'POST')!
+  assert.equal(create.path, '/catalog/audience')
+  assert.deepEqual(JSON.parse(create.options!.body as string).needs, ['正确证据'])
+  assert.ok(JSON.stringify(tree).includes(saved.name))
+  find(tree, 'Button').find(node => node.props.children === '编辑画像').props.onClick()
+  conflict = true
+  tree = app.render()
+  await find(tree, 'form')[0].props.onSubmit({preventDefault(){}, currentTarget:{name:saved.name, audience_type:'representative', task:'修改后任务', needs:'正确证据', metrics:''}})
+  tree = app.render()
+  assert.equal(find(tree, 'Dialog')[0].props.open, true)
+  assert.ok(JSON.stringify(tree).includes('记录已被修改'))
+  const update = calls.find(call => call.options?.method === 'PUT')!
+  assert.equal(update.path, '/catalog/audience/audience-real')
+  assert.equal(JSON.parse(update.options!.body as string).version, 1)
 })

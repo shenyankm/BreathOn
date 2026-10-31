@@ -1,3 +1,4 @@
+import { pendingReview } from '../src/lib/admin-overview.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -15,7 +16,7 @@ test('visit review compares the doctor and leads to scenario generation',async()
   const source=readFileSync(new URL('../src/components/admin-review.tsx',import.meta.url),'utf8')
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{
     exports,AbortController,encodeURIComponent,
-    require(module:string){if(module==='react')return {useState(initial:any){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],(next:any)=>{slots[i]=typeof next==='function'?next(slots[i]):next}]},useEffect(fn:()=>void,deps:unknown[]){const i=cursor++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])){effects.push(fn);slots[i]=deps}}};if(module==='react/jsx-runtime')return {jsx,jsxs:jsx};if(module==='@/lib/platform-api')return {api};return new Proxy({}, {get:(_,key)=>String(key)})},
+    require(module:string){if(module==='react')return {useState(initial:any){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],(next:any)=>{slots[i]=typeof next==='function'?next(slots[i]):next}]},useEffect(fn:()=>void,deps:unknown[]){const i=cursor++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])){effects.push(fn);slots[i]=deps}}};if(module==='react/jsx-runtime')return {jsx,jsxs:jsx};if(module==='@/lib/admin-overview')return {pendingReview};if(module==='@/lib/platform-api')return {api};return new Proxy({}, {get:(_,key)=>String(key)})},
   })
   const render=()=>{cursor=0;const tree=exports.AdminReview({onWorkspace(){},onSection(){}});effects.splice(0).forEach(fn=>fn());return tree}
   render();await settle();let tree=render()
@@ -36,7 +37,7 @@ test('fact update requires confirmed public evidence and opens an unpublished do
   const visit={id:'v',version:1,status:'submitted',doctor_id:'d',owner_id:'rep',source:'self_report',redacted_text:'观察，不能作为事实'}
   const source={id:'source',title:'医院简介',status:'approved',usable:true,source_url:'https://hospital.example/doctor',pages:[{number:1,text:'张医生是该院内分泌科医师。'}]}
   const api=async(path:string,options?:RequestInit)=>{calls.push({path,body:options?.body?JSON.parse(String(options.body)):undefined});if(path==='/visits')return [visit];if(path==='/catalog/content')return [source];if(path==='/catalog/content/source')return source;if(path==='/visits/v/review')return {...visit,review:{doctor_draft_id:'draft1'}};return []}
-  vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/admin-review.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,AbortController,encodeURIComponent,require(module:string){if(module==='react')return {useState(initial:any){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],(next:any)=>{slots[i]=typeof next==='function'?next(slots[i]):next}]},useEffect(fn:()=>void,deps:unknown[]){const i=cursor++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])){effects.push(fn);slots[i]=deps}}};if(module==='react/jsx-runtime')return {jsx,jsxs:jsx};if(module==='@/lib/platform-api')return {api};return new Proxy({}, {get:(_,key)=>String(key)})}})
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/admin-review.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports,AbortController,encodeURIComponent,require(module:string){if(module==='react')return {useState(initial:any){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],(next:any)=>{slots[i]=typeof next==='function'?next(slots[i]):next}]},useEffect(fn:()=>void,deps:unknown[]){const i=cursor++;if(!slots[i]||deps.some((v,j)=>v!==slots[i][j])){effects.push(fn);slots[i]=deps}}};if(module==='react/jsx-runtime')return {jsx,jsxs:jsx};if(module==='@/lib/admin-overview')return {pendingReview};if(module==='@/lib/platform-api')return {api};return new Proxy({}, {get:(_,key)=>String(key)})}})
   const render=()=>{cursor=0;const tree=exports.AdminReview({onWorkspace(){},onSection(){}});effects.splice(0).forEach(fn=>fn());return tree}
   render();await settle();let tree=render();find(tree,'Button').find(node=>node.props.children==='审核').props.onClick();tree=render()
   find(tree,'Select')[0].props.onValueChange('source');await settle();tree=render()

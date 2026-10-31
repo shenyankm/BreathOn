@@ -79,7 +79,7 @@ def test_record_summaries_show_scene_names_and_keep_legacy_records_readable(tmp_
     records.save(record,'completed')
     summary = records.list()[0]
     assert summary['scenario_title']=='首次拜访：确认医生关注点'
-    assert records.list(include_owner=True) == [{**summary, 'owner_id':None}]
+    assert records.list(include_owner=True) == [{**summary, 'owner_id':None, 'doctor':None}]
     assert 'owner_id' not in summary
     assert '只保留在详情中的原话' not in json.dumps(summary,ensure_ascii=False)
     old = SessionRecord(str(uuid4()), 'assisted')

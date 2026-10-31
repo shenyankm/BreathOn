@@ -1,3 +1,4 @@
+import { HealthObservations } from '@/components/health-observations'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/platform-api'
 import { isAppDrug } from '@/lib/app-drugs'
@@ -27,7 +28,7 @@ const switches: [keyof Settings, string][] = [['training_reminder', '训练提�
 export function BpMe({ username, onLogout, logoutDisabled }: { username?: string; onLogout?: () => void; logoutDisabled?: boolean }) {
   const { home, settings, setSetting, notify, doctors } = useBp()
   const [busy, setBusy] = useState('')
-  const featured = ipDoctors(doctors.data ?? [])[2]
+  const featured = settings.data?.doctor_recommendation ? ipDoctors(doctors.data ?? [])[2] : undefined
   async function toggle(key: keyof Settings) {
     if (!settings.data) return
     setBusy(key)
@@ -161,6 +162,6 @@ export function BpSettings() {
     <Status loading={settings.loading} error={settings.error} retry={settings.reload}>
       <div className="settings-list">{rows.map(([key, label]) => <div key={key} className="setting"><span>{label}</span><Switch on={!!settings.data?.[key]} label={label} busy={busy === key} onToggle={() => toggle(key)} /></div>)}</div>
     </Status>
-    <div className="detail-callout">数据说明：只有用户明确授权后，代谢数据才进入代表训练数据池；用户可随时撤回授权。此项由管理员在网页端配置，手机端不提供修改。</div>
+    <HealthObservations/>
   </section>
 }

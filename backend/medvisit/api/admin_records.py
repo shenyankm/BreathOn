@@ -17,6 +17,8 @@ def admin_records_router(records, platform, current_user):
     @router.get('')
     def list_sessions(user=Depends(admin)):
         rows = records.list(workspace=user['workspace'], limit=None, include_owner=True)
+        activity = {row['id']: row for row in records.activity(workspace=user['workspace'])}
+        rows = [{**row, 'score': (activity.get(row['id'], {}).get('assessment') or {}).get('total') if activity.get(row['id'], {}).get('valid') else None} for row in rows]
         with platform.transaction(user['workspace']) as tx:
             tx.audit(user['workspace'], user['id'], 'session.list', 'session', '*')
         return rows

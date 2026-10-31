@@ -370,6 +370,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return
         session_id = str(uuid4())
         record = SessionRecord(session_id, "assisted")
+        from ..platform.management import service_enabled
+        record.scoring_enabled = lambda: service_enabled(platform, user['workspace'], 'training_scoring')
         record.medical_checks = LiveMedicalChecks(client, record, medical_verifier)
         record.data["experience"] = experience
         record.data.update(workspace=user['workspace'], owner_id=user['id'], team=user['team'])

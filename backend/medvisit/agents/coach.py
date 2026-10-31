@@ -110,7 +110,7 @@ async def _load_skills(visible: list[dict], speak: bool) -> list[str]:
 
 
 def build_coach_prompt(skill_parts, *, speak, training, medical_checks, free_context, reference_context, interactions,
-                       history, visible, selected, remaining, search_enabled) -> tuple[str, dict]:
+                       history, visible, selected, remaining, search_enabled, scoring_enabled=True) -> tuple[str, dict]:
     """Assemble the coach system prompt and the JSON schema the model must fill in."""
     has_source = training or reference_context and reference_context.get("evidence")
     prompt = "\n\n".join(skill_parts) + prompts.SKILL_EMBEDDING + PRACTICE_PROMPT + ANALYSIS_PROMPT + ("" if has_source else NO_REVIEWED_SOURCE)
@@ -130,11 +130,11 @@ def build_coach_prompt(skill_parts, *, speak, training, medical_checks, free_con
     if medical_checks:
         prompt += prompts.MEDICAL_CHECKS
     if training:
-        prompt += prompts.TRAINING_SCENARIO + ASSESSMENT_PROMPT
+        prompt += prompts.TRAINING_SCENARIO + (ASSESSMENT_PROMPT if scoring_enabled else '\n训练评分已关闭：只给沟通建议，不输出分数或 assessment。')
     if search_enabled:
         prompt += prompts.WEB_SEARCH
     schema = json.loads(json.dumps(COACH_SCHEMA))
-    if training:
+    if training and scoring_enabled:
         schema['assessment'] = {'dimensions': [{'key': d['key'], 'score': None, 'reason': '按锚点评价；未观察或资料不足则说明原因',
             'utterances': [], 'citations': []} for d in training['rubric']['dimensions']]}
     return prompt + prompts.SCHEMA_INSTRUCTION + json.dumps(schema, ensure_ascii=False), schema
@@ -252,13 +252,13 @@ def degraded_coach(kind: str) -> dict:
             "degraded": kind}
 
 
-async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=(), free_context=None, reference_context=None) -> tuple[dict, dict]:
+async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=(), free_context=None, reference_context=None, scoring_enabled=True) -> tuple[dict, dict]:
     started = monotonic()
     history, visible, selected, remaining = _visible_history(messages, speak)
     skill_parts = await _load_skills(visible, speak)
     prompt, _ = build_coach_prompt(skill_parts, speak=speak, training=training, medical_checks=medical_checks,
         free_context=free_context, reference_context=reference_context, interactions=interactions, history=history,
-        visible=visible, selected=selected, remaining=remaining, search_enabled=settings.deepseek_search_enabled)
+        visible=visible, selected=selected, remaining=remaining, search_enabled=settings.deepseek_search_enabled, scoring_enabled=scoring_enabled)
     training_view = training_context(training, history) if training else None
     max_tokens = 4000 if training else 2000
     model = make_model(settings, temperature=COACH_TEMPERATURE, timeout=settings.model_timeout, max_tokens=max_tokens)
@@ -293,7 +293,7 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
             else:
                 try:
                     result = parse_reply(replies[0].get_text_content() or "", speak=False)
-                    if training:
+                    if training and scoring_enabled:
                         assessment, repair_usage_unknown = await score_with_repair(agents[0], model, replies, result, training, training_view, history, settings)
                         result['coach']['assessment'] = assessment
                         if assessment['validation_errors']:
@@ -307,6 +307,8 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
                     kind = record_failure("coach_degraded", exc)
                     result = {"doctor_reply": "", "coach": degraded_coach(kind)}
                     replies = [replies[1]]
+            if not scoring_enabled:
+                result['coach'].pop('assessment', None)
             if speak:
                 result["doctor_reply"] = doctor_reply
             # Quotation marks in the review must come from the transcript, not from the model's memory.

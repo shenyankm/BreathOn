@@ -5,10 +5,10 @@ import { ipImage } from './images'
 import { ipDoctors } from './logic'
 
 export function BpHome({ username, sessionLine }: { username?: string; sessionLine?: { text: string } | null }) {
-  const { home, doctors, curriculum } = useBp()
+  const { home, doctors, curriculum, settings } = useBp()
   const now = useMemo(() => new Date(), [])
   const strip = useMemo(() => formatDate(now), [now])
-  const featured = doctors.data ? ipDoctors(doctors.data)[1] ?? ipDoctors(doctors.data)[0] : undefined
+  const featured = settings.data?.doctor_recommendation && doctors.data ? ipDoctors(doctors.data)[1] ?? ipDoctors(doctors.data)[0] : undefined
   const h = home.data
   const name = username || '同事'
   return <section className="screen active" id="home" aria-label="首页">

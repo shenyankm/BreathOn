@@ -54,7 +54,7 @@ class PostgresRecords:
         limit_sql = ' LIMIT %s' if limit is not None else ''
         if limit is not None:
             params.append(limit)
-        owner_sql = ", document->'owner_id'" if include_owner else ''
+        owner_sql = ", document->'owner_id', document->'doctor'" if include_owner else ''
         with self.pool.connection() as connection:
             rows = connection.execute(
                 "SELECT id, document->>'experience', document->>'mode', document->>'started_at', "
@@ -63,7 +63,7 @@ class PostgresRecords:
             ).fetchall()
         fields = ("id", "experience", "mode", "started_at", "ended_at", "status", "message_count", "scenario_title")
         if include_owner:
-            fields += ('owner_id',)
+            fields += ('owner_id', 'doctor')
         return [dict(zip(fields, (str(row[0]), *row[1:]))) for row in rows]
 
     def get(self, session_id: UUID):

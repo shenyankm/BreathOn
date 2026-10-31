@@ -31,6 +31,7 @@ class GenerateScenario(Input):
     situation: Literal['first_visit', 'follow_up', 'time_pressure', 'evidence_challenge'] = 'first_visit'
     difficulty: Literal['basic', 'intermediate', 'advanced'] = 'basic'
     duration_seconds: int = Field(default=300, ge=30, le=600)
+    drug_id: str | None = Field(default=None, min_length=1, max_length=80)
     case_id: str | None = Field(default=None, min_length=1, max_length=80)
 
     @field_validator('content_ids')

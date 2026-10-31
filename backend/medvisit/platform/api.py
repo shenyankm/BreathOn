@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from .catalog import Catalog, require_item
 from .departments import with_departments
-from .models import Content, ContentEdit, Policy, PolicyEdit, PolicyRule, PolicyRuleEdit, Drug, DrugEdit, TaxonomyEdit, Doctor, DoctorEdit, Rubric, RubricEdit, Scenario, ScenarioEdit, Publish, Transition, content_usable, policy_usable
+from .models import Lesson, LessonEdit, Audience, AudienceEdit, Content, ContentEdit, Policy, PolicyEdit, PolicyRule, PolicyRuleEdit, Drug, DrugEdit, TaxonomyEdit, Doctor, DoctorEdit, Rubric, RubricEdit, Scenario, ScenarioEdit, Publish, Transition, content_usable, policy_usable
 from .pdf_extract import extract_pdf
 from .training import prepare_training, prepare_free_context, snapshot
 from .calibration import Calibrator, CalibrationSample
@@ -23,9 +23,9 @@ from .progress import Prices, capture_prices, save_prices, personal_progress
 from .sharing import TrainingTemplate, export_template, import_template
 from ..core.identity import current_actor, current_role
 
-Kind = Literal['content', 'policy', 'policy_rule', 'drug', 'doctor', 'rubric', 'scenario']
-CREATE_MODELS = {'content': Content, 'policy': Policy, 'policy_rule': PolicyRule, 'drug': Drug, 'doctor': Doctor, 'rubric': Rubric, 'scenario': Scenario}
-EDIT_MODELS = {'content': ContentEdit, 'policy': PolicyEdit, 'policy_rule': PolicyRuleEdit, 'drug': DrugEdit, 'doctor': DoctorEdit, 'rubric': RubricEdit, 'scenario': ScenarioEdit}
+Kind = Literal['lesson', 'audience', 'content', 'policy', 'policy_rule', 'drug', 'doctor', 'rubric', 'scenario']
+CREATE_MODELS = {'lesson': Lesson, 'audience': Audience, 'content': Content, 'policy': Policy, 'policy_rule': PolicyRule, 'drug': Drug, 'doctor': Doctor, 'rubric': Rubric, 'scenario': Scenario}
+EDIT_MODELS = {'lesson': LessonEdit, 'audience': AudienceEdit, 'content': ContentEdit, 'policy': PolicyEdit, 'policy_rule': PolicyRuleEdit, 'drug': DrugEdit, 'doctor': DoctorEdit, 'rubric': RubricEdit, 'scenario': ScenarioEdit}
 
 
 def parse(model, body):
@@ -53,6 +53,11 @@ def platform_router(store, settings, records):
 
     def current_user():
         return {**user, 'id':current_actor.get() or user['id']}
+
+    from .health import health_router
+    router.include_router(health_router(store, current_user))
+    from .management import management_router
+    router.include_router(management_router(store, settings, records, current_user))
 
     @router.get('/progress')
     def progress(days: int = Query(default=30, ge=1, le=90), user=Depends(current_user)):
@@ -309,7 +314,7 @@ def platform_router(store, settings, records):
         return catalog.review(user, item_id, body, kind)
 
     @router.post('/catalog/{kind}/{item_id}/publish')
-    def catalog_publish(kind: Literal['doctor','drug','policy_rule','rubric','scenario'], item_id: str, body: Publish, user=Depends(current_user)):
+    def catalog_publish(kind: Literal['doctor','drug','policy_rule','rubric','scenario','lesson'], item_id: str, body: Publish, user=Depends(current_user)):
         return with_departments(kind, catalog.publish(user, kind, item_id, body.version))
 
     @router.post('/catalog/drug/{item_id}/retire')

@@ -1,3 +1,5 @@
+import { PublicationApproval } from '@/components/publication-approval'
+import { ContentHistory } from '@/components/content-history'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/page-header'
@@ -128,6 +130,8 @@ function CatalogPage({ kind }: { kind: Kind }) {
                 </DialogContent>
               </Dialog>
             </section>}
+            {item&&<ContentHistory kind={kind} itemId={item.id}/>}
+            {item&&['doctor','scenario','content'].includes(kind)&&['draft','submitted'].includes(item.status)&&<PublicationApproval kind={kind} item={item}/>}
             {kind==='rubric'&&<RubricForm key={item?`${item.id}-${item.version}`:'new'} item={item as Rubric|undefined} busy={busy} disabled={disabled} save={save}/>}
             {kind==='scenario'&&<ScenarioForm key={item?`${item.id}-${item.version}`:'new'} item={item as Scenario|undefined} busy={busy} disabled={disabled} save={save} {...bindings}/>}
             {kind==='scenario'&&(item as Scenario|undefined)?.generation&&<section className="mt-6 space-y-3 border-t pt-5"><h3 className="text-sm font-medium">生成依据</h3><p className="text-xs leading-6 text-muted-foreground tabular-nums">{(item as Scenario).generation!.model} · 生成耗时 {(item as Scenario).generation!.elapsed_seconds} 秒 · {(item as Scenario).generation!.usage.total_tokens??'未记录'} token · {costLabel((item as Scenario).generation!.cost?.totals??{})}</p><p className="text-xs leading-6 text-muted-foreground">AI 生成内容需核对后发布；引文匹配不等于整份情境已通过医学审核。</p>{(item as Scenario).generation!.citations.map((citation,index)=><blockquote className="rounded-lg bg-muted/30 p-3 text-sm leading-7" key={index}><p className="text-xs text-muted-foreground">{citation.title} · {citation.version_label} · 第 {citation.page} 页</p><p>{citation.quote}</p></blockquote>)}</section>}

@@ -6,6 +6,60 @@ from .departments import DRUG_DEPARTMENTS, department
 from ..agents.web_search import public_url
 
 
+class LessonAction(Input):
+    kind: Literal['practice', 'doctor_ips']
+    scenario: Literal['first', 'evidence', 'next'] = 'first'
+    ip_id: str = Field(default='', max_length=80)
+
+    @model_validator(mode='after')
+    def valid_practice(self):
+        if self.kind == 'practice' and not self.ip_id:
+            raise ValueError('模拟拜访课程必须选择医生')
+        return self
+
+
+class Lesson(Input):
+    title: str = Field(min_length=1, max_length=160)
+    level: Literal['L1','L2','L3','L4']
+    summary: str = Field(min_length=1, max_length=1500)
+    tagline: str = Field(default='', max_length=200)
+    owner: str = Field(min_length=1, max_length=100)
+    sections: list[tuple[str, str]] = Field(min_length=1, max_length=30)
+    unverified_figures: bool = True
+    action: LessonAction | None = None
+
+    @field_validator('sections')
+    @classmethod
+    def sections_valid(cls, values):
+        if any(not h.strip() or not b.strip() or len(h) > 120 or len(b) > 5000 for h,b in values):
+            raise ValueError('章节标题须为 1–120 字，正文须为 1–5000 字')
+        return values
+
+
+class LessonEdit(Lesson):
+    version: int = Field(ge=1)
+
+
+class Audience(Input):
+    name: str = Field(min_length=1, max_length=120)
+    audience_type: Literal['representative', 'doctor', 'health']
+    task: str = Field(min_length=1, max_length=2000)
+    needs: list[str] = Field(min_length=1, max_length=20)
+    metrics: list[str] = Field(default_factory=list, max_length=20)
+
+    @field_validator('needs', 'metrics')
+    @classmethod
+    def labels(cls, values):
+        values = [value.strip() for value in values]
+        if any(not value or len(value) > 200 for value in values):
+            raise ValueError('每项须为 1–200 字')
+        return values
+
+
+class AudienceEdit(Audience):
+    version: int = Field(ge=1)
+
+
 class Page(Input):
     number: int = Field(ge=1, le=2000)
     text: str = Field(min_length=1, max_length=20000)

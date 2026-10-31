@@ -7,6 +7,10 @@ from ..knowledge.live import checked_snapshot, validate_snapshot, coaching_snaps
 
 
 async def review_training(settings, record):
+    enabled = getattr(record, 'scoring_enabled', lambda: True)
+    if not await asyncio.to_thread(enabled):
+        record.data['analysis_status'] = 'disabled'
+        return None
     history=[dict(m) for m in record.data['messages']]
     latest=next((m for m in reversed(history) if m['role']=='trainee' and m['text'].strip()),None)
     if not latest:
@@ -34,6 +38,9 @@ async def review_training(settings, record):
             await asyncio.to_thread(record.validate_training)
     except HTTPException as exc:
         raise BridgeError('training_material_changed',exc.detail) from exc
+    if not await asyncio.to_thread(enabled):
+        record.data['analysis_status'] = 'disabled'
+        return None
     incomplete=record.data.get('capture_status')!='completed' or any(not m.get('final') or len(m['text'])>4000 for m in history) or sum(len(m['text']) for m in history)>64000
     coach={**reply['coach'],'based_on':latest['id'],'doctor_id':'','final_report':True,'incomplete':incomplete}
     if reference is not None:

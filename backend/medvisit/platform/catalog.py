@@ -2,10 +2,12 @@
 from datetime import datetime, timezone
 import hashlib
 import json
+from uuid import uuid4
 from pathlib import Path
 from fastapi import HTTPException
 from .models import Doctor, Drug, Policy, content_usable, policy_usable
 from .store import now
+from .management import require_approval
 from .departments import with_departments, require_department_match
 from ..agents.doctor import DOCTOR_PROFILE, OPENING
 
@@ -39,7 +41,11 @@ class Catalog:
         self.store = store
 
     def seed(self, tenant, actor):
+        from .curriculum import LESSONS
         with self.store.transaction(tenant) as tx:
+            for lesson_id, lesson in LESSONS.items():
+                if not tx.get(tenant, 'lesson', lesson_id):
+                    tx.create(tenant, 'lesson', {**lesson, 'status':'published' if lesson['status'] == '已发布' and not lesson.get('unverified_figures') else 'draft', 'created_by':actor}, item_id=lesson_id)
             if not tx.get(tenant, 'doctor', 'li-xiaoying'):
                 tx.create(tenant, 'doctor', {
                     'name': '李小英', 'display_name': DOCTOR_PROFILE['display_name'], 'specialty': '内分泌科',
@@ -163,7 +169,7 @@ class Catalog:
                 self.validate_drug_terms(tx, user['workspace'], data)
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], data, publishing=False)
-            item = tx.create(user['workspace'], kind, data)
+            item = tx.create(user['workspace'], kind, data, **({'item_id':f"{data['level'].lower()}-{uuid4().hex[:12]}"} if kind == 'lesson' else {}))
             if research:
                 tx.update(user['workspace'], 'research_job', research['id'], {**research, 'doctor_id':item['id']}, research['version'])
             if kind in ('content', 'policy'):
@@ -201,9 +207,11 @@ class Catalog:
                 raise HTTPException(409, '只能为已发布的医生创建新草稿。')
             if kind == 'drug' and (old['status'] != 'published' or old.get('drug_id')):
                 raise HTTPException(409, '只能为已发布的药品创建新草稿。')
+            if kind == 'lesson' and (old['status'] != 'published' or old.get('lesson_id')):
+                raise HTTPException(409, '只能为已发布课程创建新草稿。')
             data = {k: v for k,v in old.items() if k not in ('id','version','created_at','updated_at','approved_by','approved_at','review_reason')}
             data.update(status='draft', created_by=user['id'], previous_id=old['id'], series_id=old.get('series_id',old['id']))
-            if kind in ('doctor', 'drug'):
+            if kind in ('doctor', 'drug', 'lesson'):
                 data.update({f'{kind}_id': old['id'], 'base_version': old['version']})
             if kind == 'rubric':
                 data['calibration_status'] = 'uncalibrated'
@@ -247,6 +255,7 @@ class Catalog:
                 next_status = 'retired'
             updated = {**old, 'status': next_status, 'review_reason': body.reason}
             if action == 'approve':
+                require_approval(tx, user['workspace'], kind, old)
                 updated.update(approved_by=user['id'], approved_at=now())
             item = tx.update(user['workspace'], kind, item_id, updated, body.version)
             tx.audit(user['workspace'], user['id'], f'{kind}.{action}', kind, item_id, {'reason': body.reason})
@@ -279,8 +288,15 @@ class Catalog:
             old = require_item(tx, user['workspace'], kind, item_id)
             if old['status'] != 'draft':
                 raise HTTPException(409, '只能发布草稿。')
+            require_approval(tx, user['workspace'], kind, old)
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], old, publishing=True)
+            if kind == 'lesson':
+                if old.get('unverified_figures'):
+                    raise HTTPException(409, '请核实课程内容与来源后再发布。')
+                action = old.get('action') or {}
+                if action.get('kind') == 'practice' and require_item(tx, user['workspace'], 'doctor', action['ip_id'])['status'] != 'published':
+                    raise HTTPException(409, '课程需要绑定已发布医生。')
             if kind == 'doctor':
                 for evidence in old.get('fact_evidence', []):
                     source = tx.get(user['workspace'], 'content', evidence['content_id'])
@@ -307,7 +323,7 @@ class Catalog:
                     if relation['drug_id'] in (item_id, old.get('drug_id')):
                         raise HTTPException(409, '药品不能与自身建立同类关系。')
                     require_item(tx, user['workspace'], 'drug', relation['drug_id'])
-            identity = old.get(f'{kind}_id') if kind in ('doctor', 'drug') else None
+            identity = old.get(f'{kind}_id') if kind in ('doctor', 'drug', 'lesson') else None
             if identity:
                 current = require_item(tx, user['workspace'], kind, identity)
                 if current['version'] != old['base_version']:

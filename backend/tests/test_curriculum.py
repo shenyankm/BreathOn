@@ -16,12 +16,13 @@ from test_bridge import settings
 def test_curriculum_has_four_levels_with_the_prototype_lessons(tmp_path):
     with TestClient(create_app(settings(tmp_path))) as client:
         body = client.get('/api/curriculum').json()
-    assert [(row['level'], row['total']) for row in body['levels']] == [('L1', 2), ('L2', 2), ('L3', 1), ('L4', 3)]
+    assert [(row['level'], row['total']) for row in body['levels']] == [('L1', 1), ('L2', 1), ('L3', 1), ('L4', 1)]
     assert body['plan'] == []
+    assert not any(item.get('unverified_figures', False) for level in body['levels'] for item in level['lessons'])
     lesson = body['levels'][0]['lessons'][0]
-    assert lesson['unverified_figures'] is True and lesson['state'] == 'none' and lesson['sections']
+    assert lesson.get('unverified_figures', False) is False and lesson['state'] == 'none' and lesson['sections']
     l4 = body['levels'][3]['lessons']
-    assert [item['action']['scenario'] for item in l4] == ['first', 'evidence', 'next']
+    assert [item['action']['scenario'] for item in l4] == ['first']
 
 
 def test_plan_and_completion_are_saved_and_move_between_states(tmp_path):
@@ -29,13 +30,13 @@ def test_plan_and_completion_are_saved_and_move_between_states(tmp_path):
         assert client.put('/api/curriculum/lessons/l1-02', json={'state': 'planned'}).status_code == 200
         body = client.get('/api/curriculum').json()
         assert [item['id'] for item in body['plan']] == ['l1-02']
-        assert body['levels'][0]['lessons'][1]['state'] == 'planned'
+        assert body['levels'][0]['lessons'][0]['state'] == 'planned'
         body = client.put('/api/curriculum/lessons/l1-02', json={'state': 'completed'}).json()
         assert body['plan'] == [] and body['levels'][0]['completed'] == 1
         body = client.put('/api/curriculum/lessons/l1-02', json={'state': 'none'}).json()
         assert body['levels'][0]['completed'] == 0
         assert client.put('/api/curriculum/lessons/nope', json={'state': 'planned'}).status_code == 404
-        assert client.put('/api/curriculum/lessons/l1-01', json={'state': 'bogus'}).status_code == 422
+        assert client.put('/api/curriculum/lessons/l1-02', json={'state': 'bogus'}).status_code == 422
 
 
 def test_adding_the_same_lesson_twice_keeps_one_plan_entry(tmp_path):
@@ -60,7 +61,7 @@ def test_state_is_isolated_per_account(tmp_path):
     app = create_app(Settings(records=tmp_path, auth_required=True, login_users={'admin': encoded, 'a': encoded, 'b': encoded}, origins=(origin,)))
     with AuthClient(app, base_url=origin, headers={'Origin': origin}) as client:
         client.post('/api/auth/login', json={'username': 'a', 'password': password})
-        client.put('/api/curriculum/lessons/l1-01', json={'state': 'planned'})
+        client.put('/api/curriculum/lessons/l1-02', json={'state': 'planned'})
         client.put('/api/me/settings', json={'save_dialogue': False})
         client.post('/api/auth/logout')
         client.post('/api/auth/login', json={'username': 'b', 'password': password})
@@ -68,12 +69,12 @@ def test_state_is_isolated_per_account(tmp_path):
         assert client.get('/api/me/settings').json()['save_dialogue'] is True
         client.post('/api/auth/logout')
         client.post('/api/auth/login', json={'username': 'a', 'password': password})
-        assert [item['id'] for item in client.get('/api/curriculum').json()['plan']] == ['l1-01']
+        assert [item['id'] for item in client.get('/api/curriculum').json()['plan']] == ['l1-02']
 
 
 def test_member_state_never_appears_in_the_catalogue_listing(tmp_path):
     with TestClient(create_app(settings(tmp_path))) as client:
-        client.put('/api/curriculum/lessons/l1-01', json={'state': 'planned'})
+        client.put('/api/curriculum/lessons/l1-02', json={'state': 'planned'})
         assert client.get('/api/catalog/member_state').status_code == 422
 
 
