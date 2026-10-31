@@ -473,3 +473,42 @@ npm run build:android
 uv run --directory backend --locked python data/validation/optimization-20261031/transcription_replacement_after_probe.py
 uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py transcription-identity
 ```
+
+第十七项最终交付：`f6bf56238711d195463f9ce27cd372d412d1d606` 的分支 CI [41154187873](https://github.com/shenyankm/BreathOn/actions/runs/41154187873) 四项通过，main CI [41154987500](https://github.com/shenyankm/BreathOn/actions/runs/41154987500) 五项通过；两次远程后端分别 **1036 passed、196.22 / 150.90 秒**。生产日志确认同一 SHA，外部 live/ready 精确正常响应，临时分支已正常删除，仅 main 保留且原 stash 未动。最终回执为 `transcription-identity-acceptance.json`。
+
+## 18. 已启动转写任务的暂时存储故障恢复
+
+在该 main 上，公开转写任务遇到真实存储故障会退出，留下排队/转写状态；资源恢复后同一应用没有活动工作继续处理，重新提交返回 409。先保存十五个实际 PG 连接池耗尽案例和三个自建 PG 容器停机/重启案例，再建立独立于任务终止的恢复控制器：观察首个真实 SQL 错误后恢复资源。最终基线覆盖 PG 初次读取、开始、轮询读取、结果写入、失败状态写入各三次，PG 实际停机三次、SQLite 实际写锁三次，共 **21/21** 任务终止并保持未恢复状态。提供方为合成响应，输入为生成的一秒 PCM WAV 与合成笔记，外部请求为零。容器为专用隔离实例，UUID 库均删除，不接触真实录音/数据库。
+
+在修改前固定 `transcription-storage-recovery-acceptance.json`：相同故障恢复后 25 秒内，同一应用、同一 ID 完成正确状态，保留原笔记、首个有效最终结果、分段/说话人及安全校验。每个任务最多一次提供方提交，提交响应不确定也只查询原 ID；完成结果的数据库写入重试不得重新查询提供方。既有 720 次查询上限和 15 秒轮询间隔保持；数据库等待仍有明确所有者、可取消，每次驱动操作沿用 5 秒超时，恢复退避沿用 15 秒。查询预算耗尽时的终态写入也必须等待数据库恢复完成，不能留下没有活动任务的假进行状态。故障阶段 live 接口 p95 小于 50 ms，事件循环心跳最大间隔小于 0.5 秒；退出后 FD/线程稳定、实际 PG 连接两秒内归零。
+
+范围限定为已经启动工作的暂时数据库故障：复用原 `work` 的线程收尾，只在该任务内部重试实际驱动的暂时错误；提供方提交路径及轮询循环不做整体重放。开始操作识别相同 ID 已提交的状态迁移，确认丢失时可安全继续；延迟恢复后已到期令牌在首次提交前续期。每个存储操作只记第一次失败及恢复次数，休眠前释放异常引用；致命背景错误按任务 ID 和类型记录。没有添加依赖、配置、并发机制或持久缓存。原有私有文件 `OSError` 处理边界保留；API 入队事务、其他未证实场景不计为本项已修复。长时间数据库不可用时，已有任务保留槽位及有效结果等待恢复/取消，这是恢复所需的有界任务状态，不声称降低此阶段的资源或延迟。
+
+冻结 f6 源码加载同一版新增回归，得 **27 failed、3 passed、14.93 秒**（隔离加载器另有一条 AnyIO 重写提示，正常仓库运行没有该提示）。修复后针对性 **30 passed、1.59 秒**，包括五个存储阶段的三种驱动错误、提交响应超时、开始事务已回滚/已提交但丢确认、延迟恢复的令牌过期、重复取消、恢复退避时关闭、连续失败的单任务/日志界限、720 次查询预算耗尽后的终态写入。原先提交失败测试的行、文件字节、版本及归属断言全部移至首次故障检查点保留，再增加自动恢复和无额外提供方请求的断言；相关提交/文件检查 **6 passed、0.79 秒**，私有文件 I/O 异常仍按原边界传播。致命错误测试先修正了测试观察回调过早的问题：等待正常事件循环回合后仍要求任务集合清空及明确错误类型，冻结 f6 单独重验仍因缺少诊断事件失败；未放宽资源或错误可见性标准。
+
+相关 visits/runtime/research 回归 **348 passed、50.20 秒**。相同控制器、输入与真实故障的 21 个修复后案例全部恢复正确状态，未恢复任务 **21→0**，资源恢复后耗时范围 **14.884–15.058 秒**；没有任务重建或人工重试，每个合法任务仍仅一次合成提交、一次查询，首个有效最终结果没有因写入重试再次查询。故障阶段 32747 个 live 样本中，各案例最高 p95 为 **1.889 ms**，最大心跳间隔 **0.121 秒**；这是本机 ASGI 测量，不作为生产延迟。每例生命周期前后 FD 4→4、线程 1→1，退出后实际 PG 连接两秒内归零。结果见 `transcription-storage-comparison.json`、`transcription-storage-recovery-before.json` 和 `transcription-storage-recovery-after.json`。
+
+正常流程先完成每存储三个独立进程的预基线，之后交替运行冻结 f6 与本次源码各三个新进程，每进程十次预热加三十次完整热流程，每存储/版本 **n=90**。计时从实际 ASGI 转写 POST 到结果可读且所属任务结束，使用真实 SQLite/PG 与私有文件、合成提供方；不是网络或真实 ASR 基准。预设 p50/p95 不得同时退化超过 15% 和 5 ms，实际均通过：
+
+| 存储 | 修改前 p50 / p95（ms） | 修改后 p50 / p95（ms） | 单次范围，前 / 后（ms） |
+| --- | --- | --- | --- |
+| SQLite | 4.589 / 5.682 | 3.462 / 5.845 | 2.748–6.646 / 2.795–8.969 |
+| PostgreSQL | 7.764 / 8.314 | 8.005 / 8.607 | 6.357–9.929 / 6.400–13.594 |
+
+独立进程中仅应用 lifespan 冷初始化计时：SQLite 前/后范围 5.915–6.320 / 5.883–6.404 ms，PG 51.996–55.017 / 52.273–55.321 ms，不包含 Python 启动和模块导入。热测 SQLite FD 7→7、PG 9→9，任务均 3→3，池连接全部可用且无等待者；每进程四十个合法任务恰好四十次合成提交与查询，保留八十个预期音频/转写文件，退出后实际 PG 连接归零。全部样本保存于 `transcription-storage-normal-paired.json`。收益是故障后自动恢复；正常 PG p95 增加 0.293 ms，在预设门槛内，不声称正常速度、启动或 RSS 改善。
+
+完整 `npm run test:api -- -q` 带真实隔离 PG 得 **1066 passed、0 skipped、122.07 秒**；`npm test` **100 passed、0 skipped**，lint 通过（原有三条 Fast Refresh 警告），Web 与 Android 资源构建通过。以上 PG 检查全部结束后，实际 Caddy/Uvicorn 进程重启、PG 停机/恢复、Cookie/角色/私有账号隔离集成通过，新建库已删除（`transcription-storage-native-result.json/log`）。源码 SHA256 `71bbdf8d4cb4c4d456991a7633cfea1a513b573a491d6583b9a9f8c8a12778c6` 与真实故障、配对测量和最终回归一致。当前提交的分支 CI、main 合并与生产确认尚待执行，最终回执复用 `transcription-storage-recovery-acceptance.json`。回退为 revert 本项提交，无迁移。
+
+没有修改前端或 Android 原生树，沿用相同树此前实际 APK 安装流程验收，每个新 SHA 的远程 CI 仍须重新编译 ARM64 APK。原始证据继续复用 `backend/data/validation/optimization-20261031/`；真机麦克风/扬声器因用户暂无设备仍未验收，取消后下一任务约 15 秒的等待和其他有效候选保持独立处理，goal 未完成。
+
+```sh
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- tests/test_transcription_recovery.py tests/test_visits.py tests/test_runtime.py tests/test_research_service.py tests/test_research_lifecycle.py tests/test_research_word.py -q
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- -q
+npm test
+npm run lint
+npm run build
+npm run build:android
+uv run --directory backend --locked python data/validation/optimization-20261031/transcription_storage_recovery_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/transcription_storage_normal_probe.py paired
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py transcription-storage
+```

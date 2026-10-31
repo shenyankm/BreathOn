@@ -866,7 +866,7 @@ async def test_transcription_cleanup_failure_preserves_committed_result(tmp_path
 
 @pytest.mark.parametrize('storage', ['file', 'postgres'])
 @pytest.mark.parametrize('applied', [False, True])
-async def test_transcription_failed_commit_preserves_only_committed_result(tmp_path, monkeypatch, request, storage, applied):
+async def test_transcription_failed_commit_preserves_only_committed_result(tmp_path, monkeypatch, request, caplog, storage, applied):
     import httpx
     pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
     app, router, store = make_app(tmp_path, pool=pool)
@@ -892,6 +892,8 @@ async def test_transcription_failed_commit_preserves_only_committed_result(tmp_p
             return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'synthetic provider result', 'utterances':[]}})
     transaction = store.transaction
     armed = True
+    snapshots = []
+    sleep = asyncio.sleep
     @contextmanager
     def fail(*args, **kwargs):
         nonlocal armed
@@ -904,24 +906,44 @@ async def test_transcription_failed_commit_preserves_only_committed_result(tmp_p
         if inject:
             armed = False
             raise OperationalError('synthetic transcription commit failure')
+    async def first_fault(seconds):
+        if seconds != 15:
+            return await sleep(seconds)
+        with transaction('local', write=False) as tx:
+            saved = tx.get('local', 'visit', item['id'])
+        if applied:
+            assert saved['audio_status'] == 'transcribed' and saved['version'] == before['version'] + 1
+            assert (directory / saved['transcript_file']).is_file(), 'Cleanup deleted a committed transcription'
+            detail = client.get('/api/visits/' + item['id'])
+            assert detail.status_code == 200
+            assert detail.json()['text'] == 'original synthetic text'
+            assert detail.json()['transcription_text'] == 'synthetic provider result'
+            router.visit_cleanup('local')
+            assert (directory / saved['transcript_file']).is_file()
+        else:
+            assert saved == before and {path.name:path.read_bytes() for path in directory.iterdir()} == before_files
+        assert len(queries) == 1 and not armed
+        snapshots.append(saved)
+        await sleep(0)
     monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
+    monkeypatch.setattr('medvisit.visits.api.asyncio.sleep', first_fault)
+    caplog.set_level('INFO', logger='medvisit')
     with monkeypatch.context() as fault:
         fault.setattr(store, 'transaction', fail)
-        with pytest.raises(OperationalError, match='synthetic transcription commit failure'):
-            await router.visit_run_job('local', item['id'], 'synthetic-job')
+        await router.visit_run_job('local', item['id'], 'synthetic-job')
+    assert len(snapshots) == 1
+    assert 'error_type=OperationalError' in caplog.text
+    assert 'storage_recovered' in caplog.text
     with store.transaction('local', write=False) as tx:
         saved = tx.get('local', 'visit', item['id'])
-    if applied:
-        assert saved['audio_status'] == 'transcribed' and saved['version'] == before['version'] + 1
-        assert (directory / saved['transcript_file']).is_file(), 'Cleanup deleted a committed transcription'
-        detail = client.get('/api/visits/' + item['id'])
-        assert detail.status_code == 200
-        assert detail.json()['text'] == 'original synthetic text'
-        assert detail.json()['transcription_text'] == 'synthetic provider result'
-        router.visit_cleanup('local')
-        assert (directory / saved['transcript_file']).is_file()
-    else:
-        assert saved == before and {path.name:path.read_bytes() for path in directory.iterdir()} == before_files
+    assert saved['audio_status'] == 'transcribed' and saved['version'] == before['version'] + 1
+    assert (directory / saved['transcript_file']).is_file(), 'Cleanup deleted a committed transcription'
+    detail = client.get('/api/visits/' + item['id'])
+    assert detail.status_code == 200
+    assert detail.json()['text'] == 'original synthetic text'
+    assert detail.json()['transcription_text'] == 'synthetic provider result'
+    router.visit_cleanup('local')
+    assert (directory / saved['transcript_file']).is_file()
     assert len(queries) == 1 and not armed
     await router.visit_close()
 

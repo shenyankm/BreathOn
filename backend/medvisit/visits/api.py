@@ -11,6 +11,7 @@ import logging
 import hashlib
 import secrets
 import stat
+import sqlite3
 import httpx
 from typing import Literal
 from uuid import uuid4
@@ -19,6 +20,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
+from psycopg import OperationalError
+from psycopg_pool import PoolTimeout
 
 from ..core.identity import current_role
 from ..core.tasks import work as thread_work
@@ -415,12 +418,29 @@ def visits_router(store, settings, current_user):
             return FileResponse(audio_dir / name, media_type=item['audio_type'], headers={'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'})
 
     async def run_job(workspace, item_id, job_id, token=None):
+        async def storage(function, *args):
+            failures = 0
+            while True:
+                try:
+                    result = await work(function, *args)
+                except (OperationalError, PoolTimeout, sqlite3.OperationalError) as exc:
+                    if asyncio.current_task().cancelling():
+                        raise
+                    failures += 1
+                    if failures == 1:
+                        logger.error('visit_transcription_storage_failed job_id=%s operation=%s error_type=%s', job_id, function.__name__, type(exc).__name__)
+                else:
+                    if failures:
+                        logger.info('visit_transcription_storage_recovered job_id=%s operation=%s failures=%s', job_id, function.__name__, failures)
+                    return result
+                await asyncio.sleep(15)
+
         def read():
             with store.transaction(workspace, write=False) as tx:
                 return tx.get(workspace, 'visit', item_id)
 
         async with slots:
-            item = await work(read)
+            item = await storage(read)
             if (not item or item.get('audio_status') not in ('queued', 'transcribing')
                     or item['transcription_job_id'] != job_id):
                 return
@@ -443,10 +463,12 @@ def visits_router(store, settings, current_user):
                     def begin():
                         with store.transaction(workspace) as tx:
                             item = tx.get(workspace, 'visit', item_id)
-                            if not item or item.get('audio_status') != 'queued' or item.get('transcription_job_id') != job_id:
+                            if not item or item.get('audio_status') not in ('queued', 'transcribing') or item.get('transcription_job_id') != job_id:
                                 return None
+                            if item['audio_status'] == 'transcribing' and datetime.fromisoformat(item['provider_token_expires']) > datetime.now(timezone.utc):
+                                return item
                             return tx.update(workspace, 'visit', item_id, {**item, 'audio_status':'transcribing', 'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()}, item['version'])
-                    item = await work(begin)
+                    item = await storage(begin)
                     if item is None:
                         return
                     body = {'user':{'uid':job_id}, 'audio':{'url':f'{origins[0]}/api/visits/{item_id}/provider-audio?token={token}',
@@ -463,7 +485,7 @@ def visits_router(store, settings, current_user):
                     except (httpx.HTTPError, ValueError):
                         pass
                 for _ in range(720):
-                    item = await work(read)
+                    item = await storage(read)
                     if not item or item.get('audio_status') != 'transcribing' or item.get('transcription_job_id') != job_id:
                         return
                     try:
@@ -473,7 +495,7 @@ def visits_router(store, settings, current_user):
                             await asyncio.sleep(15)
                             continue
                         if code and code not in ('20000000', '20000001', '20000002'):
-                            await work(finish, 'transcription_failed')
+                            await storage(finish, 'transcription_failed')
                             return
                         data = response.json() if code == '20000000' else None
                         result = data.get('result', {}) if isinstance(data, dict) else {}
@@ -505,16 +527,20 @@ def visits_router(store, settings, current_user):
                             private_delete(old_file)
                             if replacement:
                                 remove_provider_files(item.get('audio_path', ''))
-                        await work(persist)
+                        await storage(persist)
                         return
                     except (httpx.HTTPError, ValueError, TypeError):
                         await asyncio.sleep(15)
-                await work(finish, 'transcription_interrupted')
+                await storage(finish, 'transcription_interrupted')
 
     def launch(workspace, item_id, job_id, token=None):
         task = asyncio.create_task(run_job(workspace, item_id, job_id, token))
         tasks.add(task)
-        task.add_done_callback(tasks.discard)
+        def done(completed):
+            tasks.discard(completed)
+            if not completed.cancelled() and (error := completed.exception()):
+                logger.error('visit_transcription_job_failed job_id=%s error_type=%s', job_id, type(error).__name__)
+        task.add_done_callback(done)
 
     @router.post('/{item_id}/transcription', status_code=202)
     async def transcribe(item_id: str, user=Depends(current_user)):
