@@ -407,3 +407,73 @@ for (const enabled of [false, true]) {
     assert.equal(buttons.some(button => button.props.children === '暂停追踪'), enabled)
   })
 }
+
+test('doctor polling retries reads only and recovers the same draft', async () => {
+  let reads = 0
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async (path, options) => {
+    assert.equal(options?.method, undefined)
+    if (path === '/research') return {configured:true,jobs:[doctorJob]}
+    if (++reads < 3) throw new Error('offline')
+    return {...doctorJob,status:'completed',doctor_draft:doctorDraft}
+  })
+  app.render(); await settle(); app.render()
+  await app.tick(); await app.tick(); await app.tick()
+  const view = app.render()
+  assert.equal(reads, 3)
+  assert.ok(find(view, 'Button').some(button => button.props.children === '核对并编辑画像草稿'))
+  assert.equal(find(view, 'div').filter(node => node.props.role === 'alert').length, 0)
+})
+
+test('doctor polling stops after three retries and keeps manual recovery', async () => {
+  let reads = 0
+  const app = page('../components/doctor-generator.tsx', 'DoctorGenerator', async path => {
+    if (path === '/research') return {configured:true,jobs:[doctorJob]}
+    reads++; throw new Error('offline')
+  })
+  app.render(); await settle(); app.render()
+  for(let i=0;i<6;i++) await app.tick()
+  assert.equal(reads, 4)
+  assert.ok(find(app.render(), 'Button').some(button => button.props.children === '重新读取进度'))
+})
+
+test('candidate confirmation requires all identity fields and explicit review', () => {
+  const confirmations: unknown[] = []
+  const app = page('../components/research-panel.tsx', 'DoctorCandidates', async () => {})
+  const details = ['姓名','医院','科室'].map((label,index)=>({label,value:['陈明','教学医院','内分泌科'][index]}))
+  const job = {...doctorJob,status:'partial',result:{findings:[{title:'候选',details,caveats:[]}],further_checks:[]}}
+  const props = {job,busy:false,onConfirm:(...args:unknown[])=>confirmations.push(args)}
+  let tree=app.render(props)
+  assert.equal(find(tree,'Button')[0].props.disabled,true)
+  find(tree,'Checkbox')[0].props.onCheckedChange(true)
+  tree=app.render(props)
+  assert.equal(find(tree,'Button')[0].props.disabled,false)
+  find(tree,'Button')[0].props.onClick()
+  assert.deepEqual(confirmations,[[0,'陈明']])
+  const conflict={...job,result:{...job.result,findings:[{...job.result.findings[0],details:[...details,{label:'科室',value:'另一科室'}]}]}}
+  assert.equal(find(app.render({...props,job:conflict}),'Button').length,0)
+})
+
+test('published doctor offers both free practice guidance and scored scene navigation', async () => {
+  const app = page('platform-page.tsx','CatalogPage',async path => path.includes('/doctor/d') ? {id:'d',status:'published',name:'医生',updated_at:'2026-10-31'} : [], '#workspace?tab=doctor&doctor=d')
+  app.render({kind:'doctor'}); await settle()
+  const tree=app.render({kind:'doctor'})
+  assert.equal(find(tree,'section').filter(node=>node.props['aria-label']==='医生发布后续步骤').length,1)
+  assert.ok(find(tree,'a').some(node=>node.props.href==='#workspace?tab=scenario'))
+})
+
+test('candidate fallback opens the saved role without starting another search', async () => {
+  const calls: string[] = [], opened: string[] = []
+  const job={...doctorJob,status:'partial',doctor_draft_error:'身份简称不一致',result:{findings:[],further_checks:[]}}
+  const app=page('../components/doctor-generator.tsx','DoctorGenerator',async(path,options)=>{
+    if(!options?.method)return {configured:true,jobs:[job]}
+    calls.push(path)
+    assert.deepEqual(JSON.parse(String(options.body)),{finding_index:0,confirmed_identity:true,confirmed_name:'陈明'})
+    return {id:'saved-role'}
+  })
+  const props={onOpen:(id:string)=>opened.push(id)}
+  app.render(props);await settle()
+  find(app.render(props),'DoctorCandidates')[0].props.onConfirm(0,'陈明')
+  await settle()
+  assert.deepEqual(calls,['/research/jobs/research-1/doctor-draft'])
+  assert.deepEqual(opened,['saved-role'])
+})

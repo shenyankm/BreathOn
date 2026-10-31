@@ -58,7 +58,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
       const next=await api<CatalogRecord>(path,{method,...(body?{body:JSON.stringify(body)}:{})})
       listChanges.current.add(next.id);if(item && item.id!==next.id && path.endsWith('/publish'))listChanges.current.add(item.id);setLoading(false)
       setItem(next);setSelection(next.id);setReason('');setPreview(undefined);setRows(rows=>[next,...rows.filter(row=>row.id!==next.id && !(item && item.id!==next.id && path.endsWith('/publish') && row.id===item.id))])
-      if(kind==='doctor'){setDoctorDraft(undefined);setNotice(doctorDraft&&next.status==='draft'?'医生草稿已保存，发布后可绑定训练场景。':'医生资料已保存。')}
+      if(kind==='doctor'){setDoctorDraft(undefined);setNotice(doctorDraft&&next.status==='draft'?'医生草稿已保存，核对后发布即可用于自由练习。':'医生资料已保存。')}
     }catch(cause){setError(failure(cause))}finally{setBusy(false)}
   }
   function save(body:object){void mutate(`/catalog/${kind}${item?`/${item.id}`:''}`,item?{...body,version:item.version}:body,item?'PUT':'POST')}
@@ -85,6 +85,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
     {kind==='doctor'&&selection===undefined&&<DoctorGenerator onOpen={id=>void select(id)} onGenerated={(id,fields)=>{detailRequest.current?.abort();setDoctorDraft({id,fields});setItem(undefined);setSelection(null);setError('');setNotice('请核对公开事实与来源，并调整训练设定；保存草稿后再发布。')}}/>}
     {kind==='scenario'&&bindingsLoaded&&missingPreparation.length>0&&<section className="space-y-2 border-l-2 pl-4 text-sm" aria-label="场景准备提示"><p className="font-medium">生成场景前，还需要准备</p><div className="flex flex-wrap gap-4">{missingPreparation.map(step=><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`#workspace?tab=${step.tab}`} key={step.tab}>{step.label}<span aria-hidden="true" className="ml-1">→</span></a>)}</div></section>}
     {kind==='scenario'&&<ScenarioGenerator {...bindings} onGenerated={scene=>{listChanges.current.add(scene.id);setLoading(false);setItem(scene);setSelection(scene.id);setRows(rows=>[scene,...rows.filter(row=>row.id!==scene.id)]);setPreview(undefined);setNotice('已生成草稿，请核对背景、异议、完成标准和引用，再发布。')}}/>}
+    {kind==='doctor'&&item?.status==='published'&&<section className="space-y-2 rounded-lg border p-4 text-sm" aria-label="医生发布后续步骤"><p>已可在用户端搭配已发布药品进行自由练习。评分练习需创建并发布场景。</p><a href="#workspace?tab=scenario" className="inline-flex min-h-11 items-center underline">创建评分场景</a></section>}
     {notice&&<p role="status" className="text-sm">{notice}</p>}
     {error&&!deleteOpen&&<Alert variant="destructive" role="alert"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="ghost" size="sm" onClick={()=>{setLoading(true);setError('');setItem(undefined);setSelection(undefined);setRefresh(v=>v+1)}}>刷新数据</Button></AlertDescription></Alert>}
     {/* 240px doctor list (280px otherwise) + 24px gutter + editor = full canvas width. */}
@@ -107,7 +108,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
               <p className="text-xs text-muted-foreground">更新于 {new Date(item.updated_at).toLocaleString('zh-CN',{hour12:false})}</p>
             </div>}
             {kind==='content'&&<ContentForm key={item?`${item.id}-${item.version}`:'new'} item={item as Content|undefined} busy={busy} disabled={disabled} save={save}/>}
-            {kind==='doctor'&&item&&Boolean((item as Doctor).research_evidence_review_required)&&<p className="mb-4 rounded-lg border p-3 text-sm text-muted-foreground">公开事实已经修改，原检索记录仅作历史参考；发布前请重新核对事实与来源。</p>}
+            {kind==='doctor'&&item?.status==='draft'&&Boolean((item as Doctor).research_evidence_review_required)&&<p className="mb-4 rounded-lg border p-3 text-sm text-muted-foreground">公开事实已经修改，原检索记录仅作历史参考；发布前请重新核对事实与来源。</p>}
             {researchJobId&&<p className="mb-5 text-sm leading-7"><a href={`#workspace?tab=research&job=${encodeURIComponent(researchJobId)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4">查看本次检索原文与待核对项</a></p>}
             {kind==='doctor'&&<DoctorForm key={item?`${item.id}-${item.version}`:doctorDraft?.id??'new'} item={item as Doctor|undefined} initial={doctorDraft?.fields} busy={busy} disabled={disabled} save={save}/>}
             {kind==='doctor'&&item&&<section className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t pt-5">

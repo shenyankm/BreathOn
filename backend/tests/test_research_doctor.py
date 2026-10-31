@@ -197,3 +197,46 @@ def test_deleting_an_unused_researched_role_preserves_the_original_draft(client,
     job = service.get_job(job['id'])
     assert job['doctor_id'] is None and job['doctor_draft'] == draft
     assert client.post('/api/catalog/doctor', json=draft).status_code == 201
+
+
+def test_both_doctor_paths_preserve_fields_evidence_and_review(client, monkeypatch):
+    service = configured(client)
+    source, captured, report = evidence(service, monkeypatch)
+    monkeypatch.setattr(service, '_observations', lambda _: captured)
+    job = service._create_job(DoctorResearchRequest(**IDENTITY))
+    service._finish(job, report, {}, '', False, captured)
+    finished = service.get_job(job['id'])
+    assert finished['source_metadata'][0]['retrieved_at'] == source['retrieved_at']
+    saved = client.post('/api/catalog/doctor', json=finished['doctor_draft']).json()
+    candidate = client.post(f'/api/research/jobs/{job["id"]}/doctor-draft', json={
+        'finding_index':0, 'confirmed_identity':True, 'confirmed_name':IDENTITY['name']}).json()
+    for item in (saved, candidate):
+        assert item['hospital'] == IDENTITY['hospital']
+        assert item['professional_title'] == '主任医师'
+        assert item['identity_confirmed_by'] and item['identity_confirmed_at']
+        assert item['research_evidence'][0]['quote'] == report['findings'][0]['details'][0]['quote']
+        assert item['research_evidence'][0]['url'] == URL
+        assert report['further_checks'][0] in item['public_facts']
+    assert saved['research_evidence'] == candidate['research_evidence']
+
+
+def test_alias_candidate_confirmation_reuses_search_and_rejects_conflicts(client, monkeypatch):
+    service = configured(client)
+    _, captured, report = evidence(service, monkeypatch)
+    monkeypatch.setattr(service, '_observations', lambda _: captured)
+    job = service._create_job(DoctorResearchRequest(**{**IDENTITY, 'hospital':'教学附院'}))
+    service._finish(job, report, {}, '', False, captured)
+    assert not service.get_job(job['id']).get('doctor_draft')
+    path = f'/api/research/jobs/{job["id"]}/doctor-draft'
+    body = {'finding_index':0, 'confirmed_identity':True, 'confirmed_name':IDENTITY['name']}
+    with patch('medvisit.research.service.run_agent', AsyncMock()) as model:
+        response = client.post(path, json=body)
+        assert response.status_code == 201, response.text
+        assert response.json()['hospital'] == IDENTITY['hospital']
+        assert client.post(path, json=body).json()['id'] == response.json()['id']
+        model.assert_not_awaited()
+    report['findings'][0]['details'].append({**report['findings'][0]['details'][2], 'value':'另一科室'})
+    with service.store.transaction(service.workspace) as tx:
+        current = tx.get(service.workspace, 'research_job', job['id'])
+        tx.update(service.workspace, 'research_job', job['id'], {**current, 'result':report}, current['version'])
+    assert client.post(path, json=body).status_code == 422

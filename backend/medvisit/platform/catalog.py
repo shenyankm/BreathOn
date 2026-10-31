@@ -144,6 +144,11 @@ class Catalog:
                     raise HTTPException(409, '本次画像草稿已保存，请打开已有医生角色继续编辑。')
                 if research.get('kind') != 'doctor' or research.get('status') not in ('completed', 'partial') or not research.get('doctor_draft'):
                     raise HTTPException(409, '本次检索尚无可保存的医生画像草稿。')
+            if research:
+                data.update(research_evidence=research.get('doctor_evidence', []),
+                    identity_confirmed_by=user['id'], identity_confirmed_at=now(),
+                    research_evidence_review_required=any(data.get(key) != research['doctor_draft'].get(key)
+                        for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources')))
             if kind in ('content', 'policy') and data.get('asset_id'):
                 require_item(tx, user['workspace'], 'asset', data['asset_id'])
             if kind == 'drug':
@@ -171,7 +176,7 @@ class Catalog:
             if kind == 'doctor':
                 data['display_name'] = data['name'] + '（训练模拟）'
                 data['research_job_id'] = old.get('research_job_id')
-                if old.get('research_evidence') and any(old.get(key) != data.get(key) for key in ('name', 'hospital', 'specialty', 'public_facts', 'sources')):
+                if old.get('research_evidence') and any(old.get(key) != data.get(key) for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources')):
                     data['research_evidence_review_required'] = True
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], data, publishing=False)

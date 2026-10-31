@@ -15,11 +15,11 @@ from pydantic import ValidationError
 
 from ..core.tasks import drain, work
 from ..platform.store import now
-from ..platform.models import Doctor, Policy
+from ..platform.models import Policy
 from ..platform.pdf_extract import extract_pdf
 from .agents import PROFILES, observations, run_agent, validate_result
 from .archive import canonical_url, read_source, write_private
-from .doctor import doctor_draft
+from .doctor import doctor_draft, candidate_draft, doctor_evidence, matched_finding
 from .word_extract import extract_word
 from .models import DoctorResearchRequest, ResearchResult
 
@@ -94,41 +94,30 @@ class ResearchService:
         names = {d['value'].strip() for d in details if d['label'] == '姓名'}
         if names != {body.confirmed_name.strip()}:
             raise HTTPException(422, '请确认与候选来源一致的医生姓名。')
-        hospitals = {d['value'].strip() for d in details if d['label'] == '医院' and d['value'].strip()}
-        if len(hospitals) != 1:
-            raise HTTPException(422, '候选医院不明确或存在冲突，请先核对身份。')
-        # Each detail remains tied to its archived evidence; none is treated as an established fact.
-        archives = {(a['id'], a['raw_sha256']): a for a in captured['archives']}
-        evidence = [{**d, 'url':archives[(d['source_id'], d['source_version'])]['url']} for d in details]
-        sources = list(dict.fromkeys(item['url'] for item in evidence))
-        facts = '\n'.join(f"{d['label']}：{d['value']}" for d in details if d['label'] != '同名或时效疑点')[:3000]
-        def field(label, default=''):
-            return next((d['value'] for d in details if d['label'] == label), default)
         try:
-            doctor = Doctor(name=body.confirmed_name.strip(), specialty=field('科室', '待核对')[:80],
-                hospital=field('医院')[:200], professional_title=field('专业职称')[:100],
-                background_type='public', public_facts=facts, sources=sources,
-                population='待管理员确认训练人群', focus='待管理员确认训练关注点',
-                training_style='模拟交流方式，待管理员确认', mood='neutral', opening='您好，请问今天方便交流吗？')
-        except ValueError:
-            raise HTTPException(422, '候选资料不完整或来源不符合要求，请先核对。') from None
+            doctor = candidate_draft(finding, result, captured['archives'])
+            evidence = doctor_evidence(finding, captured['archives'])
+        except (ValueError, KeyError):
+            raise HTTPException(422, '候选身份不完整、存在冲突或字段超长，请核对来源后重试。') from None
         user = self.current_user()
         with self.store.transaction(self.workspace) as tx:
             current = tx.get(self.workspace, 'research_job', job_id)
             key = str(body.finding_index)
-            existing = (current.get('doctor_drafts') or {}).get(key)
+            automatic = bool(current.get('doctor_draft')) and finding == matched_finding(current['doctor_identity'], result)
+            existing = (current.get('doctor_drafts') or {}).get(key) or (current.get('doctor_id') if automatic else None)
             if existing:
                 draft = tx.get(self.workspace, 'doctor', existing)
                 if draft and draft.get('status') != 'deleted':
                     return draft
-            data = {**doctor.model_dump(mode='json'), 'status':'draft', 'created_by':user['id'],
-                'display_name':doctor.name+'（训练模拟）', 'research_job_id':job_id,
+            data = {**doctor, 'status':'draft', 'created_by':user['id'],
+                'display_name':doctor['name']+'（训练模拟）', 'research_job_id':job_id,
                 'research_finding_index':body.finding_index, 'research_evidence':evidence,
                 'identity_confirmed_by':user['id'], 'identity_confirmed_at':now(),
-                'research_caveats':finding.get('caveats', []) + [d['value'] for d in details if d['label'] == '同名或时效疑点']}
+                'research_caveats':finding.get('caveats', []) + result['further_checks'] + [d['value'] for d in details if d['label'] == '同名或时效疑点']}
             draft = tx.create(self.workspace, 'doctor', data)
             tx.update(self.workspace, 'research_job', job_id, {**current,
-                'doctor_drafts':{**(current.get('doctor_drafts') or {}), key:draft['id']}}, current['version'])
+                'doctor_drafts':{**(current.get('doctor_drafts') or {}), key:draft['id']},
+                **({'doctor_id':draft['id']} if automatic else {})}, current['version'])
             tx.audit(self.workspace, user['id'], 'doctor.research_draft', 'doctor', draft['id'], {'job_id':job_id})
             return draft
 
@@ -356,6 +345,7 @@ class ResearchService:
                 draft['doctor_draft'] = doctor_draft(job['doctor_identity'], result, captured['archives'])
                 draft['doctor_draft']['research_job_id'] = job['id']
                 draft['doctor_draft_error'] = ''
+                draft['doctor_evidence'] = doctor_evidence(matched_finding(job['doctor_identity'], result), captured['archives'])
             except ValidationError:
                 draft['doctor_draft_error'] = '资料超出角色字段限制，已保留检索结果；请在医生角色表单中手动精简录入。'
             except ValueError as exc:
@@ -400,6 +390,7 @@ class ResearchService:
             finished = tx.update(self.workspace, 'research_job', job['id'], {**current, **draft, 'status':status,
                 'finished_at':checked_at, 'result':result, 'usage':usage, 'error':error,
                 'source_ids':source_ids, 'changes':changes, 'search_queries':captured['queries'],
+                'source_metadata':[{key:source.get(key) for key in ('id','raw_sha256','url','resolved_url','title','kind','retrieved_at')} for source in captured['archives']],
                 'search_results':captured['search_results'], 'source_errors':captured['errors'],
                 'currency_notice':'仅表示本次检索范围与核验时间；页面内容变化仍需核对，法律效力、医生任职与药品信息不由哈希判定。'}, current['version'])
             if job.get('watch_id'):
