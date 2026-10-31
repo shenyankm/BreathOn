@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, ClipboardList, Info, RotateCcw, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, ClipboardList, Info, RotateCcw, ShieldCheck, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -131,25 +131,19 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
     setReview(false)
   }
 
-  const coach = <Card className="h-full">
-    <CardHeader>
-      <div className="flex items-center justify-between gap-3">
-        <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="size-4" />{source === 'combat' ? '实战复盘' : 'AI 实时教练'}</CardTitle>
-        <Badge variant="secondary">{assisted ? '实时辅助' : '结束后复盘'}</Badge>
-      </div>
-    </CardHeader>
-    <CardContent>
-      {!assisted ? <div className="flex min-h-80 flex-col items-center justify-center gap-4 text-center">
+  const coach = <Card className="gap-0 border-0 bg-transparent py-0 shadow-none ring-0">
+    <CardContent className="px-1">
+      {!assisted ? <div className="flex flex-col items-center justify-center gap-4 py-4 text-center">
         <ShieldCheck className="size-8 text-muted-foreground" />
         <h2 className="font-medium">{source === 'combat' ? '结束后查看 AI 复盘' : '实时提示已关闭'}</h2>
-      </div> : <div className="min-h-80 space-y-6 py-4" aria-live="polite">
+      </div> : <div className="space-y-4" aria-live="polite">
         {voice.practiceState === 'thinking' && <Badge variant="secondary">正在分析本轮回答…</Badge>}
         {voice.coach ? <>
           <Badge variant="outline">{voice.coach.superseded ? '提示待更新' : coachIsPrevious ? '上一轮建议' : '本轮建议'}</Badge>
           <CoachAnalysis coach={voice.coach} />
-        </> : <section className="py-6"><h2 className="mb-3 text-sm font-medium">等待你的第一轮回答</h2></section>}
-        {active && voice.practiceState === 'error' && <Button variant="outline" size="sm" onClick={voice.retryReply}><RotateCcw />重试医生与教练回复</Button>}
-        {voice.training || voice.freeContext ? <Button asChild variant="outline" size="sm"><a href="#library"><BookOpen />查看训练资料</a></Button> : <Button asChild variant="outline" size="sm"><a href={drugLabelUrl} target="_blank" rel="noreferrer"><BookOpen />查看场景资料</a></Button>}
+        </> : <p className="text-sm text-muted-foreground">等待回答…</p>}
+        {active && voice.practiceState === 'error' && <Button variant="outline" size="sm" onClick={voice.retryReply}><RotateCcw />重试回复</Button>}
+        {voice.training || voice.freeContext ? <Button asChild variant="outline" size="sm"><a href="#library"><BookOpen />训练资料</a></Button> : <Button asChild variant="outline" size="sm"><a href={drugLabelUrl} target="_blank" rel="noreferrer"><BookOpen />场景资料</a></Button>}
       </div>}
     </CardContent>
   </Card>
@@ -162,7 +156,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
     <TranscriptScrollArea messages={messages}>
     <div role="log" aria-label="演练对话转录" aria-live="polite" className="space-y-5 px-1 pb-5 sm:px-4">
 
-      {messages.length === 0 && <p className="py-20 text-center text-sm text-muted-foreground">{connecting ? '正在建立语音连接…' : practice ? '开始后直接用语音回答医生' : '开始实战后，对话将在这里显示'}</p>}
+      {messages.length === 0 && <p className="py-20 text-center text-sm text-muted-foreground">{connecting ? '连接中…' : '等待对话…'}</p>}
       {messages.map((message, index) => <div key={index} className={`flex gap-3 ${message.role === 'trainee' ? 'flex-row-reverse' : ''}`}>
         <Avatar className="sr-only"><AvatarFallback>{message.role === 'doctor' ? doctorName.slice(0, 1) : <UserRound className="size-4" />}</AvatarFallback></Avatar>
         <div className="min-w-0 max-w-[90%] sm:max-w-[82%]">
@@ -176,10 +170,10 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
       {practice && active && voice.practiceState === 'thinking' && <p role="status" className="pb-3 text-sm text-muted-foreground">医生正在回复…</p>}
     </div>
     </TranscriptScrollArea>
-    <div className="mx-1 mt-3 shrink-0 rounded-3xl bg-muted/50 px-5 py-3 text-sm text-muted-foreground">{active ? muted ? '麦克风已静音' : practice ? '请直接说话，停顿后医生与教练会回应' : '请直接说话，支持随时打断医生' : practice ? '语音回答 · 医生语音与文字回复 · 实时教练' : '使用麦克风与医生交流'}</div>
-  </div>, [messages, doctorName, medicalByMessage, policyByMessage, unavailableByMessage, voice.mode, connecting, practice, active, voice.practiceState, muted])
 
-  return <div className="flex h-svh flex-col bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
+  </div>, [messages, doctorName, medicalByMessage, policyByMessage, unavailableByMessage, voice.mode, connecting, practice, active, voice.practiceState])
+
+  return <div className={`flex h-svh flex-col bg-background pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5rem+env(safe-area-inset-bottom))]'}`}>
     <AppNavigation page={page} inSession={inSession}/>
     <ScrollArea ref={pageScrollRef} className="min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[960px] px-4 py-5 outline-none sm:px-6 sm:py-6">
@@ -191,7 +185,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
       {page === 'visits' && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载拜访日记…</p>}><VisitsPage /></Suspense>}
       {page === 'records' && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载复盘记录…</p>}><RecordsPage onStart={choice=>{if(inSession){window.location.hash='start';return}setNextTraining(choice);setTrainingReady(false);setNextMode(choice.mode??preferredMode);setNextSource(choice.experience??'practice');setSetup(true);window.location.hash='start'}} /></Suspense>}
       {voice.status !== 'idle' && <section hidden={page !== 'start'} className={page !== 'start' ? 'hidden' : undefined}>
-      <div className="mb-3 flex items-center justify-end gap-2"><div className="flex shrink-0 items-center gap-2"><Dialog><DialogTrigger asChild><Button variant="outline" className="h-12 rounded-full"><ClipboardList />场景说明</Button></DialogTrigger><DialogContent className="flex h-[88vh] flex-col overflow-hidden sm:max-w-5xl" onOpenAutoFocus={event => { event.preventDefault(); scenarioTitleRef.current?.focus({ preventScroll: true }) }}>
+      <div className="mb-3 flex items-center justify-between gap-2"><Button asChild variant="ghost" className="size-12 shrink-0 rounded-full" aria-label="返回练习配置"><a href="#practice"><ArrowLeft aria-hidden="true" /></a></Button><div className="flex shrink-0 items-center gap-2"><Dialog><DialogTrigger asChild><Button variant="outline" className="h-12 rounded-full"><ClipboardList />场景</Button></DialogTrigger><DialogContent className="flex h-[88vh] flex-col overflow-hidden sm:max-w-5xl" onOpenAutoFocus={event => { event.preventDefault(); scenarioTitleRef.current?.focus({ preventScroll: true }) }}>
         <DialogHeader className="shrink-0"><DialogTitle ref={scenarioTitleRef} tabIndex={-1} className="outline-none">{voice.training?.scenario.title ?? (voice.freeContext ? `${voice.freeContext.drug.name} · 自由演练` : '研究证据的有效沟通')}</DialogTitle><DialogDescription>{voice.freeContext ? `${doctorName} · 自由组合 · 不评分` : voice.training ? `${voice.training.scenario.disease} · 建议 ${Math.round(voice.training.scenario.duration_seconds / 60)} 分钟` : '成人体重管理 · 基础难度 · 建议 5 分钟'}</DialogDescription></DialogHeader>
         <ScrollArea className="min-h-0 flex-1" >
         <div className="space-y-6 pr-4">
@@ -233,11 +227,11 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
       {voice.policyPaused && <Alert className="mb-5" role="alert"><ShieldCheck /><AlertTitle>高风险提示，收音已暂停</AlertTitle><AlertDescription>请查看对话中的原话及政策依据。人工核对后可继续演练。<Button className="mt-3" variant="outline" onClick={voice.resumePolicy}>继续演练</Button></AlertDescription></Alert>}
       {latestMedicalConflict && <Alert className="mb-5 border-destructive/40" role="alert"><Info/><AlertTitle>医学表述需要纠正</AlertTitle><AlertDescription><p>{latestMedicalConflict.statements.find(row => row.correction)?.correction}</p><p>请在对话中核对原话与依据。</p></AlertDescription></Alert>}
       {practice && active && voice.speechState === 'error' && <Button variant="outline" size="sm" className="mb-5" onClick={voice.retrySpeech}><RotateCcw />重试医生朗读</Button>}
-      <PracticeStage practice={practice} doctorName={doctorName} seconds={seconds} status={callStatus} error={voice.error} active={active} connecting={connecting} muted={muted} outputMuted={voice.outputMuted} policyPaused={voice.policyPaused} transcript={transcript} coach={coach} onMute={voice.toggleMute} onOutputMute={voice.toggleOutputMute} onInterrupt={voice.interrupt} onEnd={() => { voice.stop(); if (!connecting) setReview(true) }} onRestart={openSetup}/>
+      <PracticeStage practice={practice} doctorName={doctorName} seconds={seconds} status={callStatus} error={voice.error} active={active} connecting={connecting} muted={muted} outputMuted={voice.outputMuted} policyPaused={voice.policyPaused} transcript={transcript} coach={coach} onMute={voice.toggleMute} onOutputMute={voice.toggleOutputMute} onInterrupt={voice.interrupt} onEnd={() => { voice.stop(); if (!connecting) setReview(true) }} />
 
       </section>}
     </main>
-    <Dialog open={setup} onOpenChange={setSetup}><DialogContent className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col overflow-hidden"><DialogHeader className="shrink-0"><DialogTitle>开始新的演练</DialogTitle><DialogDescription>{unsaved?'本次对话尚未确认保存。重新开始会清空本页对话，请先确认已保留需要的内容。':nextTraining.remediation_id?'沿用原场景、环节和演练方式。':'确认场景与演练方式。'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 flex-1"><div className="space-y-3 py-4 pr-4">{!nextTraining.remediation_id&&<><span id="training-preset-label" className="text-sm font-medium">演练方式</span><div role="group" aria-labelledby="training-preset-label" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(preset=><Button key={preset.id} type="button" variant={presetFor(nextSource,nextMode).id===preset.id?'default':'ghost'} aria-pressed={presetFor(nextSource,nextMode).id===preset.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={()=>{setNextSource(preset.experience);setNextMode(preset.mode)}}>{preset.label}</Button>)}</div><Alert role="status" aria-live="polite" className="rounded-2xl border-0 bg-muted/50 px-4 py-3"><Info aria-hidden="true" className="size-4 text-muted-foreground"/><AlertDescription className="text-sm leading-6 text-foreground/80">{presetFor(nextSource,nextMode).description}</AlertDescription></Alert></>}{nextTraining.remediation_id&&<p className="text-sm leading-7">本次方式：{nextSource==='combat'?'实战练习':nextMode==='assisted'?'辅助练习':'历史练习（无实时辅助）'}</p>}<ScenarioPicker value={nextTraining} onChange={setNextTraining} onReady={setTrainingReady} /></div></ScrollArea><DialogFooter className="shrink-0"><Button variant="outline" onClick={() => setSetup(false)}>取消</Button><Button disabled={!trainingReady||inSession} onClick={restart}>开始演练<ArrowRight /></Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={setup} onOpenChange={setSetup}><DialogContent className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col overflow-hidden"><DialogHeader className="shrink-0"><DialogTitle>开始新的演练</DialogTitle><DialogDescription>{unsaved?'本次对话尚未确认保存。重新开始会清空本页对话，请先确认已保留需要的内容。':nextTraining.remediation_id?'沿用原场景、环节和演练方式。':'确认场景与演练方式。'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 flex-1"><div className="space-y-3 py-4 pr-4">{!nextTraining.remediation_id&&<><span id="training-preset-label" className="text-sm font-medium">演练方式</span><div role="group" aria-labelledby="training-preset-label" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(preset=><Button key={preset.id} type="button" variant={presetFor(nextSource,nextMode).id===preset.id?'default':'ghost'} aria-pressed={presetFor(nextSource,nextMode).id===preset.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={()=>{setNextSource(preset.experience);setNextMode(preset.mode)}}>{preset.label}</Button>)}</div></>}{nextTraining.remediation_id&&<p className="text-sm leading-7">本次方式：{nextSource==='combat'?'实战练习':nextMode==='assisted'?'辅助练习':'历史练习（无实时辅助）'}</p>}<ScenarioPicker value={nextTraining} onChange={setNextTraining} onReady={setTrainingReady} /></div></ScrollArea><DialogFooter className="shrink-0"><Button variant="outline" onClick={() => setSetup(false)}>取消</Button><Button disabled={!trainingReady||inSession} onClick={restart}>开始演练<ArrowRight /></Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={review} onOpenChange={setReview}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>演练复盘</DialogTitle><DialogDescription>{assisted ? '实时辅助' : '结束后复盘'} · {formatTime(seconds)} · {practice ? '练习模式' : '实战模式'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 [&>[data-slot=scroll-area-viewport]]:max-h-[55vh]"><div className="space-y-5 py-2 pr-4"><Alert><CircleHelp /><AlertTitle>{!voice.coach?.superseded && voice.coach?.assessment?.total != null ? '训练评价' : '本次未形成总分'}</AlertTitle><AlertDescription>评价仅覆盖可观察且有依据的内容，医学判断仍需专业复核。</AlertDescription></Alert><div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm"><div><p className="text-muted-foreground">学员发言</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.filter(message => message.role === 'trainee').length}<span className="text-sm text-muted-foreground"> 次</span></p></div><div><p className="text-muted-foreground">对话记录</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.length}<span className="text-sm text-muted-foreground"> 条</span></p></div></div>{source !== 'combat' && voice.coach && (voice.coach.superseded || !voice.coach.assessment ? <CoachAnalysis coach={voice.coach} review /> : voice.coach.assessment && <AssessmentView assessment={voice.coach.assessment} />)}{source === 'combat' && <section aria-live="polite"><h2 className="mb-4 font-medium">AI 复盘</h2>{voice.analysisStatus === 'thinking' ? <p role="status" className="text-sm text-muted-foreground">正在等待最终转录并整理复盘，请稍候…</p> : voice.coach ? <CoachAnalysis coach={voice.coach} review /> : <p className="text-sm text-muted-foreground">{voice.analysisStatus === 'no_speech' ? '本次没有可分析的学员发言。' : '本次复盘未完成。对话保存状态见下方；请保留原文后重新演练。'}</p>}</section>}<p className="text-sm text-muted-foreground">{voice.saved ? <a className="underline underline-offset-4" href={`#records?session=${voice.sessionId}`} onClick={()=>setReview(false)}>查看完整复盘与原话</a> : '对话尚未确认保存，可返回本页查看。'}</p></div></ScrollArea><DialogFooter><Button variant="outline" onClick={() => setReview(false)}><ArrowLeft />返回演练</Button><Button disabled={inSession} onClick={() => { setReview(false); openSetup() }}><RotateCcw />再练一次</Button></DialogFooter></DialogContent></Dialog>
   </ScrollArea></div>
 }

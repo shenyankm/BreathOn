@@ -25,18 +25,21 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   let interval: (() => void) | undefined
   let detailPending: Promise<unknown> | undefined
   const document = { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} }
+  let catalogFailure = false
+  let writes = 0
+  let writeFailure = false
   let listFailure: string | null = null
   const location = { get hash() { return hash }, set hash(value: string) { hash = value.startsWith('#') ? value : `#${value}` } }
   const jsx = (type: string, props: any) => ({ type, props })
   const exports: { VisitsPage?: () => Node } = {}
   const api = async (path: string, options?: RequestInit) => {
     calls.push({ path, options })
-    if (path === '/visits' && options?.method === 'POST') return visit('created/id')
+    if (options?.method) { writes++; if (writeFailure) throw new Error('write failed'); if (path === '/visits') return visit('created/id') }
     if (path === '/visits') {
       if (listFailure) throw new Error(listFailure)
       return records
     }
-    if (path === '/catalog/doctor' || path === '/catalog/drug') return []
+    if (path === '/catalog/doctor' || path === '/catalog/drug') { if (catalogFailure) throw new Error('catalog failed'); return [] }
     const record = records.find(row => path === `/visits/${row.id}`)
     if (record) return detailPending ?? record
     throw new Error(`Unexpected request: ${path}`)
@@ -70,6 +73,9 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   })
   return {
     calls, location, document,
+    writes: () => writes,
+    failWrites(value: boolean) { writeFailure = value },
+    failCatalog(value: boolean) { catalogFailure = value },
     poll() { interval?.() },
     deferDetail(promise: Promise<unknown>) { detailPending = promise },
     unmount() { slots.forEach(slot => slot?.cleanup?.()) },
@@ -170,4 +176,63 @@ test('transcription polling avoids overlapping requests, pauses in background, a
   assert.equal(count(), before + 1)
   app.unmount()
   assert.equal(signal.aborted, true)
+})
+
+
+test('rapid duplicate diary submissions create once; failed writes preserve drafts and unlock retry', async () => {
+  const app = mount('#visits?new=1')
+  app.render(); await settle()
+  find(app.render(), 'Textarea')[0].props.onChange({ target: { value: '保留草稿' } })
+  let tree = app.render()
+  const event = { preventDefault() {}, currentTarget: { doctor_id: 'doctor', drug_id: 'drug', visited_at: '2026-10-31', source: 'self_report' } }
+  app.failWrites(true)
+  const submit = find(tree, 'form')[0].props.onSubmit
+  await Promise.all([submit(event), submit(event)])
+  assert.equal(app.writes(), 1)
+  tree = app.render()
+  assert.equal(find(tree, 'Textarea')[0].props.value, '保留草稿')
+  assert.equal(find(tree, 'fieldset')[0].props.disabled, false)
+  app.failWrites(false)
+  await find(tree, 'form')[0].props.onSubmit(event)
+  assert.equal(app.writes(), 2)
+  assert.equal(app.location.hash, '#visits?visit=created%2Fid')
+})
+
+test('failed diary catalogs expose a retry that preserves the new draft', async () => {
+  const app = mount('#visits?new=1')
+  app.failCatalog(true)
+  app.render(); await settle()
+  find(app.render(), 'Textarea')[0].props.onChange({ target: { value: '目录故障时保留' } })
+  let tree = app.render()
+  assert.ok(textOf(tree).includes('catalog failed'))
+  app.failCatalog(false)
+  button(tree, '重试选项').props.onClick()
+  app.render(); await settle(); tree = app.render()
+  assert.equal(textOf(tree).includes('catalog failed'), false)
+  assert.equal(find(tree, 'Textarea')[0].props.value, '目录故障时保留')
+})
+
+test('diary detail can retry in place after a failed read', async () => {
+  const app = mount('#visits?visit=one')
+  app.deferDetail(Promise.reject(new Error('detail failed')))
+  app.render(); await settle()
+  let tree = app.render()
+  assert.ok(textOf(tree).includes('detail failed'))
+  app.deferDetail(Promise.resolve(visit('one')))
+  button(tree, '重新读取日记').props.onClick()
+  app.render(); await settle(); tree = app.render()
+  assert.equal(find(tree, 'Textarea').find(node => node.props.id === 'visit-original')!.props.value, '原文 one')
+  assert.equal(textOf(tree).includes('detail failed'), false)
+})
+
+test('transcription polling recovers after a failed poll and clears the old error', async () => {
+  const record = { ...visit('polling'), audio_status: 'transcribing' }
+  const app = mount('#visits?visit=polling', [record])
+  app.render(); await settle(); app.render()
+  app.deferDetail(Promise.reject(new Error('poll failed')))
+  app.poll(); await settle()
+  assert.ok(textOf(app.render()).includes('poll failed'))
+  app.deferDetail(Promise.resolve(record))
+  app.poll(); await settle()
+  assert.equal(textOf(app.render()).includes('poll failed'), false)
 })

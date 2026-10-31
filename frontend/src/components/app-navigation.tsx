@@ -3,6 +3,7 @@ import { BookOpen, Play, UserRound } from 'lucide-react'
 import { Button } from './ui/button'
 
 export const AppNavigation = memo(function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
+  if (page === 'start') return null
   const selected = ['library', 'products'].includes(page) ? 'library' : ['me', 'records', 'visits'].includes(page) ? 'me' : 'practice'
   const tabs = [
     { id: 'practice', label: '练习', icon: Play, href: inSession ? '#start' : '#practice' },

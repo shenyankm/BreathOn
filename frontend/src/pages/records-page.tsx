@@ -34,12 +34,13 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
   const [selected, setSelected] = useState<string | null>(()=>new URLSearchParams(window.location.hash.split('?')[1]).get('session'))
   const [detail, setDetail] = useState<Record | null>(null)
   const [detailError, setDetailError] = useState('')
+  const [detailRetry, setDetailRetry] = useState(0)
   const [detailTab, setDetailTab] = useState('review')
 
   useEffect(() => {
     const controller = new AbortController()
     api<Summary[]>('/sessions', { signal: controller.signal, timeoutMs: 5000 })
-      .then(setRecords)
+      .then(data => { if (!controller.signal.aborted) { setRecords(data); setError('') } })
       .catch(() => { if (!controller.signal.aborted) setError('无法加载记录，请检查后端服务后重试。') })
     return () => controller.abort()
   }, [refresh])
@@ -50,10 +51,10 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
     if (!selected) return
     const controller = new AbortController()
     api<Record>(`/sessions/${encodeURIComponent(selected)}`, { signal: controller.signal, timeoutMs: 5000 })
-      .then(setDetail)
+      .then(data => { if (!controller.signal.aborted) { setDetail(data); setDetailError('') } })
       .catch(() => { if (!controller.signal.aborted) setDetailError('无法读取这条记录，请稍后重试。') })
     return () => controller.abort()
-  }, [selected])
+  }, [selected, detailRetry])
 
   return <div className="space-y-6">
     <div className="flex items-center justify-between gap-4"><div><h1 className="text-[22px] font-semibold sm:text-2xl">练习记录</h1><p className="mt-2 text-sm leading-7 text-muted-foreground">最近 50 次演练</p></div><Button variant="outline" className="h-11 shrink-0" onClick={() => { setRecords(null); setError(''); setRefresh(value => value + 1) }}><RotateCcw />刷新</Button></div>
@@ -72,7 +73,7 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
           <TabsContent value="review" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
             <ScrollArea className="h-full [&>[data-slot=scroll-area-viewport]>div]:block!">
               <div className="space-y-5 px-4 py-5 sm:px-6">
-                {detailError ? <p role="alert" className="text-sm text-destructive">{detailError}</p> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载复盘…</p> : <>
+                {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载复盘…</p> : <>
                   {detail.coaching?.length ? <section className="space-y-5"><h2 className="text-base font-medium">{detail.experience === 'combat' ? 'AI 复盘' : '教练分析记录'}</h2>{detail.coaching.map((coach,index)=><CoachAnalysis key={index} coach={coach} review />)}</section> : <p className="text-sm leading-6 text-muted-foreground">{detail.analysis_status === 'no_speech' ? '没有可分析的学员发言。' : '本次未保存教练复盘。'}</p>}
                   {!!detail.medical_checks?.length && <section className="space-y-4"><h2 className="text-base font-medium">逐句医学依据核验</h2>{detail.medical_checks.map((check,index)=><div key={index}><p className="text-sm leading-7">{check.text}</p><MedicalCheckView check={check}/></div>)}</section>}
                   <ReviewPanel key={detail.id} record={detail} onRetrain={()=>setRefresh(value=>value+1)}/>
@@ -83,7 +84,7 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
           <TabsContent value="transcript" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
             <ScrollArea className="h-full [&>[data-slot=scroll-area-viewport]>div]:block!">
               <div className="space-y-5 px-4 py-5 sm:px-6">
-                {detailError ? <p role="alert" className="text-sm text-destructive">{detailError}</p> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载对话…</p> : detail.messages.length===0 ? <p className="text-sm text-muted-foreground">本次未产生文字转录。</p> : detail.messages.map(message=><div key={message.id} className={`flex flex-col ${message.role==='trainee'?'items-end':'items-start'}`}><p className="mb-2 text-xs text-muted-foreground">{message.role==='doctor'?detail.doctor?.display_name??'医生（历史训练）':'我'}{!message.final&&' · 未完成转录'}</p><p className={`max-w-[92%] whitespace-pre-wrap break-words rounded-xl px-4 py-3 text-sm leading-7 sm:max-w-[85%] ${message.role==='trainee'?'bg-primary text-primary-foreground':'bg-muted'}`}>{message.text}</p></div>)}
+                {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载对话…</p> : detail.messages.length===0 ? <p className="text-sm text-muted-foreground">本次未产生文字转录。</p> : detail.messages.map(message=><div key={message.id} className={`flex flex-col ${message.role==='trainee'?'items-end':'items-start'}`}><p className="mb-2 text-xs text-muted-foreground">{message.role==='doctor'?detail.doctor?.display_name??'医生（历史训练）':'我'}{!message.final&&' · 未完成转录'}</p><p className={`max-w-[92%] whitespace-pre-wrap break-words rounded-xl px-4 py-3 text-sm leading-7 sm:max-w-[85%] ${message.role==='trainee'?'bg-primary text-primary-foreground':'bg-muted'}`}>{message.text}</p></div>)}
               </div>
             </ScrollArea>
           </TabsContent>

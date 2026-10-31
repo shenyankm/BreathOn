@@ -43,7 +43,7 @@ test('bottom navigation has exactly three accessible icon-only entries', () => {
 })
 
 test('nested pages keep their parent navigation entry selected', () => {
-  for (const [page, label] of Object.entries({ home: '练习', practice: '练习', start: '练习', library: '资料库', products: '资料库', me: '我的', records: '我的', visits: '我的' })) {
+  for (const [page, label] of Object.entries({ home: '练习', practice: '练习', library: '资料库', products: '资料库', me: '我的', records: '我的', visits: '我的' })) {
     const selected = navigation(page).links.filter(link => link.props['aria-current'] === 'page')
     assert.equal(selected.length, 1)
     assert.equal(selected[0].props['aria-label'], label)
@@ -51,8 +51,12 @@ test('nested pages keep their parent navigation entry selected', () => {
 })
 
 test('practice entry resumes an active session from any page', () => {
-  for (const page of ['home', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits']) {
+  for (const page of ['home', 'practice', 'library', 'products', 'me', 'records', 'visits']) {
     assert.equal(navigation(page, true).links[0].props.href, '#start')
     assert.equal(navigation(page).links[0].props.href, '#practice')
   }
+})
+
+test('practice session hides navigation while connecting, active, or ended', () => {
+  for (const inSession of [true, false]) assert.equal(navigation('start', inSession).tree, null)
 })

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Download, ExternalLink, LoaderCircle, Search } from 'lucide-react'
 import { api } from '@/lib/platform-api'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -20,17 +20,22 @@ export function MedicalLibrary() {
   const [filter, setFilter] = useState('')
   const [text, setText] = useState('')
   const [result, setResult] = useState<MedicalCheck | null>(null)
+  const checkingRef = useRef(false)
+  const [retry, setRetry] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState(false)
   useEffect(() => {
     const controller = new AbortController()
-    api<Corpus>('/medical', { signal: controller.signal }).then(setCorpus).catch(e => { if (!controller.signal.aborted) setError(e.message) })
+    api<Corpus>('/medical', { signal: controller.signal }).then(data => { if (!controller.signal.aborted) setCorpus(data) }).catch(e => { if (!controller.signal.aborted) setError(e.message) }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [])
+  }, [retry])
   async function check() {
+    if (checkingRef.current || !text.trim() || !corpus?.sources.length) return
+    checkingRef.current = true
     setChecking(true); setError(''); setResult(null)
     try { setResult(await api<MedicalCheck>('/medical/check', { method: 'POST', body: JSON.stringify({ text }) })) }
     catch (e) { setError(e instanceof Error ? e.message : '核验暂未完成。') }
-    finally { setChecking(false) }
+    finally { checkingRef.current = false; setChecking(false) }
   }
   const sourcesByProduct = useMemo(() => indexProductSources(corpus?.products ?? [], corpus?.sources ?? []), [corpus])
   const query = filter.toLowerCase()
@@ -42,7 +47,7 @@ export function MedicalLibrary() {
       <p className="text-sm leading-6 text-muted-foreground">{corpus ? `${corpus.products.length} 个产品 · ${corpus.sources.length} 份可读取依据` : error ? '资料读取未完成' : '正在读取资料覆盖情况…'}{corpus?.built_at && ` · ${new Date(corpus.built_at).toLocaleDateString('zh-CN')} 导入`}</p>
       <p className="text-sm leading-6 text-muted-foreground">自动归档不等于医学审核通过。</p>
     </header>
-    {(error || corpus?.error) && <Alert variant="destructive"><AlertCircle aria-hidden="true" /><AlertTitle>医学依据读取或核验未完成</AlertTitle><AlertDescription className="break-words">{error || corpus?.error}</AlertDescription></Alert>}
+    {(error || corpus?.error) && <Alert variant="destructive"><AlertCircle aria-hidden="true" /><AlertTitle>医学依据读取或核验未完成</AlertTitle><AlertDescription className="break-words">{error || corpus?.error}{!corpus && <Button variant="outline" disabled={loading} onClick={() => { setLoading(true); setError(''); setRetry(value => value + 1) }}>重新读取依据</Button>}</AlertDescription></Alert>}
     <div className="grid items-start gap-4 sm:gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
       <div className="min-w-0 space-y-4">
         <Accordion type="single" collapsible className="bg-card"><AccordionItem value="check-statement"><AccordionTrigger className="min-h-11 px-4 py-3">核验一句产品表述</AccordionTrigger><AccordionContent className="space-y-4">

@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { api } from '@/lib/platform-api'
 import { SelfReportRecorder } from '@/components/self-report-recorder'
-import { audioContentType, validAudioDuration } from '@/lib/visit-audio'
+import { audioContentType, validAudioDuration, readAudioDuration } from '@/lib/visit-audio'
 import type { Doctor } from '@/lib/catalog-types'
 
 type Speaker = { speaker_id: string; role: 'doctor' | 'representative' | 'other' | 'unknown' }
@@ -51,6 +51,10 @@ export function VisitsPage() {
   const [authorized, setAuthorized] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [catalogRetry, setCatalogRetry] = useState(0)
+  const [catalogError, setCatalogError] = useState('')
+  const [detailRetry, setDetailRetry] = useState(0)
+  const operation = useRef(false)
   const [notice, setNotice] = useState('')
   const [recording, setRecording] = useState(false)
   const recognition = useRef<Recognition | null>(null)
@@ -63,12 +67,19 @@ export function VisitsPage() {
   useEffect(() => {
     const controller = new AbortController()
     api<Visit[]>('/visits', { signal: controller.signal }).then(setRows).catch(e => { if (!controller.signal.aborted) setError(message(e)) })
-    api<Doctor[]>('/catalog/doctor', { signal: controller.signal }).then(items => setDoctors(items.filter(item => item.status === 'published'))).catch(() => {})
-    api<Drug[]>('/catalog/drug', { signal: controller.signal }).then(items => setDrugs(items.filter(item => item.status === 'published'))).catch(() => {})
     const onHidden = () => { if (document.visibilityState === 'hidden') recognition.current?.stop() }
     document.addEventListener('visibilitychange', onHidden)
     return () => { controller.abort(); document.removeEventListener('visibilitychange', onHidden); recognition.current?.stop() }
   }, [])
+  useEffect(() => {
+    const controller = new AbortController()
+    Promise.all([api<Doctor[]>('/catalog/doctor', { signal: controller.signal }), api<Drug[]>('/catalog/drug', { signal: controller.signal })]).then(([doctorItems, drugItems]) => {
+      if (controller.signal.aborted) return
+      setDoctors(doctorItems.filter(item => item.status === 'published'))
+      setDrugs(drugItems.filter(item => item.status === 'published'))
+    }).catch(e => { if (!controller.signal.aborted) setCatalogError(message(e)) })
+    return () => controller.abort()
+  }, [catalogRetry])
   function choose(item: Visit) {
     setSelected(item); setText(item.text || ''); setRedacted(item.redacted_text || ''); setSpeakers(visitSpeakers(item));  setConfirmed(false); setAuthorized(false); setError(''); setNotice('')
   }
@@ -98,7 +109,7 @@ export function VisitsPage() {
     const controller = new AbortController()
     api<Visit>(`/visits/${encodeURIComponent(visitId)}`, { signal: controller.signal }).then(item => { if (!controller.signal.aborted) choose(item) }).catch(e => { if (!controller.signal.aborted) setError(message(e)) })
     return () => controller.abort()
-  }, [visitId, selectedId, pendingVisit])
+  }, [visitId, selectedId, pendingVisit, detailRetry])
   useEffect(() => {
     if (!selected || !['queued', 'transcribing'].includes(selected.audio_status)) return
     let active = true
@@ -109,6 +120,7 @@ export function VisitsPage() {
       pending = true
       api<Visit>(`/visits/${encodeURIComponent(selected.id)}`, { signal: controller.signal }).then(item => {
         if (!active) return
+        setError('')
         if (['queued', 'transcribing'].includes(item.audio_status)) setSelected(item)
         else { choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]) }
       }).catch(e => { if (active) setError(message(e)) }).finally(() => { pending = false })
@@ -116,13 +128,14 @@ export function VisitsPage() {
     return () => { active = false; controller.abort(); window.clearInterval(timer) }
   }, [selected])
   async function transcribe(cancel = false) {
-    if (!selected) return
+    if (!selected || operation.current) return
+    operation.current = true
     setBusy(true); setError(''); setNotice('')
     try {
       const item = await api<Visit>(`/visits/${encodeURIComponent(selected.id)}/transcription${cancel ? '/cancel' : ''}`, { method: 'POST' })
       choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)])
       setNotice(cancel ? '转写已取消；已发出的供应商请求可能仍产生费用。' : '已提交转写，完成后请核对说话人和内容。')
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch (e) { setError(message(e)) } finally { operation.current = false; setBusy(false) }
   }
   async function selectVisit(id: string) {
     setError('')
@@ -134,48 +147,47 @@ export function VisitsPage() {
   }
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (operation.current) return
     const form = new FormData(event.currentTarget)
+    operation.current = true
     setBusy(true); setError(''); setNotice('')
     try {
       const inputSource = String(form.get('source'))
       const item = await api<Visit>('/visits', { method: 'POST', body: JSON.stringify({ doctor_id: String(form.get('doctor_id')), drug_id: String(form.get('drug_id')), visited_at: String(form.get('visited_at')), source: inputSource === 'voice' ? 'self_report' : inputSource, private_audio: inputSource === 'voice', text: draft.text }) })
       choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]); setDraft({ doctor_id: '', drug_id: '', visited_at: today, source: 'self_report', text: '' }); navigate({ kind: 'detail', id: item.id }); setNotice('已保存草稿。请核对内容并脱敏后提交审核。')
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch (e) { setError(message(e)) } finally { operation.current = false; setBusy(false) }
   }
   async function save() {
-    if (!selected) return
+    if (!selected || operation.current) return
+    operation.current = true
     setBusy(true); setError(''); setNotice('')
     try {
       const item = await api<Visit>(`/visits/${selected.id}`, { method: 'PUT', body: JSON.stringify({ version: selected.version, doctor_id: selected.doctor_id, drug_id: selected.drug_id, visited_at: selected.visited_at, text }) })
       choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]); setNotice('草稿已保存。')
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch (e) { setError(message(e)) } finally { operation.current = false; setBusy(false) }
   }
   async function confirm() {
-    if (!selected || !confirmed || text !== selected.text) return
+    if (!selected || !confirmed || text !== selected.text || operation.current) return
+    operation.current = true
     setBusy(true); setError(''); setNotice('')
     try {
       const item = await api<Visit>(`/visits/${selected.id}/confirm`, { method: 'POST', body: JSON.stringify({ version: selected.version, redacted_text: redacted, redaction_confirmed: true, speakers }) })
       choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]); setNotice('已提交审核；管理员审核后才能用于团队训练。')
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch (e) { setError(message(e)) } finally { operation.current = false; setBusy(false) }
   }
   async function upload(file: File | undefined) {
-    if (!selected || !file) return
+    if (!selected || !file || operation.current) return
     if (!authorized) { setError('请先确认您有权导入和处理此录音。'); return }
     const type = audioContentType(file.name, file.size)
     if (!type) { setError('请选择不超过 100 MB 的 MP3、M4A 或 WAV 录音。'); return }
+    operation.current = true
     setBusy(true); setError(''); setNotice('')
     try {
-      const duration = await new Promise<number>((resolve, reject) => {
-        const url = URL.createObjectURL(file); const audio = document.createElement('audio')
-        audio.preload = 'metadata'
-        audio.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(audio.duration) }
-        audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error('无法读取录音，请检查文件格式。')) }
-        audio.src = url
-      })
+      const duration = await readAudioDuration(file)
       if (!validAudioDuration(duration)) throw new Error('录音时长须大于 0 且不超过 30 分钟。')
       const item = await api<Visit>(`/visits/${selected.id}/audio`, { method: 'POST', body: file, headers: { 'Content-Type': type, 'X-Recording-Authorized': 'true' }, timeoutMs: 120000 })
       choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]); setNotice('录音已上传，请主动启动转写。')
-    } catch (e) { setError(message(e)) } finally { setBusy(false) }
+    } catch (e) { setError(message(e)) } finally { operation.current = false; setBusy(false) }
   }
   function dictate() {
     if (recording) { recognition.current?.stop(); return }
@@ -213,9 +225,11 @@ export function VisitsPage() {
         <ScrollArea className="min-h-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
           <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
             {feedback}
+    {view.kind === 'new' && catalogError && <Alert role="alert" variant="destructive"><AlertTitle>医生和药品暂时无法加载</AlertTitle><AlertDescription>{catalogError}<Button variant="outline" onClick={() => { setCatalogError(''); setCatalogRetry(value => value + 1) }}>重试选项</Button></AlertDescription></Alert>}
+    {view.kind === 'detail' && selected?.id !== visitId && error && <Button variant="outline" onClick={() => { setError(''); setDetailRetry(value => value + 1) }}>重新读取日记</Button>}
     {view.kind === 'new' && <Card className="min-w-0">
-        <CardContent><form onSubmit={create} className="space-y-5">
-          <Field label="访后观察" htmlFor="visit-observation"><Textarea id="visit-observation" className="min-h-36 leading-7" value={draft.text} disabled={recording} onChange={e => setDraft(current => ({ ...current, text: e.target.value }))} maxLength={20000} placeholder="记下拜访情境、医生关注的问题，以及下一步计划。不要填写患者身份或病历细节。" /></Field>
+        <CardContent><form onSubmit={create} className="space-y-5"><fieldset disabled={busy} className="space-y-5">
+          <Field label="访后观察" htmlFor="visit-observation"><Textarea id="visit-observation" className="min-h-36 leading-7" value={draft.text} disabled={busy || recording} onChange={e => setDraft(current => ({ ...current, text: e.target.value }))} maxLength={20000} placeholder="记下拜访情境、医生关注的问题，以及下一步计划。不要填写患者身份或病历细节。" /></Field>
           <Button className="h-11" type="button" variant="outline" onClick={dictate}><Mic />{recording ? '停止语音输入' : '语音输入'}</Button>
           <div className="grid grid-cols-2 gap-3 border-t pt-5">
             <Field label="拜访医生" htmlFor="visit-doctor"><Select name="doctor_id" required value={draft.doctor_id} onValueChange={doctor_id => setDraft(current => ({ ...current, doctor_id }))}><SelectTrigger id="visit-doctor" className="w-full"><SelectValue placeholder="选择医生" /></SelectTrigger><SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name || d.name}</SelectItem>)}</SelectContent></Select></Field>
@@ -224,7 +238,7 @@ export function VisitsPage() {
             <Field label="记录来源" htmlFor="visit-source"><Select name="source" value={draft.source} onValueChange={source => setDraft(current => ({ ...current, source }))}><SelectTrigger id="visit-source" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="self_report">访后文字</SelectItem><SelectItem value="voice">访后语音自述</SelectItem><SelectItem value="recording">真实拜访录音</SelectItem></SelectContent></Select></Field>
           </div>
           <div className="space-y-3 border-t pt-5"><Button className="h-11 w-full sm:w-auto" type="submit" disabled={busy || recording}>{busy ? '正在保存…' : '保存草稿'}</Button><p className="text-xs leading-6 text-muted-foreground">管理员可查看全部记录；只有经脱敏和审核的内容可用于团队训练。语音输入由设备或浏览器服务商处理，请核对文字。</p></div>
-        </form></CardContent>
+        </fieldset></form></CardContent>
       </Card>}
     {view.kind === 'detail' && (selected?.id !== visitId ? !error && <p role="status" className="py-6 text-sm text-muted-foreground">正在读取拜访记录…</p> : <Card className="min-w-0">
         <CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><CardTitle><h2>{selected.visited_at} · {selected.source === 'recording' ? '真实拜访录音' : '访后自述'}</h2></CardTitle><Badge variant="outline">{selected.status}</Badge></div><CardDescription>录音：{audioLabel(selected.audio_status)}</CardDescription></CardHeader>
@@ -234,9 +248,9 @@ export function VisitsPage() {
           {selected.source === 'self_report' && selected.private_audio && selected.audio_status !== 'none' && <div className="flex flex-wrap gap-3 rounded-lg bg-muted/40 p-4">{['transcription_unavailable', 'transcription_interrupted'].includes(selected.audio_status) && <Button className="h-11" variant="outline" disabled={busy} onClick={() => void transcribe()}>启动转写</Button>}{['queued', 'transcribing'].includes(selected.audio_status) && <Button className="h-11" variant="outline" disabled={busy} onClick={() => void transcribe(true)}>取消转写</Button>}{selected.audio_status !== 'deleted' && <Button asChild className="h-11" variant="link"><a href={`/api/visits/${encodeURIComponent(selected.id)}/audio`}>回听自述录音</a></Button>}</div>}
           {selected.source === 'recording' && <section className="space-y-4 rounded-lg bg-muted/40 p-4" aria-label="录音上传与转写"><p className="text-sm leading-6">录音将由第三方语音服务处理，管理员可查看原音频。首次确认转写后 7 天删除，最长保留至上传后 30 天。</p><label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6"><Checkbox className="mt-1 shrink-0" checked={authorized} onCheckedChange={value => setAuthorized(value === true)} /><span>我已取得录制及处理所需授权，了解处理方式和可见范围。</span></label><Field label="选择录音" htmlFor="visit-audio"><Input id="visit-audio" className="h-11" type="file" accept=".mp3,.m4a,.wav,audio/mpeg,audio/mp4,audio/wav" disabled={busy || !authorized || selected.audio_status !== 'none'} onChange={e => { void upload(e.target.files?.[0]); e.currentTarget.value = '' }} /></Field><div className="flex flex-wrap gap-3">{['transcription_unavailable', 'transcription_interrupted'].includes(selected.audio_status) && <Button className="h-11" variant="outline" disabled={busy} onClick={() => void transcribe()}>启动转写</Button>}{['queued', 'transcribing'].includes(selected.audio_status) && <Button className="h-11" variant="outline" disabled={busy} onClick={() => void transcribe(true)}>取消转写</Button>}{selected.audio_status && !['none', 'deleted'].includes(selected.audio_status) && <Button asChild className="h-11" variant="link"><a href={`/api/visits/${encodeURIComponent(selected.id)}/audio`}>回听原音频</a></Button>}</div></section>}
           {selected.segments && selected.segments.length > 0 && <section className="space-y-3"><h3 className="text-sm font-medium">转写片段</h3><ul className="max-h-80 space-y-3 overflow-auto">{selected.segments.map((segment, index) => <li key={index} className="rounded-lg bg-muted/30 p-3 text-sm leading-7"><span className="text-xs text-muted-foreground">{segment.speaker_id || '未知'} · {segment.start_time == null ? '时间未知' : `${Math.floor(segment.start_time / 1000)} 秒`}</span><p className="whitespace-pre-wrap break-words">{segment.text}</p></li>)}</ul></section>}
-          <section className="space-y-3"><Field label="原始自述或转写" htmlFor="visit-original"><Textarea id="visit-original" className="min-h-40 leading-7" disabled={['queued', 'transcribing'].includes(selected.audio_status)} value={text} onChange={e => setText(e.target.value)} maxLength={20000} /></Field><Button className="h-11" variant="outline" onClick={() => void save()} disabled={busy || ['queued', 'transcribing'].includes(selected.audio_status)}>保存修改</Button></section>
-          {speakers.length > 0 && <fieldset className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 text-sm font-medium">确认说话人</legend>{speakers.map((speaker, index) => <Field key={speaker.speaker_id} label={speaker.speaker_id} htmlFor={`visit-speaker-${index}`}><Select value={speaker.role} onValueChange={value => setSpeakers(current => current.map((row, i) => i === index ? { ...row, role: value as Speaker['role'] } : row))}><SelectTrigger id={`visit-speaker-${index}`} className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(roles).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></Field>)}</fieldset>}
-          <section className="space-y-4 border-t pt-6" aria-label="脱敏与提交"><Field label="脱敏后用于审核的文字" htmlFor="visit-redacted"><Textarea id="visit-redacted" className="min-h-40 leading-7" value={redacted} onChange={e => setRedacted(e.target.value)} maxLength={20000} placeholder="删除患者身份、病历细节和其他不应共享的信息后填写。" /></Field><Button className="h-11" variant="outline" onClick={() => void suggestRedaction()} disabled={busy || text !== selected.text}>填入脱敏建议</Button><label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6"><Checkbox className="mt-1 shrink-0" checked={confirmed} onCheckedChange={value => setConfirmed(value === true)} /><span>我已核对转写、说话人及脱敏内容。</span></label>{text !== selected.text && <p className="text-sm text-muted-foreground">请先保存对原始内容的修改，再确认脱敏内容。</p>}<Button className="h-11 w-full sm:w-auto" onClick={() => void confirm()} disabled={busy || ['queued', 'transcribing'].includes(selected.audio_status) || !confirmed || !redacted.trim() || text !== selected.text}>{busy ? '正在提交…' : '提交审核'}</Button></section>
+          <section className="space-y-3"><Field label="原始自述或转写" htmlFor="visit-original"><Textarea id="visit-original" className="min-h-40 leading-7" disabled={busy || ['queued', 'transcribing'].includes(selected.audio_status)} value={text} onChange={e => setText(e.target.value)} maxLength={20000} /></Field><Button className="h-11" variant="outline" onClick={() => void save()} disabled={busy || ['queued', 'transcribing'].includes(selected.audio_status)}>保存修改</Button></section>
+          {speakers.length > 0 && <fieldset className="grid gap-4 sm:grid-cols-2"><legend className="mb-3 text-sm font-medium">确认说话人</legend>{speakers.map((speaker, index) => <Field key={speaker.speaker_id} label={speaker.speaker_id} htmlFor={`visit-speaker-${index}`}><Select value={speaker.role} disabled={busy} onValueChange={value => setSpeakers(current => current.map((row, i) => i === index ? { ...row, role: value as Speaker['role'] } : row))}><SelectTrigger id={`visit-speaker-${index}`} className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(roles).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></Field>)}</fieldset>}
+          <section className="space-y-4 border-t pt-6" aria-label="脱敏与提交"><Field label="脱敏后用于审核的文字" htmlFor="visit-redacted"><Textarea id="visit-redacted" className="min-h-40 leading-7" value={redacted} disabled={busy} onChange={e => setRedacted(e.target.value)} maxLength={20000} placeholder="删除患者身份、病历细节和其他不应共享的信息后填写。" /></Field><Button className="h-11" variant="outline" onClick={() => void suggestRedaction()} disabled={busy || text !== selected.text}>填入脱敏建议</Button><label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6"><Checkbox className="mt-1 shrink-0" checked={confirmed} onCheckedChange={value => setConfirmed(value === true)} /><span>我已核对转写、说话人及脱敏内容。</span></label>{text !== selected.text && <p className="text-sm text-muted-foreground">请先保存对原始内容的修改，再确认脱敏内容。</p>}<Button className="h-11 w-full sm:w-auto" onClick={() => void confirm()} disabled={busy || ['queued', 'transcribing'].includes(selected.audio_status) || !confirmed || !redacted.trim() || text !== selected.text}>{busy ? '正在提交…' : '提交审核'}</Button></section>
         </CardContent>
       </Card>)}
           </div>

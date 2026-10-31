@@ -27,13 +27,17 @@ function render(overrides: Record<string, unknown> = {}) {
   })
   return exports.PracticeStage({ practice: true, doctorName: '模拟医生', seconds: 12, active: true, connecting: false,
     status: '通话中', muted: false, outputMuted: false, policyPaused: false,
-    transcript: '对话原文', coach: '教练建议', onMute() {}, onOutputMute() {}, onEnd() {}, onRestart() {}, ...overrides })
+    transcript: '对话原文', coach: '教练建议', onMute() {}, onOutputMute() {}, onEnd() {}, ...overrides })
 }
 
-test('assisted practice exposes conversation and real-time coach', () => {
+test('assisted practice shows conversation and coach together without tabs', () => {
   const tree = render()
   assert.equal(tree.props['aria-label'], '辅助练习对话')
-  assert.deepEqual(find(tree, 'TabsTrigger').map(node => node.props.value), ['transcript', 'coach'])
+  assert.equal(find(tree, 'TabsTrigger').length, 0)
+  const sections = find(tree, 'section')
+  assert.equal(sections.find(node => node.props['aria-label'] === '对话记录')!.props.children, '对话原文')
+  const advice = sections.find(node => node.props['aria-label'] === 'AI 分析与建议')!
+  assert.ok(find(advice, 'div').some(node => node.props.children === '教练建议'))
 })
 
 test('combat keeps transcript reachable and wires independent call controls', () => {
@@ -56,4 +60,14 @@ test('policy pause prevents unmuting and connecting offers cancellation', () => 
 test('combat shows the specific failure inside the fullscreen stage', () => {
   const tree = render({ practice: false, active: false, status: '连接失败', error: '音频播放已暂停，请重新开始演练' })
   assert.equal(find(tree, 'p').find(node => node.props.role === 'alert')?.props.children, '音频播放已暂停，请重新开始演练')
+})
+
+
+test('ended practice has no duplicate restart action and combat returns to practice setup', () => {
+  for (const practice of [true, false]) {
+    const tree = render({ practice, active: false })
+    assert.equal(find(tree, 'Button').some(node => node.props.children === '再次练习'), false)
+  }
+  const back = find(render({ practice: false }), 'Button').find(node => node.props['aria-label'] === '返回练习配置')!
+  assert.equal(find(back, 'a')[0].props.href, '#practice')
 })

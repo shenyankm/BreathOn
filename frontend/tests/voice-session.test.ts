@@ -311,3 +311,16 @@ test('stop aborts startup health I/O before opening a microphone or websocket', 
   assert.equal(app.sockets.length, 0)
   assert.equal(app.render().status, 'ended')
 })
+
+test('malformed realtime messages end capture while preserving transcript and never auto-reconnect', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'one' })
+  ws.receive({ type: 'transcript', id: 'u1', role: 'trainee', text: '需要保留的发言', final: true })
+  ws.onmessage?.({ data: '{invalid' })
+  assert.equal(app.render().status, 'error')
+  assert.equal(app.render().messages[0].text, '需要保留的发言')
+  assert.equal(ws.readyState, 3)
+  assert.equal(app.sockets.length, 1)
+})

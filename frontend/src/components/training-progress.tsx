@@ -13,11 +13,11 @@ export function TrainingProgress({refresh}:{refresh:number}) {
   const [retry,setRetry]=useState(0)
   const requestKey=`${days}:${refresh}:${retry}`
   const loading=settled!==requestKey
-  useEffect(()=>{const controller=new AbortController();api<ProgressData>(`/progress?days=${days}`,{signal:controller.signal}).then(data=>{setReport(data);setError('')}).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'训练进步加载失败')}).finally(()=>{if(!controller.signal.aborted)setSettled(requestKey)});return()=>controller.abort()},[days,refresh,retry,requestKey])
+  useEffect(()=>{const controller=new AbortController();api<ProgressData>(`/progress?days=${days}`,{signal:controller.signal}).then(data=>{if(!controller.signal.aborted){setReport(data);setError('')}}).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'训练进步加载失败')}).finally(()=>{if(!controller.signal.aborted)setSettled(requestKey)});return()=>controller.abort()},[days,refresh,retry,requestKey])
   return <section className="space-y-4 rounded-xl border bg-background p-5 sm:p-6" aria-label="个人训练进步">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium">个人训练进步</h2><div className="flex gap-1" aria-label="统计时间范围">{[7,30,90].map(value=><Button key={value} className="h-11" variant={days===value?'secondary':'ghost'} aria-pressed={days===value} onClick={()=>setDays(value)}>{value} 天</Button>)}</div></div>
     {loading&&<p role="status" className="text-sm text-muted-foreground">正在读取近 {days} 天的训练记录…</p>}
-    {error&&<div role="alert" className="flex flex-wrap items-center gap-3 text-sm"><p className="text-destructive">{error}</p><Button variant="outline" onClick={()=>setRetry(value=>value+1)}>重试统计</Button></div>}
+    {error&&!loading&&<div role="alert" className="flex flex-wrap items-center gap-3 text-sm"><p className="text-destructive">{error}</p><Button variant="outline" disabled={loading} onClick={()=>setRetry(value=>value+1)}>重试统计</Button></div>}
     {report&&<>
       <p className="text-sm leading-6 text-muted-foreground">近 {report.days} 天 · 同条件 AI 反馈变化，不代表实际拜访能力认证；不同医生、资料、环节、模式或评分版本分开统计。</p>
       <dl className="grid grid-cols-2 gap-5 border-y py-5 sm:grid-cols-4">{[['保存的演练',`${report.session_count} 次`],['完整结束',`${report.completed_count} 次`],['有效可评分训练',`${report.valid_practice_count} 次`],['已记录时长',report.unknown_duration_count===report.session_count&&report.session_count>0?'未记录':`${Math.floor(report.duration_seconds/60)} 分 ${Math.round(report.duration_seconds%60)} 秒`]].map(([label,value])=><div key={label}><dt className="text-sm text-muted-foreground">{label}</dt><dd className="mt-2 text-lg tabular-nums">{value}</dd></div>)}</dl>
