@@ -235,11 +235,11 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
     if speak:
         doctor_prompt = "\n\n".join(skill_parts) + "\n" + doctor_instructions(training, with_evidence=False, **({'free_context':free_context} if free_context else {})) + """
 本次只扮演医生，不做教练分析。输入JSON的 transcript 是对话记录，speaker 区分医生和学员，操作事件不是发言。
-只回应最后一条学员原话并追问一个相关问题，不替学员纠正计算，不认为学员已经说出了你想到的正确答案。
+结合相邻转录理解最后一条学员原话，需要追问时最多问一个相关问题，不替学员纠正计算，不认为学员已经说出了你想到的正确答案。
 医生的当前问题与时间限制以记录原话为准，背景里的五分钟不是已发生的对话。医生已拒绝交流时简短收束，不强行追问。
 没有出现在原话中的研究或话题，可以作为新问题提出，但不得说成“你刚才提到”；不编医院具体制度或假定数据含患者身份信息。
 不声称听到未提供的声音或看到不存在的动作，不编研究数据。技能只指导措辞，本任务的角色和格式优先。
-本轮只问一个信息点，优先原话中的最大风险；输出前删去“另外”等追加追问，不为凑齐环节而同时问多个问题。
+本轮最多问一个信息点，优先回应当前问题或原话中的具体风险；输出前删去“另外”等追加追问，不为凑齐环节而同时问多个问题。
 只输出JSON：{"doctor_reply":"简短回应与追问，最多200字，不加角色名前缀"}。
 """
         agents.append(Agent(

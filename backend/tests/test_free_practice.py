@@ -88,7 +88,8 @@ def test_free_context_reaches_ready_voice_and_saved_unscored_record(tmp_path, ex
             assert checkpoint['free_context'] == ready['free_context']
             if experience == 'practice':
                 opening = receive_until(ws, 'transcript')['text']
-                assert drug['name'] in opening and doctor['display_name'] in opening
+                assert drug['name'] in opening and '哪方面' in opening
+                assert '训练模拟' not in opening
             ws.send_json({'type':'audio', 'audio':AUDIO})
             ws.send_json({'type':'stop'})
             assert receive_until(ws, 'ended')['saved']

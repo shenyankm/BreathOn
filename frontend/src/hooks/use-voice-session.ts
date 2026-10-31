@@ -18,7 +18,10 @@ export function useVoiceSession() {
   const [muted, setMuted] = useState(false)
   const [outputMuted, setOutputMuted] = useState(false)
   const [sessionId, setSessionId] = useState('')
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [retryingSave, setRetryingSave] = useState(false)
+  const saveRetry = useRef(false)
   const [seconds, setSeconds] = useState(0)
   const [coach, setCoach] = useState<LiveCoach | null>(null)
   const [medicalChecks, setMedicalChecks] = useState<MedicalCheck[]>([])
@@ -38,6 +41,7 @@ export function useVoiceSession() {
     if (!current || current.closing) return
     current.closing = true
     current.startup.abort()
+    setSaving(!!current.started && current.ws?.readyState === WebSocket.OPEN)
     if (current.started && (current.experience === 'combat' || training || freeContext)) setAnalysisStatus('thinking')
     current.audio.stop()
     if (current.ws?.readyState === WebSocket.OPEN) {
@@ -52,7 +56,7 @@ export function useVoiceSession() {
     if (old) { old.startup.abort(); old.closing = true; old.audio.stop(); old.ws?.close() }
     const current: Connection = { startup: new AbortController(), audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
-    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setOutputMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
+    setSaving(false); setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setOutputMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
     medicalText.current.clear()
     setAnalysisStatus('not_started')
     setSpeechState('idle'); setTraining(null); setFreeContext(null); setMode(mode)
@@ -129,6 +133,7 @@ export function useVoiceSession() {
             window.clearTimeout(handshake)
             window.clearTimeout(current.finishTimeout)
             current.finished = true
+            setSaving(false)
             setSaved(event.saved === true)
             if (event.saved !== true) setError(previous => [previous, event.recovery_saved === true
               ? '记录库暂时不可用，本机已保留恢复副本。'
@@ -206,6 +211,7 @@ export function useVoiceSession() {
         window.clearTimeout(current.finishTimeout)
         current.audio.stop()
         if (connection.current !== current) return
+        setSaving(false)
         setAnalysisStatus(previous => previous === 'thinking' ? 'error' : previous)
         if (!current.finished && current.started) {
           setError(previous => [previous, '语音连接已断开，尚未确认保存；请保留当前页面的原话后再重新开始。'].filter(Boolean).join(' '))
@@ -300,5 +306,28 @@ export function useVoiceSession() {
     if (current) { current.startup.abort(); current.closing = true; current.audio.stop(); current.ws?.close() }
   }, [])
 
-  return { outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
+  async function retrySave() {
+    if (!sessionId || saved || saving || saveRetry.current || status === 'active' || status === 'connecting' || analysisStatus === 'thinking') return
+    const current = connection.current
+    saveRetry.current = true
+    setRetryingSave(true)
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/retry-save`, { method: 'POST', signal: AbortSignal.timeout(10000) })
+      if (response.status === 401) window.dispatchEvent(new Event('medvisit:unauthorized'))
+      if (!response.ok) throw new Error('保存未成功，请保留当前对话并稍后重试；持续失败请联系管理员。')
+      const result = await response.json()
+      if (result.saved !== true || result.session_id !== sessionId) throw new Error('尚未确认保存，请保留当前对话。')
+      if (connection.current !== current) return
+      setSaved(true)
+      setStatus('ended')
+      setError('')
+    } catch (cause) {
+      if (connection.current === current) setError(cause instanceof Error ? cause.message : '保存未成功，请稍后重试。')
+    } finally {
+      saveRetry.current = false
+      setRetryingSave(false)
+    }
+  }
+
+  return { saving, retrySave, retryingSave, outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
 }

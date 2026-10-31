@@ -266,6 +266,34 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state = 'finalizing' if identifier in finishing else 'active' if identifier in active else 'saved' if record.get('ended_at') else 'interrupted'
         return {'session_id': identifier, 'state': state, 'status':record.get('status')}
 
+    retry_save_lock = asyncio.Lock()
+
+    @app.post('/api/sessions/{session_id}/retry-save')
+    async def retry_save_session(session_id: UUID):
+        user = current_user()
+        identifier = str(session_id)
+        async with retry_save_lock:
+            def persist_recovery():
+                existing = store.get(session_id)
+                recovered = existing or FileRecords(settings.records / 'recovery').get(session_id) or read_checkpoint(settings.records, session_id)
+                if (not recovered or recovered.get('id') != identifier or recovered.get('workspace') != user['workspace']
+                        or recovered.get('owner_id') != user['id']):
+                    raise HTTPException(404, '没有可恢复的记录，请保留当前对话并联系管理员。')
+                if not recovered.get('ended_at'):
+                    raise HTTPException(409, '记录尚未完成，请稍后重试并保留当前对话。')
+                if not existing:
+                    record = SessionRecord(identifier, recovered['mode'])
+                    record.data = recovered
+                    store.save(record, recovered['status'])
+                    operations.finish_remediation(user, record)
+                return {'session_id': identifier, 'saved': True}
+            if identifier in active or identifier in finishing:
+                raise HTTPException(409, '练习仍在结束保存中，请稍后重试。')
+            try:
+                return await asyncio.to_thread(persist_recovery)
+            except (OSError, DatabaseError, PoolTimeout) as exc:
+                raise HTTPException(503, '记录库暂时不可用，请稍后重试。') from exc
+
     @app.websocket("/api/realtime")
     async def realtime(client: WebSocket):
         async def send_client(payload):

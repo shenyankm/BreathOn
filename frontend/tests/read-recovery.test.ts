@@ -1,3 +1,4 @@
+import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -31,6 +32,7 @@ function mount(file: string, component: string, api: (path: string, options?: Re
     FormData: class { values: Record<string, string>; constructor(values: Record<string, string>) { this.values = values } get(key: string) { return this.values[key] } },
     window: { location, addEventListener(key: string, fn: () => void) { listeners[key] = fn }, removeEventListener() {} },
     require(name: string) {
+      if (name === '@/lib/doctor-label') return { doctorLabel }
       if (name === 'react') return {
         useState(initial: any) { const i = cursor++; slots[i] ??= { value: typeof initial === 'function' ? initial() : initial }; return [slots[i].value, (next: any) => { slots[i].value = typeof next === 'function' ? next(slots[i].value) : next }] },
         useRef(initial: unknown) { return slots[cursor++] ??= { current: initial } },

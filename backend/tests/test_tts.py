@@ -32,7 +32,7 @@ def test_protocol_matches_official_start_and_rejects_malformed_frames():
     assert 'fake-tts-key' not in str(error.value) and 'private-provider-detail' not in str(error.value)
 
 
-@pytest.mark.parametrize('instruction', [None, '请用审慎、质疑的语气说话。'])
+@pytest.mark.parametrize('instruction', [None, speech_instructions({'doctor': {'mood': 'skeptical'}, 'scenario': {}})])
 async def test_actual_websocket_synthesis_and_realtime_pacing(tmp_path, instruction):
     sent_text = []
     sent_additions = []
@@ -161,4 +161,29 @@ async def test_new_trainee_speech_cancels_stale_synthesis(tmp_path):
         await asyncio.wait_for(started.wait(), 1)
         await dialogue.observe(result('我来回答', complete=False), False)
         assert cancelled.is_set() and record.data['messages'][0]['speech_status'] == 'interrupted'
+        await dialogue.close()
+
+
+async def test_free_practice_voice_style_reaches_synthesis_and_retry(tmp_path):
+    record = SessionRecord('test', 'assisted')
+    record.data['free_context'] = {
+        'doctor': {'display_name': '测试医生', 'mood': 'skeptical'},
+        'drug': {'name': '测试药品'},
+    }
+    dialogue = PracticeDialogue(Client(), settings(tmp_path), record)
+    speech = AsyncMock(side_effect=[BridgeError('tts_provider_error', 'failed'), {}])
+    with patch('medvisit.services.practice.synthesize', speech):
+        await dialogue.open()
+        await dialogue.voice_task
+        await dialogue.retry_speech()
+        await dialogue.voice_task
+        assert speech.await_count == 2
+        first, retry = speech.await_args_list
+        assert first.args[1] == retry.args[1] == '你好，今天想聊测试药品的哪方面？'
+        instruction = first.kwargs['instruction']
+        assert instruction == retry.kwargs['instruction']
+        assert '质疑' in instruction and '认可时稍温和放松' in instruction
+        assert '疑问重点' in instruction and '短暂停顿' in instruction
+        assert len(instruction) <= 500
+        assert '测试医生' not in instruction and '测试药品' not in instruction
         await dialogue.close()

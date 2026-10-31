@@ -1,3 +1,4 @@
+import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -23,6 +24,7 @@ test('records defer progress work until first expansion and retain it on reopen'
   }).outputText, {
     exports, URLSearchParams, window: { location: { hash: '#records' } },
     require: (name: string) => {
+      if (name === '@/lib/doctor-label') return { doctorLabel }
       if (name === 'react') return react
       if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (name === '@/lib/platform-api') return { api() {} }

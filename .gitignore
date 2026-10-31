@@ -42,3 +42,6 @@ Thumbs.db
 *~
 
 frontend/dist-android/
+
+# Local walkthrough videos, speech samples, and emulator evidence
+/output/

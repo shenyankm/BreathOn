@@ -1,3 +1,4 @@
+import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -34,7 +35,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   vm.runInNewContext(ts.transpileModule(source + (name === 'CatalogPage' ? '\nexport { CatalogPage }' : ''), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
-    exports, AbortController, URLSearchParams, location: { hash },
+    exports, AbortController, URL, URLSearchParams, location: { hash },
     window: { addEventListener() {}, removeEventListener() {} },
     setTimeout(callback: () => void) { timers.set(++nextTimer, callback); return nextTimer },
     clearTimeout(id: number) { timers.delete(id) },
@@ -44,6 +45,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       get(key: string) { return this.values[key] ?? key }
     },
     require: (module: string) => {
+      if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (module === '@/lib/platform-api') return { api }
@@ -510,10 +512,48 @@ test('library loads only visited catalogs and reuses already loaded categories',
   app.render(); await settle()
   let tree = app.render()
   assert.deepEqual(calls, ['/catalog/drug'])
+  assert.deepEqual(find(tree, 'TabsTrigger').map(node => node.props.value), ['drugs', 'skills', 'doctors', 'policies'])
+  assert.equal(find(tree, 'TabsContent').some(node => node.props.value === 'medical'), false)
   find(tree, 'Tabs')[0].props.onValueChange('doctors')
   app.render(); await settle(); tree = app.render()
   assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
   find(tree, 'Tabs')[0].props.onValueChange('drugs')
   app.render(); await settle()
   assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
+})
+
+test('doctor library shows clean names with a prominent simulation notice', async () => {
+  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [{ id: 'one', status: 'published', name: '张建中', display_name: '张建中（训练模拟）', specialty: '皮肤科', sources: [] }] : [])
+  app.render(); await settle()
+  find(app.render(), 'Tabs')[0].props.onValueChange('doctors')
+  app.render(); await settle()
+  const tree = app.render()
+  assert.ok(find(tree, 'Button').some(node => node.props['aria-label'] === '查看张建中的资料'))
+  assert.ok(find(tree, 'AlertTitle').some(node => node.props.children === 'AI 模拟角色，非医生本人'))
+})
+
+
+test('doctor cards open full details and preserve the doctor category on return', async () => {
+  const doctor = { id: 'one', status: 'published', name: '张建中', display_name: '张建中（训练模拟）', hospital: '测试医院', specialty: '皮肤科', background_type: 'public', public_facts: '完整背景内容', training_style: '完整模拟设定', sources: ['https://example.com/source', 'javascript:alert(1)'] }
+  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [doctor] : [])
+  app.render(); await settle()
+  find(app.render(), 'Tabs')[0].props.onValueChange('doctors')
+  app.render(); await settle()
+  let tree = app.render()
+  assert.equal(JSON.stringify(find(tree, 'Card')).includes('完整背景内容'), false)
+  let focused = false
+  find(tree, 'Button').find(node => node.props['aria-label'] === '查看张建中的资料')!.props.onClick({ currentTarget: { focus(options: { preventScroll: boolean }) { focused = options.preventScroll } } })
+  tree = app.render()
+  assert.equal(find(tree, 'Dialog')[0].props.open, true)
+  const detail = find(tree, 'article')[0]
+  assert.equal(detail.props['aria-label'], '医生详情正文')
+  assert.ok(JSON.stringify(detail).includes('完整背景内容'))
+  assert.ok(JSON.stringify(detail).includes('完整模拟设定'))
+  assert.deepEqual(find(detail, 'a').map(node => node.props.href), ['https://example.com/source'])
+  find(tree, 'Dialog')[0].props.onOpenChange(false)
+  find(tree, 'DialogContent')[0].props.onCloseAutoFocus({ preventDefault() {} })
+  tree = app.render()
+  assert.equal(find(tree, 'Dialog')[0].props.open, false)
+  assert.equal(find(tree, 'Tabs')[0].props.value, 'doctors')
+  assert.equal(focused, true)
 })

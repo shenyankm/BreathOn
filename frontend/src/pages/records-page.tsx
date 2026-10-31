@@ -1,3 +1,4 @@
+import { doctorLabel } from '@/lib/doctor-label'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, ChevronRight, CircleHelp, FileText, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -66,7 +67,7 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
       <DialogContent fullscreen showCloseButton={false} className="inset-0 top-0 left-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:top-1/2 sm:left-1/2 sm:h-[88vh] sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl">
         <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3"><Button variant="ghost" className="h-11 shrink-0 px-2" aria-label="返回练习记录" onClick={()=>{setSelected(null);window.location.hash='records'}}><ArrowLeft />返回</Button><DialogTitle className="text-base font-semibold">演练复盘</DialogTitle></div>
-          <DialogDescription className="text-xs leading-6">{detail ? `${detail.free_context ? `${detail.free_context.drug.name} · ${detail.free_context.doctor.display_name} · 自由演练不评分 · ` : ''}${experienceLabel(detail.experience)} · ${dateLabel(detail.started_at)} · ${statusLabels[detail.status] ?? detail.status}` : '原话、AI 复盘与人工点评'}</DialogDescription>
+          <DialogDescription className="text-xs leading-6">{detail ? `${detail.free_context ? `${detail.free_context.drug.name} · ${doctorLabel(detail.free_context.doctor.display_name)} · 自由演练不评分 · ` : ''}${experienceLabel(detail.experience)} · ${dateLabel(detail.started_at)} · ${statusLabels[detail.status] ?? detail.status}` : '原话、AI 复盘与人工点评'}</DialogDescription>
         </DialogHeader>
         <Tabs value={detailTab} onValueChange={setDetailTab} className="min-h-0 flex-1 gap-0">
           <TabsList variant="line" className="mx-4 h-12 w-auto shrink-0 justify-start rounded-none border-b sm:mx-6"><TabsTrigger className="min-h-11 px-4" value="review">教练复盘</TabsTrigger><TabsTrigger className="min-h-11 px-4" value="transcript">对话原文{detail ? ` · ${detail.messages.length}` : ''}</TabsTrigger></TabsList>
@@ -84,7 +85,7 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
           <TabsContent value="transcript" forceMount className="m-0 min-h-0 flex-1 data-[state=inactive]:hidden">
             <ScrollArea className="h-full [&>[data-slot=scroll-area-viewport]>div]:block!">
               <div className="space-y-5 px-4 py-5 sm:px-6">
-                {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载对话…</p> : detail.messages.length===0 ? <p className="text-sm text-muted-foreground">本次未产生文字转录。</p> : detail.messages.map(message=><div key={message.id} className={`flex flex-col ${message.role==='trainee'?'items-end':'items-start'}`}><p className="mb-2 text-xs text-muted-foreground">{message.role==='doctor'?detail.doctor?.display_name??'医生（历史训练）':'我'}{!message.final&&' · 未完成转录'}</p><p className={`max-w-[92%] whitespace-pre-wrap break-words rounded-xl px-4 py-3 text-sm leading-7 sm:max-w-[85%] ${message.role==='trainee'?'bg-primary text-primary-foreground':'bg-muted'}`}>{message.text}</p></div>)}
+                {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载对话…</p> : detail.messages.length===0 ? <p className="text-sm text-muted-foreground">本次未产生文字转录。</p> : detail.messages.map(message=><div key={message.id} className={`flex flex-col ${message.role==='trainee'?'items-end':'items-start'}`}><p className="mb-2 text-xs text-muted-foreground">{message.role==='doctor'?doctorLabel(detail.doctor?.display_name??'医生'):'我'}{!message.final&&' · 未完成转录'}</p><p className={`max-w-[92%] whitespace-pre-wrap break-words rounded-xl px-4 py-3 text-sm leading-7 sm:max-w-[85%] ${message.role==='trainee'?'bg-primary text-primary-foreground':'bg-muted'}`}>{message.text}</p></div>)}
               </div>
             </ScrollArea>
           </TabsContent>

@@ -1,3 +1,4 @@
+import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -43,6 +44,7 @@ function component(file: string, name: string, api: Api) {
   }).outputText, {
     exports, AbortController, Error, URLSearchParams,
     require(module: string) {
+      if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (module === '@/lib/practice-images') return { drugImage: () => undefined, doctorIllustration: '/doctor-illustration.png' }
@@ -142,7 +144,7 @@ test('free practice starts with published drugs and enables matching doctors aft
   assert.equal(find(view, 'a').filter(node => /\/admin|#workspace|#settings/.test(node.props.href)).length, 0)
 })
 
-test('long drug and doctor labels remain available in the current free-pair summary after a stale preview arrives', async () => {
+test('selected cards retain full drug, brand, doctor and specialty labels after a stale preview arrives', async () => {
   const longDrugs = [
     { ...drugs[0], name: '测试药品名称甲——检验窄屏中完整通用名的可读性', brand: '测试长商品名甲' },
     { ...drugs[1], name: '测试药品名称乙——验证重新选择后仍能读取完整名称', brand: '测试长商品名乙' },
@@ -163,9 +165,7 @@ test('long drug and doctor labels remain available in the current free-pair summ
   let view = await app.flush()
   assert.ok(pending.length >= 2)
   function assertCurrentSummary() {
-    const summary = find(view, 'p').find(node => node.props['aria-label'] === '本次自由组合')
-    assert.ok(summary, 'the chosen pair has an accessible full-label summary')
-    const text = textOf(summary)
+    const text = find(view, 'SelectValue').map(textOf).join(' ')
     for (const label of [longDrugs[1].name, longDrugs[1].brand, longDoctors[1].name, longDoctors[1].specialty]) assert.ok(text.includes(label), label)
     for (const label of [longDrugs[0].name, longDoctors[0].name]) assert.ok(!text.includes(label), label)
   }
@@ -368,4 +368,21 @@ test('a doctor with no matching drug can be selected first and shows a recoverab
   assert.match(textOf(view), /该医生暂无科室对口的已发布药品/)
   assert.equal(app.readiness.at(-1), false)
   assert.ok(find(view, 'Button').some(node => textOf(node) === '清除选择'))
+})
+
+test('pair information follows selection and clearing without repeating the full pair', async () => {
+  const app = picker(async () => freeContext('drug-a', 'doctor-a'))
+  app.render(); let view = await app.flush()
+  const info = () => find(view, 'div').find(node => node.props['aria-label'] === '练习组合信息')!
+  assert.match(textOf(info()), /药品、医生均可先选/)
+  app.choose('练习药品', 'drug-a'); view = await app.flush()
+  assert.match(textOf(info()), /可选科室/)
+  app.choose('模拟医生', 'doctor-a'); view = await app.flush()
+  assert.match(textOf(info()), /科室已匹配/)
+  assert.doesNotMatch(textOf(info()), /请选择|均可先选/)
+  find(info(), 'Button').find(node => textOf(node) === '清除选择')!.props.onClick()
+  view = await app.flush()
+  assert.equal(app.value.drug_id, undefined)
+  assert.equal(app.value.doctor_id, undefined)
+  assert.match(textOf(info()), /药品、医生均可先选/)
 })

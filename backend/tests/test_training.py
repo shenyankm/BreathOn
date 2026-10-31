@@ -183,3 +183,16 @@ def test_applicability_review_can_only_remove_scores(training):
     assert approved['total']==valid['total']
     ambiguous=apply_applicability(copy.deepcopy(valid),{'dimensions':[{'key':'accuracy','admissible':True},{'key':'accuracy','admissible':True}]},{'accuracy'})
     assert ambiguous['total'] is None and ambiguous['applicability_review']=='incomplete'
+
+
+@pytest.mark.parametrize('configured', [False, True])
+def test_natural_doctor_rules_reach_realtime_and_text_prompts(training, configured):
+    from medvisit.voice.protocol import session_config
+    from medvisit.agents.doctor import DOCTOR_CONVERSATION, DOCTOR_VOICE
+    options = {'free_context': {'doctor': {'mood': 'friendly'}, 'drug': {'name': '测试药'}}} if configured else {}
+    prompt = doctor_instructions(**options)
+    realtime = session_config('test', 'test-voice', instructions=prompt)
+    assert DOCTOR_CONVERSATION in realtime['session']['instructions']
+    assert DOCTOR_VOICE in prompt
+    assert '不逼其猜诊疗标准' in prompt and '不强行追加问题' in prompt
+    assert DOCTOR_CONVERSATION in doctor_instructions(training, with_evidence=False)

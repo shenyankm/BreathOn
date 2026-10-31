@@ -324,3 +324,38 @@ test('malformed realtime messages end capture while preserving transcript and ne
   assert.equal(ws.readyState, 3)
   assert.equal(app.sockets.length, 1)
 })
+
+test('retry save preserves dialogue on failure and only acknowledges matching persisted record', async () => {
+  let attempts = 0
+  const app = session(async url => {
+    if (url.endsWith('/retry-save')) {
+      attempts++
+      return attempts === 1 ? Response.json({}, { status: 503 }) : Response.json({ saved: true, session_id: 'one' })
+    }
+    return Response.json({ asr_configured: true, analysis_configured: true, tts_configured: true })
+  })
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'one' })
+  ws.receive({ type: 'transcript', id: 'u1', role: 'trainee', text: '保留原话', final: true })
+  ws.receive({ type: 'ended', session_id: 'one', saved: false })
+  await app.render().retrySave()
+  assert.equal(app.render().saved, false)
+  assert.equal(app.render().messages[0].text, '保留原话')
+  await app.render().retrySave()
+  assert.equal(app.render().saved, true)
+  assert.equal(app.render().status, 'ended')
+  assert.equal(app.render().messages[0].text, '保留原话')
+})
+
+test('stop remains saving until server acknowledgement even without training context', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'one' })
+  app.render().stop()
+  assert.equal(app.render().saving, true)
+  ws.receive({ type: 'ended', session_id: 'one', saved: true })
+  assert.equal(app.render().saving, false)
+  assert.equal(app.render().saved, true)
+})
