@@ -33,17 +33,17 @@ function navigation(page: string, inSession = false) {
   return { tree, links: find(tree, 'a') }
 }
 
-test('bottom navigation has exactly three accessible icon-only entries', () => {
+test('bottom navigation has five accessible labeled prototype entries', () => {
   const { tree, links } = navigation('home')
-  assert.deepEqual(links.map(link => link.props.href), ['#practice', '#library', '#me'])
-  assert.deepEqual(links.map(link => link.props['aria-label']), ['练习', '资料库', '我的'])
-  assert.deepEqual(links.map(textOf), ['', '', ''])
+  assert.deepEqual(links.map(link => link.props.href), ['#home', '#doctors', '#training', '#practice', '#me'])
+  assert.deepEqual(links.map(link => link.props['aria-label']), ['首页', '医生', '训练', '教练', '我的'])
+  assert.deepEqual(links.map(textOf), ['首页', '医生', '训练', '教练', '我的'])
   assert.equal(find(tree, 'nav')[0].props['aria-label'], '主导航')
-  for (const icon of ['Play', 'BookOpen', 'UserRound']) assert.equal(find(tree, icon)[0].props['aria-hidden'], 'true')
+  for (const icon of ['House', 'Stethoscope', 'GraduationCap', 'Sparkles', 'UserRound']) assert.equal(find(tree, icon)[0].props['aria-hidden'], 'true')
 })
 
 test('nested pages keep their parent navigation entry selected', () => {
-  for (const [page, label] of Object.entries({ home: '练习', practice: '练习', library: '资料库', products: '资料库', me: '我的', records: '我的', visits: '我的' })) {
+  for (const [page, label] of Object.entries({ home: '首页', doctors: '医生', training: '训练', scenarios: '训练', practice: '教练', library: '训练', products: '训练', me: '我的', records: '我的', visits: '我的' })) {
     const selected = navigation(page).links.filter(link => link.props['aria-current'] === 'page')
     assert.equal(selected.length, 1)
     assert.equal(selected[0].props['aria-label'], label)
@@ -52,8 +52,8 @@ test('nested pages keep their parent navigation entry selected', () => {
 
 test('practice entry resumes an active session from any page', () => {
   for (const page of ['home', 'practice', 'library', 'products', 'me', 'records', 'visits']) {
-    assert.equal(navigation(page, true).links[0].props.href, '#start')
-    assert.equal(navigation(page).links[0].props.href, '#practice')
+    assert.equal(navigation(page, true).links[3].props.href, '#start')
+    assert.equal(navigation(page).links[3].props.href, '#practice')
   }
 })
 

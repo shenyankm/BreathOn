@@ -20,11 +20,14 @@ import { animatePageTransition } from '@/lib/page-transition'
 import { useVoiceSession } from '@/hooks/use-voice-session'
 import { useTrainingPreference } from '@/hooks/use-training-preference'
 import { PracticeHome } from '@/pages/practice-home'
+import { HomePage } from '@/pages/home-page'
+import { TrainingPage } from '@/pages/training-page'
 import { MePage } from '@/pages/me-page'
 import { api } from '@/lib/platform-api'
 import { PracticeStage } from '@/components/practice-stage'
 import { AppNavigation } from '@/components/app-navigation'
 import { presetFor, trainingPresets, type TrainingPreset } from '@/lib/training-setup'
+const ScenariosPage = lazy(() => import('@/pages/scenarios-page').then(module => ({ default: module.ScenariosPage })))
 const LibraryPage = lazy(() => import('@/pages/library-page').then(module => ({ default: module.LibraryPage })))
 const RecordsPage = lazy(() => import('@/pages/records-page').then(module => ({ default: module.RecordsPage })))
 const VisitsPage = lazy(() => import('@/pages/visits-page').then(module => ({ default: module.VisitsPage })))
@@ -41,7 +44,7 @@ type DoctorProfile = {
 
 function App({ onLogout, username }: { onLogout?: () => void; username?: string; role?: 'admin' | 'representative' }) {
   const voice = useVoiceSession()
-  const [page, setPage] = useState(() => ['home', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'home')
+  const [page, setPage] = useState(() => ['home', 'doctors', 'training', 'scenarios', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'home')
   const { preset: preferredPreset, selectPreset, storageError } = useTrainingPreference(username)
   const preferredSource = preferredPreset.experience
   const preferredMode = preferredPreset.mode
@@ -50,7 +53,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
   const pageScrollRef = useRef<HTMLDivElement>(null)
   const currentPage = useRef(page)
   const scrollPositions = useRef(new Map<string, number>())
-  const [openedLibraries, setOpenedLibraries] = useState(() => new Set(['library', 'products'].includes(page) ? [page] : []))
+  const [openedLibraries, setOpenedLibraries] = useState(() => new Set(['library', 'products', 'doctors'].includes(page) ? [page] : []))
 
   useLayoutEffect(() => {
     const viewport = pageScrollRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
@@ -63,12 +66,12 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
   useEffect(() => {
     function changePage() {
       const target = window.location.hash.slice(1).split('?')[0]
-      const nextPage = ['home', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(target) ? target : 'home'
+      const nextPage = ['home', 'doctors', 'training', 'scenarios', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(target) ? target : 'home'
       if (nextPage === currentPage.current) return
       const viewport = pageScrollRef.current?.querySelector('[data-slot="scroll-area-viewport"]')
       scrollPositions.current.set(currentPage.current, viewport?.scrollTop ?? 0)
       currentPage.current = nextPage
-      if (['library', 'products'].includes(nextPage)) setOpenedLibraries(previous => new Set([...previous, nextPage]))
+      if (['library', 'products', 'doctors'].includes(nextPage)) setOpenedLibraries(previous => new Set([...previous, nextPage]))
       setPage(nextPage)
     }
     window.addEventListener('hashchange', changePage)
@@ -216,15 +219,19 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
         </ScrollArea>
       </DialogContent></Dialog>{canRestart && <Button variant="outline" size="lg" className="rounded-full" onClick={openSetup}><RotateCcw />重新开始</Button>}{canRetrySave && <Button variant="outline" size="lg" className="rounded-full" disabled={voice.retryingSave} onClick={voice.retrySave}><RotateCcw />{voice.retryingSave ? '保存中…' : '重试保存'}</Button>}</div>
 
-  return <div className={`flex h-svh flex-col bg-background pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(4rem+env(safe-area-inset-bottom))]'}`}>
-    <AppNavigation page={page} inSession={inSession}/>
+  return <div className={`breathon-app flex h-svh flex-col pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5rem+env(safe-area-inset-bottom))]'}`}>
+    <AppNavigation page={page} inSession={inSession || unsaved}/>
     <ScrollArea ref={pageScrollRef} className="min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
     <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[960px] px-4 py-5 outline-none sm:px-6 sm:py-6">
       {storageError && <Alert className="mb-4"><Info /><AlertTitle>本机存储提示</AlertTitle><AlertDescription>{storageError}</AlertDescription></Alert>}
       {['visits', 'records'].includes(page) && <Button asChild variant="ghost" className="mb-4 px-2"><a href="#me"><ArrowLeft />返回我的</a></Button>}
+      {['library', 'products', 'scenarios'].includes(page) && <Button asChild variant="ghost" className="mb-4 px-2"><a href="#training"><ArrowLeft />返回训练</a></Button>}
+      {page === 'home' && <HomePage username={username} sessionStatus={voice.status === 'idle' ? '' : unsaved ? '对话尚未保存' : callStatus} seconds={seconds} />}
+      {page === 'training' && <TrainingPage />}
+      {page === 'scenarios' && <Suspense fallback={<LoadingBlock label="正在加载训练场景…" />}><ScenariosPage onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining(choice);window.location.hash='practice' }} /></Suspense>}
       {page === 'me' && <MePage username={username} onLogout={onLogout} logoutDisabled={inSession || unsaved}/>}
-      {(page === 'home' || page === 'practice' || page === 'start' && voice.status === 'idle' && !setup) && <PracticeHome initialChoice={nextTraining} initialPreset={preferredPreset} sessionState={voice.analysisStatus==='thinking'?'thinking':active?'active':connecting?'connecting':''} seconds={seconds} onStart={startPractice} onChoiceChange={setNextTraining} onPresetChange={selectPreset}/>}
-      {[...openedLibraries].map(libraryPage => <div key={libraryPage} hidden={page !== libraryPage}><Suspense fallback={<LoadingBlock label="正在加载学习资料…" />}><LibraryPage companyOnly={libraryPage === 'products'} onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining({scenario_id:'',stage:'full',...choice});window.location.hash='practice' }} /></Suspense></div>)}
+      {(page === 'practice' || page === 'start' && voice.status === 'idle' && !setup) && <PracticeHome initialChoice={nextTraining} initialPreset={preferredPreset} sessionState={voice.analysisStatus==='thinking'?'thinking':active?'active':connecting?'connecting':''} seconds={seconds} onStart={startPractice} onChoiceChange={setNextTraining} onPresetChange={selectPreset}/>}
+      {[...openedLibraries].map(libraryPage => <div key={libraryPage} hidden={page !== libraryPage}><Suspense fallback={<LoadingBlock label="正在加载学习资料…" />}><LibraryPage companyOnly={libraryPage === 'products'} doctorsOnly={libraryPage === 'doctors'} onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining({scenario_id:'',stage:'full',...choice});window.location.hash='practice' }} /></Suspense></div>)}
       {page === 'visits' && <Suspense fallback={<LoadingBlock label="正在加载拜访日记…" />}><VisitsPage key={username} account={username} /></Suspense>}
       {page === 'records' && <Suspense fallback={<LoadingBlock label="正在加载复盘记录…" />}><RecordsPage onStart={choice=>{if(inSession){window.location.hash='start';return}setNextTraining(choice);setTrainingReady(false);setNextMode(choice.mode??preferredMode);setNextSource(choice.experience??'practice');setSetup(true);window.location.hash='start'}} /></Suspense>}
       {voice.status !== 'idle' && <section hidden={page !== 'start'} className={page !== 'start' ? 'hidden' : undefined}>

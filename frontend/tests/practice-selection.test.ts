@@ -275,7 +275,7 @@ test('the home page preserves a restored free pair through the start callback', 
   assert.ok(!selection.props.autoSelect)
   selection.props.onReady(true)
   view = app.render(props)
-  const start = find(view, 'Button').find(node => textOf(node).includes('开始练习'))
+  const start = find(view, 'Button').find(node => textOf(node).includes('开始本轮对话'))
   assert.ok(start)
   assert.equal(start.props.disabled, false)
   start.props.onClick()

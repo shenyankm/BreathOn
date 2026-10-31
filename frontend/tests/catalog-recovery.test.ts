@@ -46,6 +46,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       get(key: string) { return this.values[key] ?? key }
     },
     require: (module: string) => {
+      if (module === '@/lib/practice-images') return { doctorIllustration: '/doctor.png' }
       if (module === '@/lib/app-drugs') return { isAppDrug }
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
@@ -576,4 +577,50 @@ test('library carries the viewed doctor into practice without losing the reading
   button.props.onClick()
   assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{ doctor_id: 'doctor-ji' }])
   assert.equal(find(app.render(props), 'Dialog')[0].props.open, false)
+})
+
+
+test('dedicated doctor page opens published doctors directly and carries the selected ID to practice', async () => {
+  const choices: unknown[] = [], calls: string[] = []
+  const props = { doctorsOnly: true, onPractice: (choice: unknown) => choices.push(choice) }
+  const app = page('library-page.tsx', 'LibraryPage', async path => {
+    calls.push(path)
+    return [{id:'real-id', status:'published', name:'测试医生', specialty:'全科', sources:[]}, {id:'draft', status:'draft', name:'未发布', sources:[]}]
+  })
+  app.render(props); await settle()
+  let tree = app.render(props)
+  assert.deepEqual(calls, ['/catalog/doctor'])
+  assert.equal(find(tree, 'Tabs')[0].props.value, 'doctors')
+  assert.equal(find(tree, 'TabsList')[0].props.hidden, true)
+  assert.equal(find(tree, 'Button').some(node => node.props['aria-label'] === '查看未发布的资料'), false)
+  find(tree, 'Button').find(node => node.props['aria-label'] === '查看测试医生的资料').props.onClick({currentTarget:{focus(){}}})
+  tree = app.render(props)
+  find(tree, 'Button').find(node => JSON.stringify(node.props.children).includes('用这个')).props.onClick()
+  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{doctor_id:'real-id'}])
+})
+
+test('clinical scenarios recover from load errors, hide drafts, search diseases and preserve real IDs', async () => {
+  let fail = true
+  const choices: unknown[] = []
+  const props = { onPractice: (choice: unknown) => choices.push(choice) }
+  const row = {id:'scenario-real', status:'published', title:'沟通训练', disease:'代谢', product:'产品', objective:'说明证据边界'}
+  const app = page('scenarios-page.tsx', 'ScenariosPage', async path => {
+    assert.equal(path, '/catalog/scenario')
+    if(fail) throw new Error('暂时离线')
+    return [row, {...row, id:'draft', status:'draft', title:'草稿'}]
+  })
+  app.render(props); await settle()
+  let tree = app.render(props)
+  assert.ok(JSON.stringify(tree).includes('无法加载训练场景'))
+  fail = false
+  find(tree,'Button').find(node => node.props.children === '重新加载').props.onClick()
+  app.render(props); await settle(); tree = app.render(props)
+  assert.equal(JSON.stringify(tree).includes('草稿'), false)
+  find(tree, 'Input')[0].props.onChange({target:{value:'没有匹配'}})
+  tree = app.render(props)
+  assert.ok(JSON.stringify(tree).includes('没有匹配的场景'))
+  find(tree, 'Input')[0].props.onChange({target:{value:'代谢'}})
+  tree = app.render(props)
+  find(tree,'Button').find(node => JSON.stringify(node.props.children).includes('选择此场景')).props.onClick()
+  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{scenario_id:'scenario-real',stage:'full'}])
 })

@@ -1,0 +1,41 @@
+/* Android-only theme: dialogs share the same tokens through the document root. */
+:root {
+  --background: #f7f7ed;
+  --foreground: #293d37;
+  --card: #fffefb;
+  --card-foreground: #293d37;
+  --popover: #fffefb;
+  --popover-foreground: #293d37;
+  --primary: #ad501f;
+  --primary-foreground: #fffefb;
+  --secondary: #e2eee5;
+  --secondary-foreground: #28594b;
+  --muted: #edf0e6;
+  --muted-foreground: #5c6b61;
+  --accent: #f8e8d6;
+  --accent-foreground: #8f411b;
+  --border: #d9dfd4;
+  --input: #8b9a8e;
+  --ring: #ad501f;
+  --radius: 1rem;
+  --level-blue: #e4edf9;
+  --level-blue-ink: #345f8a;
+  --level-purple: #eee7f9;
+  --level-purple-ink: #6b4c93;
+  --level-orange: #fbe6ce;
+  --level-orange-ink: #934518;
+  --level-green: #e1efda;
+  --level-green-ink: #3c6534;
+}
+.breathon-app { background: linear-gradient(155deg, #d3eee3 0%, #faf6e9 42%, #faf0ca 72%, #e0efdb 100%); }
+.breathon-app h1 { color: var(--primary); }
+.breathon-eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .14em; color: var(--muted-foreground); }
+.breathon-hero { background: linear-gradient(125deg, #d3ecdf, #f6efcb 70%, #f9dfc2); border: 1px solid #fff9; border-radius: 1.75rem; padding: 1.5rem; }
+.breathon-orb { width: 6rem; height: 6rem; border-radius: 50%; margin: 0 auto 1rem; background: radial-gradient(circle at 30% 25%, #fff4ba, #f6b3a4 30%, #b5e5d6 58%, #a8cce7 78%, #c1b4e4); box-shadow: inset 0 0 20px #fff8, 0 12px 28px #6d9b8520; }
+.breathon-level { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 3rem; height: 3rem; border-radius: 1rem; font-weight: 700; }
+.breathon-level[data-level="L1"] { background: var(--level-blue); color: var(--level-blue-ink); }
+.breathon-level[data-level="L2"] { background: var(--level-purple); color: var(--level-purple-ink); }
+.breathon-level[data-level="L3"] { background: var(--level-orange); color: var(--level-orange-ink); }
+.breathon-level[data-level="L4"] { background: var(--level-green); color: var(--level-green-ink); }
+.breathon-app [data-slot="card"] { box-shadow: 0 5px 24px #3c594007; }
+.breathon-app a, .breathon-app button { -webkit-tap-highlight-color: transparent; }
