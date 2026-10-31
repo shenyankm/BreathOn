@@ -128,6 +128,21 @@ GitHub Actions 的工件 `BreathOn-android-arm64-debug-<commit>` 中只上传可
 
 ## 发布与验证边界
 
-正式构建使用 `npm run android:build -- --apk` 或 `--aab`，按所需 ABI 添加 `--target`。APK 和 AAB 分别位于 Android 工程的 `app/build/outputs/apk/` 与 `app/build/outputs/bundle/`。按 [Tauri Android 签名说明](https://v2.tauri.app/distribute/sign/android/) 配置自己的签名密钥、`gen/android/keystore.properties` 和 Gradle `signingConfig`；升级保持应用标识与签名一致，并提高版本号。密钥、密码和 `keystore.properties` 不得提交。
+正式构建使用独立的 release 签名，应用标识为 `cloud.openwook.medvisit`，可与 `.debug` 预览版共存。Gradle 从被 Git 忽略的 `frontend/src-tauri/gen/android/keystore.properties` 读取签名信息，字段与 [Tauri Android 签名说明](https://v2.tauri.app/distribute/sign/android/) 一致：
+
+```properties
+storeFile=/absolute/private/path/breathon-release.keystore
+keyAlias=breathon-release
+password=<keystore-and-key-password>
+```
+
+密钥与密码文件应限制为本人可读，并在仓库外安全备份；`keystore.properties` 可链接到私有目录中的配置。缺少签名配置时 release 构建会失败，debug 构建不需要正式密钥。后续升级必须保留应用标识和签名，并同步提高 `tauri.conf.json`、`Cargo.toml` 及 `Cargo.lock` 中的应用版本。
+
+```sh
+# 前端目录；ARM64 正式签名 APK，默认连接线上 HTTPS 服务。
+npm run android:build -- --apk --target aarch64 --ci -- --locked
+```
+
+APK 和 AAB 分别位于 Android 工程的 `app/build/outputs/apk/` 与 `app/build/outputs/bundle/`。发布前使用 Android SDK 的 `apksigner verify --verbose --print-certs` 校验签名，并核对应用标识、版本、非 debuggable 状态和 HTTPS 服务地址；GitHub Release 附 APK 与 SHA-256 校验文件。密钥、密码和 `keystore.properties` 不得提交或加入安装包。
 
 APK 构建不会部署远程后端或 Web 管理页面。AVD 安装和界面验收也不能代替真实麦克风、扬声器、蓝牙耳机、权限拒绝后的恢复与实际弱网验收。前端基础检查为 `npm test`、`npm run lint`、`npm run build`、`npm run build:android`；CI 另外执行上面的原生 APK 编译，安装与设备验收仍需单独进行。
