@@ -3,6 +3,7 @@ type: "source"
 title: "匹妥布替尼片 说明书（PDF）"
 sources: ["raw/sources/label-pirtobrutinib/58bfcb96b6bcce5db5e5d4018d33aac644435763d7c676fbd6aec33af06bcb3d.pdf"]
 sha256: "58bfcb96b6bcce5db5e5d4018d33aac644435763d7c676fbd6aec33af06bcb3d"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/product/pirtobrutinib.pdf
 
-抓取：2026-10-30T12:43:17.436987+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:43:17.436987+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/pirtobrutinib|匹妥布替尼片]]
 
 ## 原文第 1 页 / 段
 

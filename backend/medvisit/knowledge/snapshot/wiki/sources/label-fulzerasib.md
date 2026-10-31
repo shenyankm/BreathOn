@@ -3,6 +3,7 @@ type: "source"
 title: "氟泽雷塞片 说明书（PDF）"
 sources: ["raw/sources/label-fulzerasib/e836d0905d747c628f4e7321306cf1d3f7124a086dd9cb1cc2d859fcb7cb8905.pdf"]
 sha256: "e836d0905d747c628f4e7321306cf1d3f7124a086dd9cb1cc2d859fcb7cb8905"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/fzlsp.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/fulzerasib|氟泽雷塞片]]
 
 ## 原文第 1 页 / 段
 

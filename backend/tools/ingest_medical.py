@@ -61,17 +61,14 @@ def parse_pdf(raw):
     return json.loads(result.stdout)
 
 
-def markdown(frontmatter, body):
-    # JSON scalar/list literals are also valid YAML; no new YAML dependency.
-    return '---\n'+'\n'.join(f'{key}: {json.dumps(value,ensure_ascii=False)}' for key,value in frontmatter.items())+'\n---\n\n'+'\n'.join(line.rstrip() for line in body.splitlines()).rstrip()+'\n'
-
-
 async def compile_wiki(root, refresh=False, ocr_command=None):
     root=Path(root)
     products=json.loads(PRODUCTS.read_text())
     previous={}
+    previous_data={}
     if (root/'corpus.json').exists():
-        previous={s['id']:s for s in json.loads((root/'corpus.json').read_text())['sources']}
+        previous_data=json.loads((root/'corpus.json').read_text())
+        previous={s['id']:s for s in previous_data['sources']}
         for source in previous.values():
             history=root/'versions'/source['id']/f'{source["sha256"]}.json'
             if not history.exists(): write_private(history,json.dumps(source,ensure_ascii=False).encode())
@@ -201,24 +198,22 @@ async def compile_wiki(root, refresh=False, ocr_command=None):
     data={'format':1,'built_at':checked,'products':products,'sources':sources,'errors':errors,
         'catalogue_source':'https://www.innoventbio.com/#/product/products',
         'catalogue_checked_at':'2026-10-29','review_status':'automated_import_pending_medical_review'}
+    # The company catalogue refresh must not erase separately curated competitor originals.
+    competitors=[p for p in previous_data.get('products',[]) if p.get('ownership')=='competitor']
+    peer_ids={p['id'] for p in competitors}
+    data['products'].extend(competitors)
+    data['sources'].extend(s for s in previous.values() if peer_ids & set(s['product_ids'])
+                          and s['id'] not in {item['id'] for item in sources})
+    data['compiled']={}
+    for product in data['products']:
+        pid=product['id']
+        before={s['id']:s for s in previous.values() if pid in s['product_ids']}
+        after={s['id']:s for s in data['sources'] if pid in s['product_ids']}
+        if before == after and pid in previous_data.get('compiled',{}):
+            data['compiled'][pid]=previous_data['compiled'][pid]
     write_private(root/'corpus.json',json.dumps(data,ensure_ascii=False).encode())
-    write_private(root/'purpose.md','# BreathOn 医学依据\n\n用于医药代表训练的逐句自动核验；未经人工医学审核，不用于患者诊疗。\n'.encode())
-    write_private(root/'schema.md','# 知识规则\n\nwiki/entities 为产品，wiki/sources 为来源阅读副本。sources 指向不可变 raw/sources 原件。说明书、临床研究、指南和医保分别保留；不能相互替代。\n'.encode())
-    for source in sources:
-        body=f'# {source["title"]}\n\n来源：{source["url"]}\n\n抓取：{source["retrieved_at"]}；版本：{source.get("published_at") or "未确认"}；文档范围：{source["quality"]}\n\n自动归档，待医学审核。\n\n'
-        body+='\n\n'.join(f'## 原文第 {page["number"]} 页 / 段\n\n{page["text"]}' for page in source['pages'])
-        write_private(root/'wiki/sources'/f'{source["id"]}.md',markdown({'type':'source','title':source['title'],
-            'sources':[source['original_path']],'sha256':source['sha256'],'review_status':'pending'},body).encode())
-    for product in products:
-        related=[s for s in sources if product['id'] in s['product_ids']]
-        body=f'# {product["brand"]} / {product["name"]}\n\n'+'\n'.join(f'- [[sources/{s["id"]}|{s["title"]}]]' for s in related)
-        body+='\n\n## 尚待补齐\n\n'+'\n'.join('- '+gap for gap in product['gaps'])
-        write_private(root/'wiki/entities'/f'{product["id"]}.md',markdown({'type':'entity','title':product['name'],
-            'sources':[s['original_path'] for s in related]},body).encode())
-    write_private(root/'wiki/index.md',('# BreathOn 医学依据\n\n'+'\n'.join(f'- [[entities/{p["id"]}|{p["brand"]} / {p["name"]}]]' for p in products)).encode())
-    log=root/'wiki/log.md'
-    previous_log=log.read_text() if log.exists() else '# 导入日志\n'
-    write_private(log,(previous_log+f'\n## [{checked}] ingest | 官方产品与依据\n\n{len(products)} 个产品、{len(sources)} 份可读取原文、{len(errors)} 项待处理。未经人工医学审核。\n').encode())
+    from medvisit.knowledge.wiki import render_wiki
+    render_wiki(root,data,'ingest')
     print(json.dumps({'products':len(products),'sources':len(sources),'errors':len(errors),'root':str(root)},ensure_ascii=False))
 
 
@@ -238,7 +233,10 @@ if __name__=='__main__':
         if len(raw)>100_000_000: raise ValueError('PDF is too large')
         with apply_configuration(maximum_declared_stream_length=32_000_000,zlib_maximum_output_length=64_000_000):
             reader=PdfReader(BytesIO(raw),strict=False)
-            if reader.is_encrypted or not 1<=len(reader.pages)<=500: raise ValueError('PDF page limit')
+            # Public labels may restrict editing while allowing reading with an empty password.
+            if reader.is_encrypted and not reader.decrypt(''):
+                raise ValueError('PDF requires a password')
+            if not 1<=len(reader.pages)<=500: raise ValueError('PDF page limit')
             pages=[]
             for number,page in enumerate(reader.pages,1):
                 text=page.extract_text() or ''

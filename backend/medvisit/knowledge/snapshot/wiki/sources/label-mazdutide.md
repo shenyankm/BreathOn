@@ -3,6 +3,7 @@ type: "source"
 title: "玛仕度肽注射液 说明书（PDF）"
 sources: ["raw/sources/label-mazdutide/c62ec5213d377cb6ebef6f6f800039ffe322ed17d7ba983b68b458c6e7fee451.pdf"]
 sha256: "c62ec5213d377cb6ebef6f6f800039ffe322ed17d7ba983b68b458c6e7fee451"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/product/S5LGV8EM_SMS_24mg.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：version_uncertain
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：version_uncertain；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/mazdutide|玛仕度肽注射液]]
 
 ## 原文第 1 页 / 段
 

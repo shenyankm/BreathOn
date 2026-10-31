@@ -3,6 +3,7 @@ type: "source"
 title: "替妥尤单抗N01注射液 说明书（图片）"
 sources: ["raw/sources/label-teprotumumab/dca25caf8865cc5e2aba19ad42a4927e9763f56b34a7cd66ad3125afd42aaa91.jpg"]
 sha256: "dca25caf8865cc5e2aba19ad42a4927e9763f56b34a7cd66ad3125afd42aaa91"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/25.03/teprotumumabN01.jpg
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/teprotumumab|替妥尤单抗N01注射液]]
 
 ## 原文第 1 页 / 段
 

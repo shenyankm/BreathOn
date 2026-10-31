@@ -3,6 +3,7 @@ type: "source"
 title: "阿达木单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-adalimumab/d387c4dd8269da75567e4c50a2b52586c6ae55eaf0585042ab0c32fdd028bbe5.pdf"]
 sha256: "d387c4dd8269da75567e4c50a2b52586c6ae55eaf0585042ab0c32fdd028bbe5"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/adm3.22.pdf
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/adalimumab|阿达木单抗注射液]]
 
 ## 原文第 1 页 / 段
 

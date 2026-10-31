@@ -3,6 +3,7 @@ type: "source"
 title: "佩米替尼片 说明书（PDF）"
 sources: ["raw/sources/label-pemigatinib/5872851604d6436c38a2aa58e7aeb0fdb47591a7e49e3698604b1cf51d198b83.pdf"]
 sha256: "5872851604d6436c38a2aa58e7aeb0fdb47591a7e49e3698604b1cf51d198b83"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/pmtn3.22.pdf
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/pemigatinib|佩米替尼片]]
 
 ## 原文第 1 页 / 段
 

@@ -76,3 +76,26 @@ async def test_final_free_review_forwards_the_saved_choice_without_enabling_trai
     assert model.await_args.kwargs['training'] is None
     assert model.await_args.kwargs['speak'] is False
     assert result['final_report'] and 'assessment' not in result
+
+
+async def test_reference_originals_reach_coach_only_and_keep_transcript_separate(tmp_path):
+    seen=[]
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200,json={'choices':[{'message':{'role':'assistant','content':json.dumps(REPLY)},'finish_reason':'stop','index':0}]})
+    reference={'version':'test','evidence':[{'text':'Synthetic approved original, not a learner statement.','source':{'jurisdiction':'US'}}],'gaps':[]}
+    client=httpx.AsyncClient
+    with patch('openai.AsyncClient',lambda **kw:AsyncClient(http_client=client(transport=httpx.MockTransport(handler)),**kw)):
+        await generate_reply(settings(tmp_path),[{'role':'trainee','text':'我需要核对原文。','final':True}],
+                             free_context=FREE_CONTEXT,reference_context=reference)
+    assert len(seen)==2
+    for payload in seen:
+        prompt=payload['messages'][0]['content'][0]['text']
+        record=json.loads(payload['messages'][-1]['content'][0]['text'])
+        assert record['transcript'][0]['text']=='我需要核对原文。'
+        if '本次只扮演医生，不做教练分析' in prompt:
+            assert 'reference_context' not in record
+        else:
+            assert record['reference_context']==reference
+            assert '国外说明书不能证明中国批准' in prompt
+            assert '没有提供任何已审核的研究原文' not in prompt

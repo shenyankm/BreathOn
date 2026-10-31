@@ -10,7 +10,7 @@ from psycopg import Error as DatabaseError
 from websockets.exceptions import ConnectionClosed, InvalidStatus
 
 from ..agents.coach import OPENING, generate_reply
-from ..knowledge.live import checked_snapshot, validate_snapshot
+from ..knowledge.live import checked_snapshot, validate_snapshot, coaching_snapshot, validate_coaching_snapshot
 from ..voice.protocol import BridgeError
 from ..voice.speech import SpeechEvidence
 from ..voice.tts import synthesize
@@ -242,10 +242,14 @@ class PracticeDialogue:
                 options['free_context'] = self.record.data['free_context']
             if self.record.data.get('medical_checks'):
                 options['medical_checks'] = checks
+            reference = await coaching_snapshot(self.record)
+            if reference is not None:
+                options['reference_context'] = reference
             result, usage = await generate_reply(self.settings, history, speak=not self.combat, interactions=list(self.record.data["interaction_events"]), **options)
             if usage:
                 self.record.data["usage"].append({"provider": "deepseek", **usage})
             await validate_snapshot(self.record, checks)
+            await validate_coaching_snapshot(self.record, reference)
             if self.record.validate_training:
                 try:
                     await asyncio.to_thread(self.record.validate_training)
@@ -265,6 +269,8 @@ class PracticeDialogue:
         if not self.combat:
             self.record.transcript(item_id, "doctor", result["doctor_reply"], final=True)
         coaching = {"based_on": based_on, "doctor_id": item_id, **result["coach"]}
+        if reference is not None:
+            coaching["reference_context"] = reference
         if self.combat:
             coaching["incomplete"] = self.record.data.get("capture_status") != "completed" or sum(len(m["text"]) for m in history) > 64000 or any(len(m["text"]) > 4000 for m in history)
         self.record.data["coaching"].append(coaching)

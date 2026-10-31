@@ -3,6 +3,7 @@ type: "source"
 title: "ELN 成人 AML 诊疗建议（2022，早于 QuANTUM-First 正式发表）"
 sources: ["raw/sources/eln-aml-2022/578bbdc386168f194f1952369f3106f784dce919f12c11dc84bdb61d59f7af5d.pdf"]
 sha256: "578bbdc386168f194f1952369f3106f784dce919f12c11dc84bdb61d59f7af5d"
+jurisdiction: "International"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://ddd.uab.cat/pub/artpub/2022/280875/280875.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：2022；文档范围：original
+地区：International；修订/发表：2022；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/quizartinib|盐酸奎扎替尼片]]
 
 ## 原文第 1 页 / 段
 

@@ -1,3 +1,4 @@
+import { isAppDrug } from '../src/lib/app-drugs.ts'
 import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -44,6 +45,7 @@ function component(file: string, name: string, api: Api) {
   }).outputText, {
     exports, AbortController, Error, URLSearchParams,
     require(module: string) {
+      if (module === '@/lib/app-drugs') return { isAppDrug }
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
@@ -74,8 +76,8 @@ function textOf(node: any): string {
 const settle = () => new Promise<void>(resolve => setImmediate(resolve))
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value))
 const drugs = [
-  { id: 'drug-a', version: 1, status: 'published', name: '药品 A', brand: '品牌 A', practice_departments: ['内分泌科', '心内科'] },
-  { id: 'drug-b', version: 2, status: 'published', name: '药品 B', brand: '品牌 B', practice_departments: ['内分泌科', '心内科'] },
+  { id: 'drug-a', version: 1, status: 'published', name: '玛仕度肽', brand: '品牌 A', practice_departments: ['内分泌科', '心内科'] },
+  { id: 'drug-b', version: 2, status: 'published', name: '玛仕度肽注射液', brand: '品牌 B', practice_departments: ['内分泌科', '心内科'] },
   { id: 'draft-drug', version: 1, status: 'draft', name: '草稿药品', brand: '' },
 ]
 const doctors = [
@@ -146,8 +148,8 @@ test('free practice starts with published drugs and enables matching doctors aft
 
 test('selected cards retain full drug, brand, doctor and specialty labels after a stale preview arrives', async () => {
   const longDrugs = [
-    { ...drugs[0], name: '测试药品名称甲——检验窄屏中完整通用名的可读性', brand: '测试长商品名甲' },
-    { ...drugs[1], name: '测试药品名称乙——验证重新选择后仍能读取完整名称', brand: '测试长商品名乙' },
+    { ...drugs[0], brand: '测试长商品名甲' },
+    { ...drugs[1], brand: '测试长商品名乙' },
   ]
   const longDoctors = [
     { ...doctors[0], name: '某医学中心门诊模拟医生甲（长角色名称）', specialty: '内分泌与代谢病学专科甲' },
@@ -167,7 +169,7 @@ test('selected cards retain full drug, brand, doctor and specialty labels after 
   function assertCurrentSummary() {
     const text = find(view, 'SelectValue').map(textOf).join(' ')
     for (const label of [longDrugs[1].name, longDrugs[1].brand, longDoctors[1].name, longDoctors[1].specialty]) assert.ok(text.includes(label), label)
-    for (const label of [longDrugs[0].name, longDoctors[0].name]) assert.ok(!text.includes(label), label)
+    for (const label of [longDrugs[0].brand, longDoctors[0].name]) assert.ok(!text.includes(label), label)
   }
   assertCurrentSummary()
   pending.at(-1)!({ drug: longDrugs[1], doctor: longDoctors[1] })
@@ -385,4 +387,17 @@ test('pair information follows selection and clearing without repeating the full
   assert.equal(app.value.drug_id, undefined)
   assert.equal(app.value.doctor_id, undefined)
   assert.match(textOf(info()), /药品、医生均可先选/)
+})
+
+test('App limits drugs to mazdutide while keeping multiple doctors and rejecting stale selections', async () => {
+  const other = { ...drugs[0], id: 'other', name: '阿达木单抗注射液' }
+  const app = picker(undefined, { scenario_id: '', stage: 'full', drug_id: 'other', doctor_id: 'doctor-a' }, { drugs: [drugs[0], other], doctors, scenes })
+  app.render()
+  const view = await app.flush()
+  const options = find(view, 'SelectItem').filter(node => !node.props.disabled).map(node => node.props.value)
+  assert.ok(options.includes('drug-a'))
+  assert.ok(!options.includes('other'))
+  assert.ok(options.includes('doctor-a') && options.includes('doctor-b'))
+  assert.equal(app.readiness.at(-1), false)
+  assert.ok(!app.calls.some(path => path.startsWith('/practice/preview')))
 })

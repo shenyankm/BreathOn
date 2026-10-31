@@ -105,3 +105,21 @@ class LiveMedicalChecks:
                     row.update(status='unavailable',reason='结束时本句核验尚未完成，需进一步核实。',statements=[])
             if hasattr(self.verifier, 'invalidate_revoked'):
                 await self.verifier.invalidate_revoked(list(self.rows.values()))
+
+
+async def coaching_snapshot(record):
+    verifier = getattr(getattr(record, 'medical_checks', None), 'verifier', None)
+    corpus = getattr(verifier, 'corpus', None)
+    free = record.data.get('free_context')
+    if not corpus or not free:
+        return None
+    text = '\n'.join(m['text'] for m in record.data['messages'][-4:])
+    return await asyncio.to_thread(corpus.coaching_context, free['drug'], text)
+
+
+async def validate_coaching_snapshot(record, snapshot):
+    if snapshot is None:
+        return
+    corpus = record.medical_checks.verifier.corpus
+    if not await asyncio.to_thread(corpus.validate_coaching_context, snapshot):
+        raise BridgeError('training_material_changed', '教练参考资料或医学审核已变更，请重新生成。')

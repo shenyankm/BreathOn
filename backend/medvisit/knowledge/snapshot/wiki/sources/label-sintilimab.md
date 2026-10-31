@@ -3,6 +3,7 @@ type: "source"
 title: "信迪利单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-sintilimab/478001b4e0e17ce15f5ec5b77fa3de3dcce1fc622319c1cc20d0d335583fab65.pdf"]
 sha256: "478001b4e0e17ce15f5ec5b77fa3de3dcce1fc622319c1cc20d0d335583fab65"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/PackageInsert/sintilimab.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/sintilimab|信迪利单抗注射液]]
 
 ## 原文第 1 页 / 段
 

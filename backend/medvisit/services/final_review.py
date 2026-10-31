@@ -3,7 +3,7 @@ import asyncio
 from fastapi import HTTPException
 from ..agents.coach import generate_reply
 from ..voice.protocol import BridgeError
-from ..knowledge.live import checked_snapshot, validate_snapshot
+from ..knowledge.live import checked_snapshot, validate_snapshot, coaching_snapshot, validate_coaching_snapshot
 
 
 async def review_training(settings, record):
@@ -21,17 +21,23 @@ async def review_training(settings, record):
         options = {'medical_checks':checks} if checks else {}
         if record.data.get('free_context'):
             options['free_context'] = record.data['free_context']
+        reference = await coaching_snapshot(record)
+        if reference is not None:
+            options['reference_context'] = reference
         reply,usage=await generate_reply(settings,history,speak=False,training=record.training,
                                         interactions=record.data['interaction_events'],**options)
         if usage:
             record.data['usage'].append({'provider':'deepseek',**usage})
         await validate_snapshot(record, checks)
+        await validate_coaching_snapshot(record, reference)
         if record.validate_training:
             await asyncio.to_thread(record.validate_training)
     except HTTPException as exc:
         raise BridgeError('training_material_changed',exc.detail) from exc
     incomplete=record.data.get('capture_status')!='completed' or any(not m.get('final') or len(m['text'])>4000 for m in history) or sum(len(m['text']) for m in history)>64000
     coach={**reply['coach'],'based_on':latest['id'],'doctor_id':'','final_report':True,'incomplete':incomplete}
+    if reference is not None:
+        coach['reference_context'] = reference
     if incomplete and coach.get('assessment'):
         coach['assessment'].update(total=None,status='partial')
     record.data.setdefault('coaching',[]).append(coach)

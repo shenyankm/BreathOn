@@ -1,3 +1,4 @@
+import { isAppDrug } from '../src/lib/app-drugs.ts'
 import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -45,6 +46,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       get(key: string) { return this.values[key] ?? key }
     },
     require: (module: string) => {
+      if (module === '@/lib/app-drugs') return { isAppDrug }
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
@@ -495,13 +497,13 @@ test('opening a newly confirmed candidate adds it to the doctor list', async () 
 })
 
 test('company products only shows published company products', async () => {
-  const drug = { id: 'company', status: 'published', name: '本公司产品', brand: '', aliases: [], ownership: 'company', category: '', diseases: [], mechanism: '', dosage_form: '', regions: [], indications: [], overview: '', source_url: '', company: '', manufacturer: '' }
+  const drug = { id: 'company', status: 'published', name: '玛仕度肽注射液', brand: '', aliases: [], ownership: 'company', category: '', diseases: [], mechanism: '', dosage_form: '', regions: [], indications: [], overview: '', source_url: '', company: '', manufacturer: '' }
   const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/drug' ? [drug, { ...drug, id: 'competitor', ownership: 'competitor', name: '竞品名称' }, { ...drug, id: 'draft', status: 'draft', name: '未发布名称' }] : [])
   app.render({ companyOnly: true })
   await settle()
   const view = app.render({ companyOnly: true })
   const cards = JSON.stringify(find(view, 'Card'))
-  assert.ok(cards.includes('本公司产品'))
+  assert.ok(cards.includes('玛仕度肽注射液'))
   assert.ok(!cards.includes('竞品名称'))
   assert.ok(!cards.includes('未发布名称'))
 })

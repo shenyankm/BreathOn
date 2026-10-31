@@ -3,6 +3,7 @@ type: "source"
 title: "托莱西单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-tafolecimab/5dfe8dbb3330ae6e20e622d992eae48a116c6224e2962db50e045cceb10a113a.pdf"]
 sha256: "5dfe8dbb3330ae6e20e622d992eae48a116c6224e2962db50e045cceb10a113a"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/tlx3.22.pdf
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/tafolecimab|托莱西单抗注射液]]
 
 ## 原文第 1 页 / 段
 

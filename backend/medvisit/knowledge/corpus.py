@@ -207,6 +207,39 @@ class MedicalCorpus:
                 break
         return found
 
+    def coaching_context(self, drug, text):
+        """Bounded approved excerpts; catalogue relations never grant medical approval."""
+        data = self.load()
+        approvals = self.approval_snapshot(data)
+        names = {compact(drug.get(k, '')) for k in ('id', 'name', 'brand')} - {''}
+        selected = [p for p in data['products'] if names & {compact(v) for v in
+                    (p['id'], p['name'], p['brand'], *p.get('aliases', [])) if v}]
+        ids = {p['id'] for p in selected}
+        peers = [p for p in data['products'] if ids & set(p.get('compares_with', []))]
+        query = compact(text)
+        peers.sort(key=lambda p: (
+            not any(compact(v) in query for v in (p['brand'], p['name'], *p.get('aliases', [])) if v),
+            p.get('jurisdiction') != 'CN'))
+        # Only the selected product and explicit curated peers; never all catalogue products.
+        evidence = []; gaps = []
+        for product in (selected + peers)[:4]:
+            rows = self.search(text + ' ' + product['brand'], limit=8, data=data, approvals=approvals)
+            rows = [r for r in rows if product['id'] in r['source']['product_ids']
+                    and r['source']['quality'] == 'original'][:2]
+            evidence.extend(rows)
+            if not rows:
+                gaps.append({'product': product['name'], 'reason': '缺少当前有效审核的相关原文，不能作医学比较。'})
+        return {'version':data['version'], 'evidence':evidence, 'gaps':gaps}
+
+    def validate_coaching_context(self, context):
+        data = self.load()
+        if data['version'] != context['version']:
+            return False
+        approvals = self.approval_snapshot(data)
+        return all(approvals.get((row['source_id'], row['page'])) == {
+            k:row[k] for k in ('document_id', 'document_version', 'version_label', 'document_sha256')
+        } for row in context['evidence'])
+
     def source(self, source_id, version=None):
         if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,120}',source_id):
             return None
@@ -255,6 +288,8 @@ class MedicalCorpus:
                     if len(valid)!=len(compiled['facts']): errors.append(product['id']+': 编译引用失效')
                 except (ValueError,TypeError,KeyError):
                     errors.append(product['id']+': 编译条目无效')
+        from .wiki import lint_wiki
+        errors.extend(lint_wiki(self.wiki_root()))
         return {'version':data['version'],'ok':not errors and bool(data['sources']),
             'sources':len(known),'verified_originals':verified,'originals_not_local':missing,
             'verified_fact_quotes':facts,'errors':errors,

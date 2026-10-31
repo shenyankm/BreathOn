@@ -3,6 +3,7 @@ type: "source"
 title: "奥雷巴替尼片 说明书（PDF）"
 sources: ["raw/sources/label-olverembatinib/3b8665fe685b08f7cf65258aeef3502e7f3fd1aacfb9e4917d822c28dda13d46.pdf"]
 sha256: "3b8665fe685b08f7cf65258aeef3502e7f3fd1aacfb9e4917d822c28dda13d46"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/5c89f09e539a25191.pdf
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/olverembatinib|奥雷巴替尼片]]
 
 ## 原文第 1 页 / 段
 

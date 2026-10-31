@@ -1,3 +1,4 @@
+import { isAppDrug } from '@/lib/app-drugs'
 import { doctorLabel } from '@/lib/doctor-label'
 import { memo, useEffect, useRef, useState } from 'react'
 import { AlertCircle, ArrowLeft, BookOpen, ChevronRight, ExternalLink, Hospital, Info, RotateCcw, Search } from 'lucide-react'
@@ -54,7 +55,7 @@ export const LibraryPage = memo(function LibraryPage({ companyOnly = false }: { 
       })
     }
     // Admins can see drafts through the catalog API; the representative library never displays them.
-    if ((companyOnly || category === 'drugs') && drugs.loading) load<Drug>('/catalog/drug', setDrugs, row => row.status === 'published')
+    if ((companyOnly || category === 'drugs') && drugs.loading) load<Drug>('/catalog/drug', setDrugs, isAppDrug)
     if (category === 'doctors' && doctors.loading) load<Doctor>('/catalog/doctor', setDoctors, row => row.status === 'published')
     return () => controller.abort()
   }, [category, companyOnly, retry, drugs.loading, doctors.loading])

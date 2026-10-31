@@ -1,3 +1,4 @@
+import { isAppDrug } from '../src/lib/app-drugs.ts'
 import { doctorLabel } from '../src/lib/doctor-label.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -53,6 +54,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
     document,
     window: { setInterval(callback: () => void) { interval = callback; return 1 }, clearInterval() { interval = undefined }, location, history: { replaceState(_state: unknown, _title: string, path: string) { location.hash = path } }, addEventListener(name: string, listener: () => void) { listeners[name] = listener }, removeEventListener() {} },
     require(name: string) {
+      if (name === '@/lib/app-drugs') return { isAppDrug }
       if (name === '@/lib/doctor-label') return { doctorLabel }
       if (name === 'react') return {
         useState(initial: any) {

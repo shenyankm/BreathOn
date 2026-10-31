@@ -3,6 +3,7 @@ type: "source"
 title: "利妥昔单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-rituximab/e8a0e5a1ae6d32e9d49b3f7e6fe28b3243e93e874bb15e45fc277bfcbad995ac.pdf"]
 sha256: "e8a0e5a1ae6d32e9d49b3f7e6fe28b3243e93e874bb15e45fc277bfcbad995ac"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/product/HALPRYZAInstructions.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/rituximab|利妥昔单抗注射液]]
 
 ## 原文第 1 页 / 段
 

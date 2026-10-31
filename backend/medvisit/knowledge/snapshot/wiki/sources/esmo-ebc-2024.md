@@ -3,6 +3,7 @@ type: "source"
 title: "Pan-Asian ESMO 早期乳腺癌指南（2024）"
 sources: ["raw/sources/esmo-ebc-2024/cb8ea7fdfec5f307b44386f4ed5edf60723c9870f994afabc22d9792e4b511ec.html"]
 sha256: "cb8ea7fdfec5f307b44386f4ed5edf60723c9870f994afabc22d9792e4b511ec"
+jurisdiction: "Asia"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://pmc.ncbi.nlm.nih.gov/articles/PMC11145753/
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：2024；文档范围：original
+地区：Asia；修订/发表：2024；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/abemaciclib|阿贝西利片]]
 
 ## 原文第 1 页 / 段
 

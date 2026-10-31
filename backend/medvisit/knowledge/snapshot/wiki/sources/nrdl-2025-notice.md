@@ -3,6 +3,7 @@ type: "source"
 title: "2025 年国家医保及商保目录实施通知"
 sources: ["raw/sources/nrdl-2025-notice/647e281e8c7cf9210e3587424f22d0feab6491051d8274f14c45b4d9efc77e37.html"]
 sha256: "647e281e8c7cf9210e3587424f22d0feab6491051d8274f14c45b4d9efc77e37"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,34 @@ review_status: "pending"
 
 来源：https://www.nhsa.gov.cn/art/2025/12/7/art_104_18970.html
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：2025-12-07；文档范围：original
+地区：CN；修订/发表：2025-12-07；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/sintilimab|信迪利单抗注射液]]
+- [[entities/bevacizumab|贝伐珠单抗注射液]]
+- [[entities/adalimumab|阿达木单抗注射液]]
+- [[entities/rituximab|利妥昔单抗注射液]]
+- [[entities/pemigatinib|佩米替尼片]]
+- [[entities/olverembatinib|奥雷巴替尼片]]
+- [[entities/ramucirumab|雷莫西尤单抗注射液]]
+- [[entities/selpercatinib|塞普替尼胶囊]]
+- [[entities/equecabtagene|伊基奥仑赛注射液]]
+- [[entities/tafolecimab|托莱西单抗注射液]]
+- [[entities/fulzerasib|氟泽雷塞片]]
+- [[entities/pirtobrutinib|匹妥布替尼片]]
+- [[entities/taletrectinib|己二酸他雷替尼胶囊]]
+- [[entities/limertinib|利厄替尼片]]
+- [[entities/teprotumumab|替妥尤单抗N01注射液]]
+- [[entities/mazdutide|玛仕度肽注射液]]
+- [[entities/picankibart|匹康奇拜单抗注射液]]
+- [[entities/ipilimumab|伊匹木单抗N01注射液]]
+- [[entities/abemaciclib|阿贝西利片]]
+- [[entities/quizartinib|盐酸奎扎替尼片]]
 
 ## 原文第 1 页 / 段
 

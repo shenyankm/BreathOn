@@ -1,3 +1,4 @@
+import { isAppDrug } from '@/lib/app-drugs'
 import { doctorLabel } from '@/lib/doctor-label'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Pill } from 'lucide-react'
@@ -45,7 +46,7 @@ export function ScenarioPicker({ value, onChange, onReady }: {value:TrainingChoi
       api<Doctor[]>('/catalog/doctor',{signal:controller.signal}),
     ]).then(([drugRows,doctorRows])=>{
       if(controller.signal.aborted)return
-      setDrugs(drugRows.filter(row=>row.status==='published'))
+      setDrugs(drugRows.filter(isAppDrug))
       setDoctors(doctorRows.filter(row=>row.status==='published'))
       setLoaded(true)
     }).catch(cause=>{

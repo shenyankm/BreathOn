@@ -3,6 +3,7 @@ type: "source"
 title: "伊基奥仑赛注射液 患者手册（非说明书）"
 sources: ["raw/sources/label-equecabtagene/6fa493a597a0a9d74a39d03695254ca823ceae3e8cf92923ccc81d4bc1330625.pdf"]
 sha256: "6fa493a597a0a9d74a39d03695254ca823ceae3e8cf92923ccc81d4bc1330625"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://images.qingtv.com/%E6%82%A3%E8%80%85%E6%89%8B%E5%86%8C%E4%B8%AD%E6%96%87%E7%89%88.pdf
 
-抓取：2026-10-30T12:43:17.436987+00:00；版本：未确认；文档范围：patient_guide
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:43:17.436987+00:00
 
-自动归档，待医学审核。
+质量：patient_guide；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/equecabtagene|伊基奥仑赛注射液]]
 
 ## 原文第 1 页 / 段
 

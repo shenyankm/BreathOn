@@ -1,0 +1,17 @@
+[
+  {
+    "id": "humira-us", "name": "阿达木单抗（美国 HUMIRA）", "brand": "HUMIRA", "aliases": ["修美乐", "Humira"],
+    "compares_with": ["adalimumab"], "relationship": "同成分原研参考；不据此推定可替换性",
+    "url": "https://www.rxabbvie.com/pdf/humira.pdf", "jurisdiction": "US", "document_label": "美国处方说明书"
+  },
+  {
+    "id": "ozempic-us", "name": "司美格鲁肽（美国 OZEMPIC）", "brand": "OZEMPIC", "aliases": ["诺和泰", "Ozempic", "semaglutide", "司美格鲁肽"],
+    "compares_with": ["mazdutide"], "relationship": "糖尿病领域讨论参考；不同分子，不能跨试验推导优劣或外推减重适应症",
+    "url": "https://www.novo-pi.com/ozempic.pdf", "jurisdiction": "US", "document_label": "美国处方说明书"
+  },
+  {
+    "id": "keytruda-us", "name": "帕博利珠单抗（美国 KEYTRUDA）", "brand": "KEYTRUDA", "aliases": ["可瑞达", "Keytruda", "pembrolizumab", "帕博利珠单抗"],
+    "compares_with": ["sintilimab"], "relationship": "PD-1 领域讨论参考；癌种、人群、线次及联合方案须分别核对，不代表头对头结论",
+    "url": "https://www.merck.com/product/usa/pi_circulars/k/keytruda/keytruda_pi.pdf", "jurisdiction": "US", "document_label": "美国处方说明书"
+  }
+]

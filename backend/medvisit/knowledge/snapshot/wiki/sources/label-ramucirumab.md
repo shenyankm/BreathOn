@@ -3,6 +3,7 @@ type: "source"
 title: "雷莫西尤单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-ramucirumab/90cd7777cbbe0ee4de2532967456414b6cbd8dd04b66db8e1fcc981742d65f84.pdf"]
 sha256: "90cd7777cbbe0ee4de2532967456414b6cbd8dd04b66db8e1fcc981742d65f84"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/xrz11.231.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/ramucirumab|雷莫西尤单抗注射液]]
 
 ## 原文第 1 页 / 段
 

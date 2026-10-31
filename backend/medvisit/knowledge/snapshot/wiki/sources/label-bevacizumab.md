@@ -3,6 +3,7 @@ type: "source"
 title: "贝伐珠单抗注射液 说明书（PDF）"
 sources: ["raw/sources/label-bevacizumab/a646be87f6f49193a4ff4145cc403b9d7c91ae4579087d25998ce3a1ab7860fb.pdf"]
 sha256: "a646be87f6f49193a4ff4145cc403b9d7c91ae4579087d25998ce3a1ab7860fb"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://img.innoventbio.com/7.4/new2.pdf
 
-抓取：2026-10-30T12:45:29.646451+00:00；版本：未确认；文档范围：ocr
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:45:29.646451+00:00
 
-自动归档，待医学审核。
+质量：ocr；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/bevacizumab|贝伐珠单抗注射液]]
 
 ## 原文第 1 页 / 段
 

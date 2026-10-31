@@ -1,0 +1,586 @@
+{
+  "id": "mazdutide-cn-demo",
+  "title": "玛仕度肽全国政策演示包",
+  "checked_at": "2026-10-31",
+  "scope": "中国成人体重管理主线，糖尿病作为独立讨论分支；全国政策，不含地方报销比例或医院准入承诺。",
+  "products": [
+    {
+      "id": "mounjaro-cn",
+      "name": "替尔泊肽注射液",
+      "brand": "穆峰达",
+      "aliases": [
+        "穆峰达",
+        "替尔泊肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "同领域竞品；体重管理与糖尿病适应症分开核对",
+      "gaps": [
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "wegovy-cn",
+      "name": "司美格鲁肽注射液（体重管理）",
+      "brand": "诺和盈",
+      "aliases": [
+        "诺和盈",
+        "司美格鲁肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "体重管理竞品；不得与诺和泰或1mg研究混同",
+      "gaps": [
+        "托管副本修订版本待厂家确认。",
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "ozempic-cn",
+      "name": "司美格鲁肽注射液（糖尿病）",
+      "brand": "诺和泰",
+      "aliases": [
+        "诺和泰",
+        "司美格鲁肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "糖尿病领域及DREAMS-3对照；不外推到诺和盈2.4mg",
+      "gaps": [
+        "托管副本版本待厂家确认。",
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "dulaglutide-cn",
+      "name": "度拉糖肽注射液",
+      "brand": "度易达",
+      "aliases": [
+        "度易达",
+        "度拉糖肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "DREAMS-2研究对照；不是已确认的减重适应症药物",
+      "gaps": [
+        "未经人工医学审核；用于糖尿病研究对照讨论，不推断体重管理适应症。"
+      ]
+    },
+    {
+      "id": "liraglutide-cn",
+      "name": "利拉鲁肽注射液（体重管理）",
+      "brand": "利鲁平",
+      "aliases": [
+        "利鲁平",
+        "利拉鲁肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "成人体重管理竞品；品牌与适应症不可互换",
+      "gaps": [
+        "仅有已关联的指南背景；待补厂家最新中国说明书与产品对应的原始研究。",
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "beinaglutide-cn",
+      "name": "贝那鲁肽注射液（体重管理）",
+      "brand": "菲塑美",
+      "aliases": [
+        "菲塑美",
+        "贝那鲁肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "成人体重管理竞品；不与谊生泰糖尿病品牌混用",
+      "gaps": [
+        "仅有已关联的指南背景；待补厂家最新中国说明书与产品对应的原始研究。",
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "ecnoglutide-cn",
+      "name": "埃诺格鲁肽注射液（体重管理）",
+      "brand": "先维盈",
+      "aliases": [
+        "先维盈",
+        "埃诺格鲁肽"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "2026年新进入的体重管理比较对象",
+      "gaps": [
+        "已归档厂家公告；待补最新中国说明书与原始研究，不以公告替代。",
+        "未经人工医学审核。"
+      ]
+    },
+    {
+      "id": "orlistat-cn",
+      "name": "奥利司他",
+      "brand": "奥利司他（说明书范本）",
+      "aliases": [
+        "奥利司他（说明书范本）",
+        "奥利司他"
+      ],
+      "ownership": "competitor",
+      "jurisdiction": "CN",
+      "compares_with": [
+        "mazdutide"
+      ],
+      "relationship": "口服减重类别参考；不与肠促胰素类药直接视作等效",
+      "gaps": [
+        "历史国家范本未取得正文；待补特定厂家最新说明书。",
+        "未经人工医学审核。"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "label-mazdutide-202506",
+      "title": "玛仕度肽说明书（厂家公开核准版）",
+      "url": "https://img.innoventbio.com/product/W10030842001.pdf",
+      "kind": "label",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2025-06-24",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "玛仕度肽",
+        "适应症"
+      ],
+      "scope_note": "核准版；不视为包含后续糖尿病适应症的最新版。"
+    },
+    {
+      "id": "label-mounjaro-cn",
+      "title": "穆峰达替尔泊肽中国说明书（多剂量笔）",
+      "url": "https://www.lillymedical.cn/file/raw/e0a49698-3ee1-4f6a-8f69-f20f9a80dbb9/替尔泊肽注射液产品说明书（多剂量预装笔式注射器）【修订日期：2026年09月20日】.pdf",
+      "kind": "label",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2026-09-20",
+      "product_ids": [
+        "mounjaro-cn"
+      ],
+      "required_terms": [
+        "替尔泊肽",
+        "适应症"
+      ]
+    },
+    {
+      "id": "label-wegovy-cn",
+      "title": "诺和盈中国说明书（药学会托管副本）",
+      "url": "https://www.hnysfww.com/data/m_c/1789431129356990368.pdf",
+      "kind": "label",
+      "quality": "version_uncertain",
+      "jurisdiction": "CN",
+      "published_at": "2026-07-27",
+      "product_ids": [
+        "wegovy-cn"
+      ],
+      "required_terms": [
+        "诺和盈"
+      ],
+      "scope_note": "药学会托管的厂家说明书副本；版本日期来自首页，未独立核验是否为当前最新版本。"
+    },
+    {
+      "id": "label-ozempic-cn",
+      "title": "诺和泰中国说明书（药学会托管副本）",
+      "url": "https://www.hnysfww.com/data/m_c/1631575406775733023.pdf",
+      "kind": "label",
+      "quality": "version_uncertain",
+      "jurisdiction": "CN",
+      "published_at": null,
+      "product_ids": [
+        "ozempic-cn"
+      ],
+      "required_terms": [
+        "诺和泰"
+      ]
+    },
+    {
+      "id": "nhc-obesity-2024",
+      "title": "肥胖症诊疗指南（2024年版）",
+      "url": "https://www.nhc.gov.cn/cms-search/downFiles/c171fa2416864a21b69278fd04a33f21.pdf",
+      "kind": "guideline",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2024-10-12",
+      "product_ids": [
+        "mazdutide",
+        "mounjaro-cn",
+        "wegovy-cn",
+        "liraglutide-cn",
+        "beinaglutide-cn",
+        "orlistat-cn"
+      ],
+      "required_terms": [
+        "肥胖症",
+        "利拉鲁肽"
+      ]
+    },
+    {
+      "id": "nhc-weight-guidance-2024",
+      "title": "体重管理指导原则（2024年版）",
+      "url": "https://www.nhc.gov.cn/wjw/ylyjs/202412/b3d40e0141834897808ce6c9dce76a60/files/1736390749000_59785.pdf",
+      "kind": "guideline",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2024-12-05",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "体重管理",
+        "药物"
+      ]
+    },
+    {
+      "id": "nhc-weight-year-2024",
+      "title": "体重管理年活动实施方案",
+      "url": "https://zjjcmspublic.oss-cn-hangzhou-zwynet-d01-a.internet.cloud.zj.gov.cn/jcms_files/jcms1/web1855/site/attach/0/59245547036b41a399fbb1518dec601f.pdf",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2024-06-26",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "体重管理",
+        "三年"
+      ],
+      "scope_note": "全国文件的政府网站转载原件，非地方支付政策。"
+    },
+    {
+      "id": "nhc-weight-clinic-2025",
+      "title": "关于做好健康体重管理门诊设置与管理工作的通知",
+      "url": "https://www.nhc.gov.cn/yzygj/c100068/202504/52bcc453524149b884ddf6e2969d24d9.shtml",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2025-04-11",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "门诊",
+        "设置"
+      ]
+    },
+    {
+      "id": "nhsa-drug-use-2020",
+      "title": "基本医疗保险用药管理暂行办法",
+      "url": "https://www.nhsa.gov.cn/attach/0/bab0c20ab5604f69ab84ae22ab520274.pdf",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2020-07-30",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "减肥",
+        "第二十三条"
+      ]
+    },
+    {
+      "id": "nhsa-adjustment-2026",
+      "title": "2026年医保与商保药品目录调整工作方案",
+      "url": "https://www.nhsa.gov.cn/module/download/downfile.jsp?classid=0&filename=3b083334e4be44eca9e8837179e2b204.pdf",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2026-05-31",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "2026",
+        "公布结果"
+      ],
+      "scope_note": "目录调整程序，不是最终目录或支付凭据。"
+    },
+    {
+      "id": "nhsa-formal-review-2026",
+      "title": "2026年药品目录形式审查公示解读",
+      "url": "https://www.nhsa.gov.cn/art/2026/6/29/art_105_21130.html",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2026-06-29",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "形式审查",
+        "第一步"
+      ]
+    },
+    {
+      "id": "nmpa-representatives-2026",
+      "title": "医药代表管理办法（国家文件，省药监局全文转载）",
+      "url": "https://mpa.yn.gov.cn/zfxxgk/zcwj/qtwj/gjwj/202605/t20260519_3025962.html",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2026-04-28",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "医药代表",
+        "第三十五条"
+      ],
+      "scope_note": "国家办法全文，非云南地方规则；2026-08-01施行。"
+    },
+    {
+      "id": "nhc-nine-integrity-2021",
+      "title": "医疗机构工作人员廉洁从业九项准则",
+      "url": "https://www.gov.cn/gbgl/78ebc4097c794cfdb5052c3b26683191/files/41956ece31c24943bac3487e243804f7.pdf",
+      "kind": "policy",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2021-11-12",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "九项准则",
+        "回扣"
+      ]
+    },
+    {
+      "id": "nmpa-orlistat-template-2012",
+      "title": "奥利司他说明书范本修订通知（国家文件转载）",
+      "url": "https://mpa.hunan.gov.cn/mpa/gfxwj1/201205/t20120510_13969630.html",
+      "kind": "regulatory_notice",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2012-04-24",
+      "product_ids": [
+        "orlistat-cn"
+      ],
+      "required_terms": [
+        "奥利司他",
+        "说明书范本"
+      ],
+      "scope_note": "历史国家说明书范本，不是指定品牌最新说明书。"
+    },
+    {
+      "id": "sciwind-ecnoglutide-launch",
+      "title": "先维盈厂家上市公告",
+      "url": "https://sciwind.com.cn/portal/index/newsdetail/id/135.html",
+      "kind": "manufacturer_notice",
+      "quality": "version_uncertain",
+      "jurisdiction": "CN",
+      "published_at": "2026-03",
+      "product_ids": [
+        "ecnoglutide-cn"
+      ],
+      "required_terms": [
+        "先维盈"
+      ],
+      "scope_note": "厂家公告，不是说明书，不据此确定剂量或临床优效。"
+    },
+    {
+      "id": "doctor-li-xiaoying-fudan",
+      "title": "复旦上医李小英公开专业介绍",
+      "url": "https://shmc.fudan.edu.cn/news/2025/0424/c1893a145093/page.htm",
+      "kind": "doctor_profile",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2025-04-23",
+      "product_ids": [],
+      "required_terms": [
+        "李小英",
+        "主任医师"
+      ]
+    },
+    {
+      "id": "doctor-ji-linong-pkuph",
+      "title": "北京大学人民医院纪立农专家页",
+      "url": "https://www.pkuph.cn/Article/Index/teamList/id/630.html",
+      "kind": "doctor_profile",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": null,
+      "product_ids": [],
+      "required_terms": [
+        "纪立农",
+        "糖尿病"
+      ],
+      "scope_note": "医院页面未标更新日；仅引用职称和研究方向，任职/门诊时效待核对。"
+    },
+    {
+      "id": "dreams1-nature-2025",
+      "title": "DREAMS-1 期刊页面",
+      "url": "https://www.nature.com/articles/s41586-025-10026-w",
+      "kind": "trial",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2025-12-17",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "Mazdutide",
+        "Abstract"
+      ],
+      "scope_note": "期刊可读范围；未获取的全文部分不作为证据。"
+    },
+    {
+      "id": "dreams2-nature-2025",
+      "title": "DREAMS-2 期刊页面",
+      "url": "https://www.nature.com/articles/s41586-025-10031-z",
+      "kind": "trial",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2025-12-17",
+      "product_ids": [
+        "mazdutide",
+        "dulaglutide-cn"
+      ],
+      "required_terms": [
+        "Mazdutide",
+        "Abstract"
+      ],
+      "scope_note": "与度拉糖肽的研究，不能替换为司美格鲁肽或肥胖适应症结论。"
+    },
+    {
+      "id": "dreams3-design",
+      "title": "DREAMS-3 设计与基线论文摘要",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41260459/",
+      "kind": "trial",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2025-11",
+      "product_ids": [
+        "mazdutide",
+        "ozempic-cn"
+      ],
+      "required_terms": [
+        "DREAMS-3"
+      ],
+      "scope_note": "设计与基线论文，不是最终疗效结果。"
+    },
+    {
+      "id": "dreams3-ada-2026",
+      "title": "DREAMS-3 ADA 2026 会议摘要",
+      "url": "https://diabetesjournals.org/diabetes/article/75/Supplement_1/1226-OR/167125/1226-OR-Mazdutide-vs-Semaglutide-in-Chinese-Adults",
+      "kind": "trial",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2026-06",
+      "product_ids": [
+        "mazdutide",
+        "ozempic-cn"
+      ],
+      "required_terms": [
+        "Semaglutide",
+        "DREAMS-3"
+      ],
+      "scope_note": "会议摘要；司美格鲁肽1mg，不能外推为诺和盈2.4mg或所有人群的比较。"
+    },
+    {
+      "id": "glory2-jama-2026",
+      "title": "GLORY-2 9mg研究原始摘要",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42251595/",
+      "kind": "trial",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2026",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "GLORY-2",
+        "9-mg"
+      ],
+      "scope_note": "研究剂量9mg不等同已批准剂量。"
+    },
+    {
+      "id": "cse-obesity-guideline-2026",
+      "title": "肥胖患者长期体重管理及药物临床应用指南2026及勘误",
+      "url": "https://rs.yiigle.com/cmaid/1692407",
+      "kind": "guideline",
+      "quality": "abstract",
+      "jurisdiction": "CN",
+      "published_at": "2026-08-25",
+      "product_ids": [
+        "mazdutide"
+      ],
+      "required_terms": [
+        "2026",
+        "肥胖"
+      ],
+      "scope_note": "按实际可读范围归档，未取得完整正文不得声称已读全部推荐；注意原站勘误。"
+    },
+    {
+      "id": "label-dulaglutide-cn",
+      "title": "度易达中国说明书（礼来医学网）",
+      "url": "https://www.lillymedical.cn/file/raw/c91a2ebc-74c4-49ae-be07-8b81699eac20/20250407-20250414-Dulaglutide injection-0.75mg1.5mg MAHD-MTC.pdf",
+      "kind": "label",
+      "quality": "original",
+      "jurisdiction": "CN",
+      "published_at": "2025-04",
+      "product_ids": [
+        "dulaglutide-cn"
+      ],
+      "required_terms": [
+        "度拉糖肽",
+        "度易达"
+      ]
+    }
+  ],
+  "existing_source_ids": [
+    "label-mazdutide",
+    "pubmed-40421736",
+    "pubmed-41407860",
+    "nrdl-2025",
+    "commercial-2025",
+    "nrdl-2025-notice"
+  ],
+  "doctor_ids": [
+    "li-xiaoying",
+    "3bab7722-2e56-4fff-8f04-15d398637ec6"
+  ],
+  "doctors": [
+    {
+      "id": "li-xiaoying",
+      "name": "李小英",
+      "source_id": "doctor-li-xiaoying-fudan",
+      "facts": "复旦大学附属中山医院；内分泌领域；公开研究涉及肥胖、脂肪肝与糖尿病。",
+      "training_focus": "询问体重管理目标、合并代谢问题、长期随访；这些训练设定不代表医生本人观点。"
+    },
+    {
+      "id": "3bab7722-2e56-4fff-8f04-15d398637ec6",
+      "name": "纪立农",
+      "source_id": "doctor-ji-linong-pkuph",
+      "facts": "北京大学人民医院内分泌科；教授、主任医师；公开专长为糖尿病及内分泌疾病。",
+      "training_focus": "追问研究人群、对照方案、终点与适应症边界；这些训练设定不代表医生本人观点。"
+    }
+  ]
+}

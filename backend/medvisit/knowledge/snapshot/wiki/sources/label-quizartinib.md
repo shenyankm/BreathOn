@@ -3,6 +3,7 @@ type: "source"
 title: "盐酸奎扎替尼片 说明书（PDF）"
 sources: ["raw/sources/label-quizartinib/dca036329de6a25351c119adb9067006fd0b0a919160b494d0fb077fd7a74ddd.pdf"]
 sha256: "dca036329de6a25351c119adb9067006fd0b0a919160b494d0fb077fd7a74ddd"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://www.daiichisankyo.com.cn/Portals/0/344_0_奎扎替尼说明书.pdf
 
-抓取：2026-10-30T12:36:20.695785+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:36:20.695785+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/quizartinib|盐酸奎扎替尼片]]
 
 ## 原文第 1 页 / 段
 

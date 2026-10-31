@@ -285,3 +285,69 @@ def test_shared_sources_export_excludes_private_chats_and_reader_escapes_html(tm
         assert client.get('/api/medical/sources/test-source').status_code==200
         assert client.get('/api/medical/sources/missing/original').status_code==404
         assert client.post('/api/medical/check',json={'text':' '},headers={'Origin':app.state.local_user.get('origin','http://127.0.0.1:5173')}).status_code==422
+
+
+def test_coaching_reference_requires_live_approval_and_keeps_competitor_identity(tmp_path):
+    corpus=corpus_fixture(tmp_path)
+    data=json.loads((tmp_path/'corpus.json').read_text())
+    peer={**deepcopy(data['products'][0]),'id':'peer','name':'测试竞品','brand':'竞品品牌',
+          'ownership':'competitor','compares_with':['test-drug'],'sources':['peer-source']}
+    source={**deepcopy(data['sources'][0]),'id':'peer-source','product_ids':['peer'],
+            'url':'https://example.org/peer','jurisdiction':'US'}
+    data['products'].append(peer);data['sources'].append(source)
+    (tmp_path/'corpus.json').write_text(json.dumps(data))
+    document=corpus.approved_documents()[0]
+    documents=[document]
+    corpus.approved_documents=lambda:documents
+    first=corpus.coaching_context({'name':'测试药甲'},'指标是多少？')
+    assert first['evidence'] and all(r['source_id']=='test-source' for r in first['evidence'])
+    assert first['gaps'][0]['product']=='测试竞品'
+    documents.append({**deepcopy(document),'id':'peer-approval','source_url':source['url']})
+    second=corpus.coaching_context({'name':'测试药甲'},'指标是多少？')
+    assert any(r['source_id']=='peer-source' and r['source']['jurisdiction']=='US' for r in second['evidence'])
+    assert len(second['evidence'])<=8 and corpus.validate_coaching_context(second)
+    documents[1]['status']='retired'
+    assert not corpus.validate_coaching_context(second)
+    documents[0]['status']='retired'
+    assert corpus.coaching_context({'name':'测试药甲'},'指标是多少？')['evidence']==[]
+
+
+def test_wiki_render_preserves_log_and_detects_broken_navigation(tmp_path):
+    from medvisit.knowledge.wiki import render_wiki,lint_wiki
+    corpus=corpus_fixture(tmp_path);data=corpus.load()
+    render_wiki(tmp_path,data,'ingest')
+    original=(tmp_path/'wiki/log.md').read_text()
+    render_wiki(tmp_path,data,'lint')
+    assert (tmp_path/'wiki/log.md').read_text().startswith(original)
+    assert lint_wiki(tmp_path)==[]
+    assert '[[entities/test-drug|' in (tmp_path/'wiki/sources/test-source.md').read_text()
+    (tmp_path/'wiki/entities/test-drug.md').write_text('[[sources/missing]]')
+    assert any('断链' in error for error in lint_wiki(tmp_path))
+
+
+async def test_reference_revocation_during_model_request_blocks_publication(tmp_path):
+    from types import SimpleNamespace
+    from medvisit.knowledge.live import coaching_snapshot,validate_coaching_snapshot
+    from medvisit.voice.protocol import BridgeError
+    corpus=corpus_fixture(tmp_path);document=corpus.approved_documents()[0]
+    corpus.approved_documents=lambda:[document]
+    record=SessionRecord('ref-test','assisted')
+    record.data['free_context']={'drug':{'name':'测试药甲'}}
+    record.transcript('t1','trainee','测试药甲的指标是多少？',final=True)
+    record.medical_checks=SimpleNamespace(verifier=SimpleNamespace(corpus=corpus))
+    snapshot=await coaching_snapshot(record)
+    assert snapshot['evidence']
+    document['status']='retired'
+    with pytest.raises(BridgeError): await validate_coaching_snapshot(record,snapshot)
+
+
+def test_coach_prioritizes_mentioned_and_domestic_competitors(tmp_path, monkeypatch):
+    corpus=corpus_fixture(tmp_path)
+    data=json.loads((tmp_path/'corpus.json').read_text())
+    for pid,region in [('foreign','US'),('domestic1','CN'),('domestic2','CN'),('mentioned','CN')]:
+        data['products'].append({'id':pid,'name':pid,'brand':pid,'jurisdiction':region,
+                                 'compares_with':['test-drug'],'sources':[]})
+    (tmp_path/'corpus.json').write_text(json.dumps(data))
+    monkeypatch.setattr(corpus,'search',lambda *args,**kwargs:[])
+    context=corpus.coaching_context({'name':'测试药甲'},'请比较 mentioned')
+    assert [g['product'] for g in context['gaps']]==['测试药甲','mentioned','domestic1','domestic2']

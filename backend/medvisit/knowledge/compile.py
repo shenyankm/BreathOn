@@ -64,14 +64,14 @@ def product_pages(source,product):
     return source['pages']
 
 
-async def compile_products(settings, root):
+async def compile_products(settings, root, *, product_ids=None):
     root=Path(root)
     data=json.loads((root/'corpus.json').read_text())
     cache=root/'compiled'
     slots=asyncio.Semaphore(2)
     client=AsyncOpenAI(api_key=settings.deepseek_api_key,
         base_url=settings.deepseek_endpoint.removesuffix('/chat/completions'),timeout=40,max_retries=0)
-    results={}
+    results=dict(data.get('compiled',{})) if product_ids is not None else {}
     async def compile_product(product):
         related=[source for source in data['sources'] if product['id'] in source['product_ids']]
         fingerprint=hashlib.sha256(json.dumps({'sources':related,
@@ -111,20 +111,12 @@ async def compile_products(settings, root):
                 results[product['id']]={'status':'unavailable','facts':[],'gaps':['知识条目编译未完成；原文已保留。'],'usage':usage}
                 print('Compilation incomplete',product['id'],type(exc).__name__,str(exc)[:100] if isinstance(exc,ValueError) else '',flush=True)
     try:
-        await asyncio.gather(*(compile_product(product) for product in data['products']))
+        await asyncio.gather(*(compile_product(product) for product in data['products']
+                               if product_ids is None or product['id'] in product_ids))
     finally:
         await client.close()
     data['compiled']=results
     write_private(root/'corpus.json',json.dumps(data,ensure_ascii=False).encode())
-    for product in data['products']:
-        page=root/'wiki/entities'/f'{product["id"]}.md'
-        body=page.read_text().split('\n## 编译的医学要点')[0]
-        result=results[product['id']]
-        body+='\n## 编译的医学要点\n\n自动整理，待医学复核；判断时必须返回引用原文。\n\n'
-        body+='\n\n'.join(f'- {fact["claim"]}\n  - 依据：[[sources/{fact["source_id"]}]] 第 {fact["page"]} 页 / 段；原文：{fact["quote"]}' for fact in result['facts'])
-        body+='\n\n## 编译发现的缺口\n\n'+'\n'.join('- '+gap for gap in result['gaps'])+'\n'
-        write_private(page,('\n'.join(line.rstrip() for line in body.splitlines()).rstrip()+'\n').encode())
-    log=root/'wiki/log.md'
-    write_private(log,(log.read_text()+f'\n## [{datetime.now(timezone.utc).isoformat()}] compile | 产品知识条目\n\n'+
-        f'{sum(r["status"]=="compiled" for r in results.values())} 个产品编译完成；保留逐条原文引用和版本。\n').encode())
+    from .wiki import render_wiki
+    render_wiki(root,data,'compile')
     return results

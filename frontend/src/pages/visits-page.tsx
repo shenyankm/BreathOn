@@ -1,3 +1,4 @@
+import { isAppDrug } from '@/lib/app-drugs'
 import { doctorLabel } from '@/lib/doctor-label'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
@@ -77,7 +78,7 @@ export function VisitsPage() {
     Promise.all([api<Doctor[]>('/catalog/doctor', { signal: controller.signal }), api<Drug[]>('/catalog/drug', { signal: controller.signal })]).then(([doctorItems, drugItems]) => {
       if (controller.signal.aborted) return
       setDoctors(doctorItems.filter(item => item.status === 'published'))
-      setDrugs(drugItems.filter(item => item.status === 'published'))
+      setDrugs(drugItems.filter(isAppDrug))
     }).catch(e => { if (!controller.signal.aborted) setCatalogError(message(e)) })
     return () => controller.abort()
   }, [catalogRetry])

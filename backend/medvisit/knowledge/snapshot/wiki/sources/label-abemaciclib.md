@@ -3,6 +3,7 @@ type: "source"
 title: "阿贝西利片 说明书（PDF）"
 sources: ["raw/sources/label-abemaciclib/2f1998e14a0d83ee018dba889bf997d10e178162a074ed7b6f208936bd7b79f2.pdf"]
 sha256: "2f1998e14a0d83ee018dba889bf997d10e178162a074ed7b6f208936bd7b79f2"
+jurisdiction: "CN"
 review_status: "pending"
 ---
 
@@ -10,9 +11,15 @@ review_status: "pending"
 
 来源：https://www.lillymedical.cn/file/raw/f4e09dab-5cac-445c-91f1-1222ec5bbb93/阿贝西利片说明书.pdf
 
-抓取：2026-10-30T12:43:17.436987+00:00；版本：未确认；文档范围：original
+地区：CN；修订/发表：未确认；抓取：2026-10-30T12:43:17.436987+00:00
 
-自动归档，待医学审核。
+质量：original；自动归档，待医学审核。
+
+适用边界：以原文、地区与版本为准。
+
+## 关联产品
+
+- [[entities/abemaciclib|阿贝西利片]]
 
 ## 原文第 1 页 / 段
 
