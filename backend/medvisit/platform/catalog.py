@@ -55,6 +55,13 @@ class Catalog:
                     tx.create(tenant, 'doctor', {**doctor.model_dump(mode='json'),
                         'display_name':doctor.name + '（训练模拟）', 'status':'published', 'created_by':actor,
                         'imported_from':f"{profiles['agent']} {profiles['checked_at']}"}, item_id=row['id'])
+            ips = json.loads(Path(__file__).with_name('doctor_ips.json').read_text())
+            for row in ips['doctors']:
+                if not tx.get(tenant, 'doctor', row['id']):
+                    doctor = Doctor.model_validate(row['profile'])
+                    tx.create(tenant, 'doctor', {**doctor.model_dump(mode='json'),
+                        'display_name':doctor.name + '（训练模拟）', 'status':'published', 'created_by':actor,
+                        'imported_from':f"{ips['source']} {ips['checked_at']}"}, item_id=row['id'])
             if not tx.get(tenant, 'rubric', 'academic-visit-v1'):
                 names = ['医学准确性', '证据运用', '需求识别', '表达逻辑', '合规沟通']
                 tx.create(tenant, 'rubric', {'name': '学术拜访评价 v1', 'status': 'draft', 'created_by': actor,

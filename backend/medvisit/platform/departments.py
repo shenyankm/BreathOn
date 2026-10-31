@@ -27,9 +27,9 @@ DRUG_DEPARTMENTS = {
 
 DEPARTMENT_ALIASES = {
     '内分泌科': ('内分泌',),
-    '心血管科': ('心血管', '心内科', '心脏内科'),
+    '心血管科': ('心血管', '心内科', '心脏内科', '心血管内科'),
     '血液科': ('血液', '白血病', '淋巴肿瘤'),
-    '肿瘤科': ('肿瘤',),
+    '肿瘤科': ('肿瘤', '乳腺外科'),
     '呼吸科': ('呼吸', '肺内'),
     '风湿免疫科': ('风湿',),
     '皮肤科': ('皮肤',),
@@ -50,6 +50,9 @@ def drug_departments(drug):
 
 
 def require_department_match(drug, doctor):
+    # A communication-style IP trains how to talk, not what a department prescribes, so it pairs with any drug.
+    if doctor.get('ip_profile'):
+        return
     if department(doctor.get('specialty', '')) not in drug_departments(drug):
         raise HTTPException(409, '所选药品与医生科室不匹配，请重新选择对口的药品或医生。')
 
@@ -58,5 +61,5 @@ def with_departments(kind, item):
     if kind == 'drug':
         return {**item, 'practice_departments': drug_departments(item)}
     if kind == 'doctor':
-        return {**item, 'practice_department': department(item.get('specialty', ''))}
+        return {**item, 'practice_department': department(item.get('specialty', '')), 'any_drug': bool(item.get('ip_profile'))}
     return item

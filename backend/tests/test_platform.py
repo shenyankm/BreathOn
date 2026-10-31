@@ -178,7 +178,8 @@ def test_researched_doctor_seeding_preserves_edits_and_deletions(client):
     after = client.get('/api/catalog/doctor').json()
     assert next(row for row in after if row['id'] == changed['id']) == edited
     assert removed['id'] not in {row['id'] for row in after}
-    assert len(after) == len(doctors)  # Twelve researched profiles plus the existing default, minus the deletion.
+    researched = [row for row in after if row.get('imported_from') == 'doctor_research_agent 2026-10-31']
+    assert len(researched) == len(doctors) - 1  # The deleted profile stays deleted; the other eleven remain.
 
 
 def test_taxonomy_requires_review_and_protects_published_drugs(client):

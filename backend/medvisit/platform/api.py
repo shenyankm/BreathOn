@@ -14,6 +14,7 @@ from .models import Content, ContentEdit, Policy, PolicyEdit, PolicyRule, Policy
 from .pdf_extract import extract_pdf
 from .training import prepare_training, prepare_free_context, snapshot
 from .calibration import Calibrator, CalibrationSample
+from .curriculum import LessonState, SettingsEdit, curriculum, home_summary, member_settings, review_queue, set_lesson, update_settings
 from .operations import Operations, Review, Retrain
 from .importer import Batch, import_content
 from .generation import GenerateScenario, generate_scenario
@@ -56,6 +57,30 @@ def platform_router(store, settings, records):
     @router.get('/progress')
     def progress(days: int = Query(default=30, ge=1, le=90), user=Depends(current_user)):
         return personal_progress(store, records, user, days)
+
+    @router.get('/home')
+    def home(user=Depends(current_user)):
+        return home_summary(store, records, user)
+
+    @router.get('/me/review-queue')
+    def review_queue_get(user=Depends(current_user)):
+        return review_queue(store, user)
+
+    @router.get('/curriculum')
+    def curriculum_get(user=Depends(current_user)):
+        return curriculum(store, user)
+
+    @router.put('/curriculum/lessons/{lesson_id}')
+    def curriculum_set(lesson_id: str, body: LessonState, user=Depends(current_user)):
+        return set_lesson(store, user, lesson_id, body)
+
+    @router.get('/me/settings')
+    def settings_get(user=Depends(current_user)):
+        return member_settings(store, user)
+
+    @router.put('/me/settings')
+    def settings_put(body: SettingsEdit, user=Depends(current_user)):
+        return update_settings(store, user, body)
 
     @router.get('/usage/prices')
     def prices_get(user=Depends(current_user)):

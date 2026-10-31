@@ -168,6 +168,21 @@ class Transition(Input):
     reason: str = Field(min_length=1, max_length=2000)
 
 
+class IPProfile(Input):
+    """Communication-style role model. Not a real person: it carries no name, hospital or credential claim."""
+    ip_key: str = Field(pattern=r'^[a-z][a-z0-9_]{1,30}$')
+    dept: str = Field(min_length=1, max_length=40)
+    style: str = Field(min_length=1, max_length=40)
+    area: str = Field(min_length=1, max_length=40)
+    role: str = Field(default='', max_length=60)
+    tags: list[str] = Field(default_factory=list, max_length=8)
+    entry: str = Field(default='', max_length=300)
+    question: str = Field(default='', max_length=300)
+    match: str = Field(default='', max_length=200)
+    domain: str = Field(default='', max_length=80)
+    modules: list[tuple[str, str]] = Field(default_factory=list, max_length=8)
+
+
 class Doctor(Input):
     name: str = Field(min_length=1, max_length=60)
     specialty: str = Field(min_length=1, max_length=80)
@@ -182,9 +197,12 @@ class Doctor(Input):
     mood: Literal['neutral', 'busy', 'skeptical', 'friendly'] = 'neutral'
     opening: str = Field(min_length=1, max_length=400)
     research_job_id: str | None = Field(default=None, min_length=1, max_length=80)
+    ip_profile: IPProfile | None = None
 
     @model_validator(mode='after')
     def sources_valid(self):
+        if self.ip_profile and self.background_type != 'fictional':
+            raise ValueError('沟通风格角色必须是虚构背景')
         if any(not public_url(url) for url in self.sources):
             raise ValueError('来源必须为公开 HTTP(S) 链接')
         if self.background_type == 'public' and (not self.sources or not self.public_facts):
