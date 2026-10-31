@@ -51,17 +51,23 @@ async def test_only_relevant_skills_reach_the_real_request(tmp_path, monkeypatch
         return httpx.Response(200, json={'choices': [{'message': {'role': 'assistant', 'content': json.dumps(REPLY)}, 'finish_reason': 'stop', 'index': 0}]})
     client = httpx.AsyncClient
     with patch('openai.AsyncClient', lambda **kw: AsyncClient(http_client=client(transport=httpx.MockTransport(handler)), **kw)):
-        reply, _ = await generate_reply(settings(tmp_path), messages, speak=speak,
+        reply, _ = await generate_reply(settings(tmp_path, doctor_temperature=0.3), messages, speak=speak,
                                         interactions=[{'type': 'capture_end', 'status': 'interrupted'}] if not speak else [])
-    prompt = seen[0]['messages'][0]['content'][0]['text']
+    # Concurrent doctor and coach requests may arrive in either order.
+    doctor_requests = [row for row in seen if '本次只扮演医生，不做教练分析' in row['messages'][0]['content'][0]['text']]
+    coach_requests = [row for row in seen if row not in doctor_requests]
+    assert len(doctor_requests) == int(speak) and len(coach_requests) == 1
+    assert all(row['temperature'] == 0.3 for row in doctor_requests)
+    request = coach_requests[0]
+    prompt = request['messages'][0]['content'][0]['text']
     expected = coaching_skill_names(messages, speak=speak)
     for name, loader in COACHING_SKILLS.items():
         skill, = await loader.list_skills()
         assert (skill.markdown in prompt) == (name in expected)
-    assert 'tools' not in seen[0]
-    assert seen[0]['max_tokens'] == 2000
-    assert seen[0]['temperature'] == 0
-    record = json.loads(seen[0]['messages'][-1]['content'][0]['text'])
+    assert 'tools' not in request
+    assert request['max_tokens'] == 2000
+    assert request['temperature'] == 0
+    record = json.loads(request['messages'][-1]['content'][0]['text'])
     assert [item['speaker'] for item in record['transcript']] == ['trainee', 'doctor', 'trainee']
     assert [item['text'] for item in record['transcript']] == [item['text'] for item in messages]
     assert record['interaction_events'] == ([{'type': 'capture_end', 'status': 'interrupted'}] if not speak else [])

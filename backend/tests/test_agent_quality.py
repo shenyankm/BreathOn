@@ -14,6 +14,21 @@ TRANSCRIPT = [
 ]
 
 
+def test_quote_checks_normalize_transcript_once_and_skip_unquoted_text():
+    from unittest.mock import patch
+    from medvisit.agents import quotes
+    original = quotes._squash
+    transcript_text = ''.join(row['text'] for row in TRANSCRIPT)
+    with patch.object(quotes, '_squash', wraps=original) as squash:
+        assert verify_quotes('没有引用的建议', TRANSCRIPT) == ('没有引用的建议', [])
+        assert apply_quote_check({'focus':'没有引用的建议', 'points':['核对原文']}, TRANSCRIPT) == []
+        assert squash.call_count == 0
+        coach = {'focus':'“体重下降了12%”', 'analysis':'“具体指哪个指标”',
+                 'points':['“不存在的原话”'], 'delivery':{'logic':'“体重下降了12%”'}}
+        assert apply_quote_check(coach, TRANSCRIPT) == ['不存在的原话']
+        assert sum(call.args == (transcript_text,) for call in squash.call_args_list) == 1
+
+
 def test_verbatim_quotes_survive_including_layout_whitespace():
     text, removed = verify_quotes('你说“体重下降了12%”，医生问「具体指哪个指标」。', TRANSCRIPT)
     assert removed == [] and '体重下降了12%' in text and '具体指哪个指标' in text

@@ -17,8 +17,9 @@ export function overviewSummary(groups: Record<string, SummaryItem[]>) {
   const complete = overviewSources.every(source => groups[source.key] !== undefined)
   const pending = complete ? overviewSources.reduce((sum, source) => sum + groups[source.key].filter(item => pendingReview(source.key, item.status)).length, 0) : null
   const recent = overviewSources.filter(source => source.key !== 'visits' && source.key !== 'health').flatMap(source => (groups[source.key] ?? [])
-    .filter(item => item.updated_at && Number.isFinite(Date.parse(item.updated_at)))
-    .map(item => ({ ...item, kind: source.key, label: source.label, href: source.href })))
-    .sort((a, b) => Date.parse(b.updated_at!) - Date.parse(a.updated_at!)).slice(0, 6)
+    .map(item => ({ item, source, timestamp: item.updated_at ? Date.parse(item.updated_at) : NaN }))
+    .filter(row => Number.isFinite(row.timestamp)))
+    .sort((a, b) => b.timestamp - a.timestamp).slice(0, 6)
+    .map(({ item, source }) => ({ ...item, kind: source.key, label: source.label, href: source.href }))
   return { pending, recent }
 }

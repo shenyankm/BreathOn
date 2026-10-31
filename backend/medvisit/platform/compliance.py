@@ -42,20 +42,28 @@ def active_rules(store, workspace, policy_ids):
         return []
     with store.transaction(workspace, write=False) as tx:
         rules = []
+        policies = {}
         for rule in tx.list(workspace, 'policy_rule'):
             if rule.get('status') != 'published' or rule.get('runtime_enforced') is not True or rule.get('policy_id') not in policy_ids:
                 continue
-            policy = tx.get(workspace, 'policy', rule['policy_id'])
+            policy_id = rule['policy_id']
+            if policy_id not in policies:
+                policies[policy_id] = tx.get(workspace, 'policy', policy_id)
+            policy = policies[policy_id]
             if (not policy_usable(policy) or policy['version'] != rule.get('policy_version') or
                     not any(rule['quote'] in page['text'] for page in policy['pages'])):
                 continue
             rules.append({**rule, 'policy_title':policy['title'], 'source_url':policy['source_url']})
-        return rules[:20]
+            if len(rules) == 20:
+                break
+        return rules
 
 
 async def assess_policy(settings, store, workspace, text, policy_ids, context=''):
+    if not text.strip():
+        return {'status':'skipped', 'findings':[]}
     rules = await asyncio.to_thread(active_rules, store, workspace, policy_ids)
-    if not rules or not text.strip():
+    if not rules:
         return {'status':'skipped', 'findings':[]}
     if not settings.deepseek_api_key or len(text) > 4000:
         return {'status':'unavailable', 'findings':[]}

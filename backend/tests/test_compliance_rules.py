@@ -1,6 +1,34 @@
 from medvisit.platform.compliance import active_rules, validate_findings
 
 
+def test_policy_reads_are_request_local_and_stop_at_twenty_valid_rules():
+    from unittest.mock import MagicMock
+    policy = {'status':'approved', 'legal_status':'effective', 'version':1,
+              'title':'Synthetic', 'source_url':'https://example.org', 'pages':[{'text':'规则原文'}]}
+    store = MagicMock()
+    tx = store.transaction.return_value.__enter__.return_value
+    tx.get.return_value = policy
+    valid = {'status':'published', 'runtime_enforced':True, 'policy_id':'p',
+             'policy_version':1, 'quote':'规则原文'}
+    tx.list.return_value = [dict(valid, id='invalid', policy_version=2)] + [dict(valid, id=str(i)) for i in range(40)]
+    assert [r['id'] for r in active_rules(store, 'w', ['p'])] == [str(i) for i in range(20)]
+    assert tx.get.call_count == 1
+    policy['status'] = 'retired'
+    assert active_rules(store, 'w', ['p']) == []
+    assert tx.get.call_count == 2
+    tx.get.return_value = None
+    assert active_rules(store, 'another-workspace', ['p']) == []
+    assert tx.get.call_count == 3
+
+
+async def test_empty_policy_input_does_not_read_storage():
+    from unittest.mock import MagicMock
+    from medvisit.platform.compliance import assess_policy
+    store = MagicMock()
+    assert await assess_policy(None, store, 'w', ' \n ', ['p']) == {'status':'skipped', 'findings':[]}
+    store.transaction.assert_not_called()
+
+
 def test_findings_require_known_rule_and_exact_speaker_quote():
     rule = {'id':'r1', 'risk':'high', 'action':'pause', 'article':'第七条', 'quote':'原文',
             'policy_id':'p1', 'policy_version':3, 'policy_title':'政策', 'source_url':'https://example.org'}

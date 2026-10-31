@@ -19,7 +19,12 @@ def _squash(text: str) -> str:
 
 def verify_quotes(text: str, transcript: list[dict]) -> tuple[str, list[str]]:
     """Return (text with unverifiable quotes replaced, the quotes that were removed)."""
-    haystack = _squash(''.join(m['text'] for m in transcript))
+    if not QUOTE.search(text):
+        return text, []
+    return _verify_quotes(text, _squash(''.join(m['text'] for m in transcript)))
+
+
+def _verify_quotes(text: str, haystack: str) -> tuple[str, list[str]]:
     removed: list[str] = []
 
     def check(match: re.Match) -> str:
@@ -33,14 +38,24 @@ def verify_quotes(text: str, transcript: list[dict]) -> tuple[str, list[str]]:
 
 def apply_quote_check(coach: dict, transcript: list[dict]) -> list[str]:
     """Check the prose fields and the suggestion points in place; returns every removed quote."""
+    haystack = None
+
+    def check(text):
+        nonlocal haystack
+        if not QUOTE.search(text):
+            return text, []
+        if haystack is None:
+            haystack = _squash(''.join(m['text'] for m in transcript))
+        return _verify_quotes(text, haystack)
+
     removed: list[str] = []
     for key in PROSE_FIELDS:
         if isinstance(coach.get(key), str):
-            coach[key], found = verify_quotes(coach[key], transcript)
+            coach[key], found = check(coach[key])
             removed += found
     points = []
     for point in coach.get('points', []):
-        point, found = verify_quotes(point, transcript)
+        point, found = check(point)
         points.append(point)
         removed += found
     coach['points'] = points
@@ -48,6 +63,6 @@ def apply_quote_check(coach: dict, transcript: list[dict]) -> list[str]:
     if isinstance(delivery, dict):
         for key in ('fluency', 'logic'):
             if isinstance(delivery.get(key), str):
-                delivery[key], found = verify_quotes(delivery[key], transcript)
+                delivery[key], found = check(delivery[key])
                 removed += found
     return removed

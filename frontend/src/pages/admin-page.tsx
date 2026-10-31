@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { lazy, useMemo, useEffect, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,21 +9,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ChevronDown } from 'lucide-react'
-import { AdminReview, AdminRecords } from '@/components/admin-review'
 import { PolicyImports } from '@/components/research-panel'
 import { api } from '@/lib/platform-api'
 import { statusLabels } from '@/lib/catalog-types'
 import { Label } from '@/components/ui/label'
 
 import { adminHref, type AdminSection } from '@/lib/admin-navigation'
-import { AdminOverview } from '@/pages/admin-overview'
-import { AdminAudiences } from '@/pages/admin-audiences'
-import { AdminSettings } from '@/pages/admin-settings'
-import { AdminLessons } from '@/pages/admin-lessons'
 import { ProductTraining } from '@/components/product-training'
 import { PublicationApproval } from '@/components/publication-approval'
 import { ContentHistory } from '@/components/content-history'
-import { AdminDoctors } from '@/pages/admin-doctors'
+
+const AdminReview = lazy(() => import('@/components/admin-review').then(module => ({ default: module.AdminReview })))
+const AdminRecords = lazy(() => import('@/components/admin-review').then(module => ({ default: module.AdminRecords })))
+const AdminOverview = lazy(() => import('@/pages/admin-overview').then(module => ({ default: module.AdminOverview })))
+const AdminAudiences = lazy(() => import('@/pages/admin-audiences').then(module => ({ default: module.AdminAudiences })))
+const AdminSettings = lazy(() => import('@/pages/admin-settings').then(module => ({ default: module.AdminSettings })))
+const AdminLessons = lazy(() => import('@/pages/admin-lessons').then(module => ({ default: module.AdminLessons })))
+const AdminDoctors = lazy(() => import('@/pages/admin-doctors').then(module => ({ default: module.AdminDoctors })))
 type Row = {id:string;version:number;status:string;updated_at:string;[key:string]:unknown}
 type Taxonomy = { id:string; kind:string; version:number; terms:{value:string;status:'active'|'pending'}[] }
 const taxonomyKinds:Record<string,string> = { category:'治疗领域', disease:'疾病', mechanism:'机制', dosage_form:'剂型', region:'地区' }
@@ -58,6 +60,8 @@ function TaxonomyManager({taxonomy,onChange}:{taxonomy:Taxonomy[];onChange:(upda
   return <Accordion type="single" collapsible className="rounded-xl border bg-card px-4"><AccordionItem value="taxonomy" className="border-0"><AccordionTrigger className="min-h-14 text-sm">管理分类词表</AccordionTrigger><AccordionContent className="space-y-3 pb-4"><Label className="grid gap-2 text-sm font-normal leading-normal">分类类型<Select value={kind} onValueChange={setKind}><SelectTrigger className="w-full" aria-label="分类类型"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start">{Object.entries(taxonomyKinds).map(([key,label])=><SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></Label>{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}{!current?<p className="text-sm text-muted-foreground">词表暂不可用。</p>:<><ul className="divide-y rounded-lg border">{current.terms.map(t=><li key={t.value} className="flex min-h-11 items-center justify-between gap-3 px-3 text-sm"><span>{t.value} · {t.status==='active'?'已启用':'待审核'}</span>{t.status==='pending'&&<Button type="button" size="sm" variant="outline" disabled={busy} onClick={()=>void save(current.terms.map(x=>x.value===t.value?{...x,status:'active'}:x))}>审核启用</Button>}</li>)}</ul><Label className="grid gap-2 text-sm font-normal leading-normal">新分类<Input value={value} onChange={e=>setValue(e.target.value)} maxLength={100}/></Label><Button type="button" variant="outline" disabled={busy||!value.trim()||current.terms.some(t=>t.value===value.trim())} onClick={()=>void save([...current.terms,{value:value.trim(),status:'pending'}])}>添加待审核分类</Button></>}</AccordionContent></AccordionItem></Accordion>
 }
 
+const filterFields=[['category','治疗领域'],['diseases','疾病'],['mechanism','机制'],['dosage_form','剂型'],['regions','地区']] as const
+
 function Catalogue({kind}:{kind:'drug'|'policy'}) {
   const [rows,setRows]=useState<Row[]>([]), [documents,setDocuments]=useState<Row[]>([]), [item,setItem]=useState<Row>(), [editing,setEditing]=useState(false)
   const [comparisons,setComparisons]=useState<Comparison[]>([])
@@ -73,9 +77,9 @@ function Catalogue({kind}:{kind:'drug'|'policy'}) {
     if(kind==='drug'){body.content_ids=data.getAll('content_ids').map(String);body.comparisons=comparisons}
     else {const pages=Array.isArray(item?.pages)?item.pages as {number:number;text:string}[]:[];body.pages=pages.length?pages.map((p,i)=>i===0?{...p,text:String(data.get('text')??'').trim()}:p):[{number:1,text:String(data.get('text')??'').trim()}];body.expires_at=item?.expires_at||null;body.asset_id=item?.asset_id||null;body.text_is_summary=Boolean(item?.text_is_summary)&&data.get('original_verified')!=='on'}
     if(item)body.version=item.version;void mutate(`/catalog/${kind}${item?`/${item.id}`:''}`,body,item?'PUT':'POST')}
-  const filterFields=[['category','治疗领域'],['diseases','疾病'],['mechanism','机制'],['dosage_form','剂型'],['regions','地区']] as const
-  const choices=(key:string)=>Array.from(new Set(rows.flatMap(row=>Array.isArray(row[key])?row[key] as string[]:row[key]?[String(row[key])]:[]))).sort((a,b)=>a.localeCompare(b,'zh-CN'))
-  const filtered=rows.filter(row=>JSON.stringify(row).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())&&(kind!=='drug'||ownership==='all'||row.ownership===ownership)&&(status==='all'||row.status===status)&&Object.entries(filters).every(([key,values])=>!values.length||values.some(v=>Array.isArray(row[key])?(row[key] as string[]).includes(v):row[key]===v)))
+  const choices=useMemo(()=>Object.fromEntries(filterFields.map(([key])=>[key,Array.from(new Set(rows.flatMap(row=>Array.isArray(row[key])?row[key] as string[]:row[key]?[String(row[key])]:[]))).sort((a,b)=>a.localeCompare(b,'zh-CN'))])),[rows])
+  const normalizedQuery=query.trim().toLocaleLowerCase()
+  const filtered=useMemo(()=>rows.filter(row=>(!normalizedQuery||JSON.stringify(row).toLocaleLowerCase().includes(normalizedQuery))&&(kind!=='drug'||ownership==='all'||row.ownership===ownership)&&(status==='all'||row.status===status)&&Object.entries(filters).every(([key,values])=>!values.length||values.some(v=>Array.isArray(row[key])?(row[key] as string[]).includes(v):row[key]===v))),[rows,normalizedQuery,kind,ownership,status,filters])
   const name=kind==='drug'?'药品':'政策', canEdit=!item||['draft','rejected'].includes(item.status)
   const pages=Array.isArray(item?.pages)?item.pages as {number:number;text:string}[]:[],selected=Array.isArray(item?.content_ids)?item.content_ids as string[]:[]
   return <div className="space-y-5"><header className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{name}管理</h2></div><div className="flex gap-2"><Button variant="outline" disabled={busy} onClick={()=>setRefresh(v=>v+1)}>刷新列表</Button><Button onClick={()=>{setItem(undefined);setComparisons([]);setEditing(true);setError('');setNotice('')}}>添加{name}</Button></div></header>
@@ -84,7 +88,7 @@ function Catalogue({kind}:{kind:'drug'|'policy'}) {
     {kind==='drug'&&<TaxonomyManager taxonomy={taxonomy} onChange={updated=>setTaxonomy(current=>current.map(item=>item.kind===updated.kind?updated:item))}/>}
     {kind==='drug'&&<div className="flex flex-wrap items-center gap-2" aria-label="药品分类筛选">
       {filterFields.map(([key,label])=>{
-        const active=filters[key]??[], available=choices(key)
+        const active=filters[key]??[], available=choices[key]
         const options=[...new Set([...available,...active])]
         if(!options.length)return null
         return <Popover key={key}><PopoverTrigger asChild><Button type="button" variant="outline" className="shrink-0 gap-2">{label}{active.length>0&&<Badge variant="secondary" className="px-1.5 tabular-nums">{active.length}</Badge>}<ChevronDown className="size-4 text-muted-foreground" aria-hidden="true"/></Button></PopoverTrigger>

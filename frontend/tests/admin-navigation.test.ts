@@ -24,3 +24,14 @@ test('overview counts reviewable states and sorts valid timestamps without fabri
   assert.equal(pendingReview('scenario','draft'), true)
   assert.equal(pendingReview('content','approved'), false)
 })
+
+test('overview parses timestamps once and preserves stable ties across sources', () => {
+  const parse = Date.parse
+  let calls = 0
+  Date.parse = value => { calls++; return parse(value) }
+  try {
+    const groups = { drug: Array.from({ length: 100 }, (_, i) => ({ id: String(i), status: 'draft', updated_at: '2026-10-31' })) }
+    assert.deepEqual(overviewSummary(groups).recent.map(row => row.id), ['0','1','2','3','4','5'])
+    assert.equal(calls, 100)
+  } finally { Date.parse = parse }
+})

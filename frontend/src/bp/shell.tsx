@@ -1,17 +1,31 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import type { TrainingChoice } from '@/components/scenario-picker'
 import type { TrainingPreset } from '@/lib/training-setup'
-import { BpCoach, BpBrief, BpPicker, type CoachChoice } from './coach'
+import type { CoachChoice } from './coach'
+import { LoadingBlock } from '@/components/loading-block'
 import { useBp } from './data'
-import { BpDoctors, BpL3 } from './doctors'
 import { BpHome } from './home'
-import { BpLesson } from './lesson'
-import { BpAudiences, BpAudit, BpMe, BpPolicies, BpProducts, BpSettings, BpWorkspace } from './me'
 import { BpNav } from './nav'
 import { ipDoctors } from './logic'
 import type { Route } from './route'
-import { BpLevel, BpTraining } from './training'
 import type { ScenarioKey } from './types'
+
+const BpDoctors = lazy(() => import('./doctors').then(module => ({ default: module.BpDoctors })))
+const BpL3 = lazy(() => import('./doctors').then(module => ({ default: module.BpL3 })))
+const BpLesson = lazy(() => import('./lesson').then(module => ({ default: module.BpLesson })))
+const BpAudiences = lazy(() => import('./me').then(module => ({ default: module.BpAudiences })))
+const BpAudit = lazy(() => import('./me').then(module => ({ default: module.BpAudit })))
+const BpMe = lazy(() => import('./me').then(module => ({ default: module.BpMe })))
+const BpPolicies = lazy(() => import('./me').then(module => ({ default: module.BpPolicies })))
+const BpProducts = lazy(() => import('./me').then(module => ({ default: module.BpProducts })))
+const BpSettings = lazy(() => import('./me').then(module => ({ default: module.BpSettings })))
+const BpWorkspace = lazy(() => import('./me').then(module => ({ default: module.BpWorkspace })))
+const BpLevel = lazy(() => import('./training').then(module => ({ default: module.BpLevel })))
+const BpTraining = lazy(() => import('./training').then(module => ({ default: module.BpTraining })))
+const BpCoach = lazy(() => import('./coach').then(module => ({ default: module.BpCoach })))
+const BpBrief = lazy(() => import('./coach').then(module => ({ default: module.BpBrief })))
+const BpPicker = lazy(() => import('./coach').then(module => ({ default: module.BpPicker })))
+
 
 type Props = {
   route: Route; username?: string; onLogout?: () => void; logoutDisabled: boolean
@@ -66,7 +80,7 @@ export function BpShell({ route, username, onLogout, logoutDisabled, sessionLine
     default: screen = null
   }
   return <>
-    {screen}
+    <Suspense fallback={<LoadingBlock label="正在加载页面…" />}>{screen}</Suspense>
     <BpNav route={route} sessionActive={sessionActive} />
   </>
 }

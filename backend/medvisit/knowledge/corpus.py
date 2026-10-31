@@ -1,5 +1,6 @@
 """Source-bound medical evidence; generated wiki prose is never proof by itself."""
 import hashlib
+from itertools import chain
 import json
 from pathlib import Path
 import re
@@ -105,19 +106,19 @@ class MedicalCorpus:
             return {}
         approved = self.reviewed_documents()
         matches = {}
-        receipts = []
+        receipts = {}
+        source_urls = {source.get('url') for source in data['sources']}
         for doc in approved:
             receipt = {'document_id':doc['id'], 'document_version':doc['version'],
                        'version_label':doc['version_label'], 'document_sha256':hashlib.sha256(
                            json.dumps(doc.get('pages', []), ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
-            receipts.append((doc, receipt))
+            if doc.get('source_url') and doc['source_url'] in source_urls:
+                pages = {p['number']: quotation_text(p['text']) for p in doc.get('pages', [])}
+                receipts.setdefault(doc['source_url'], []).append((receipt, pages))
             for page in doc.get('pages', []):
                 matches[(f"platform-document-{doc['id']}", page['number'])] = receipt
         for source in data['sources']:
-            for doc, receipt in receipts:
-                if not doc.get('source_url') or source.get('url') != doc['source_url']:
-                    continue
-                pages = {p['number']: quotation_text(p['text']) for p in doc.get('pages', [])}
+            for receipt, pages in receipts.get(source.get('url'), []):
                 for page in source.get('pages', []):
                     if pages.get(page['number']) == quotation_text(page['text']) and pages.get(page['number']):
                         key = (source['id'], page['number'])
@@ -158,14 +159,21 @@ class MedicalCorpus:
             (p['id'], p['name'], p['brand'], *p.get('aliases', [])) if alias)]
         tokens = set(re.findall(r'[a-z][a-z0-9-]{2,}|\d+(?:\.\d+)?', query))
         tokens.update(query[i:i+2] for i in range(len(query)-1) if all('\u4e00' <= c <= '\u9fff' for c in query[i:i+2]))
+        product_ids = set(products)
+        years = re.findall(r'\b20\d{2}\b', text)
+        label_query = bool(re.search('适应|剂量|用法|禁忌|不良|安全|人群|用药', text))
+        policy_query = bool(re.search('医保|报销|支付|商保', text))
+        token_weights = [(token, 1 + min(len(token), 12)/12) for token in tokens]
         sources = {source['id']:source for source in sources_data}
         ranked = []
+        source_matches = {}
         compiled_sources = set()
         for pid in products:
             for fact in data.get('compiled',{}).get(pid,{}).get('facts',[]):
-                if sum(token in compact(fact['claim']) for token in tokens)>=2:
+                claim = compact(fact['claim'])
+                if sum(token in claim for token in tokens)>=2:
                     compiled_sources.add((fact['source_id'],fact['page']))
-        for chunk in [*data['chunks'], *derived_chunks]:
+        for chunk in chain(data['chunks'], derived_chunks):
             approval = approvals.get((chunk['source_id'], chunk['page']))
             if not approval:
                 continue
@@ -173,24 +181,30 @@ class MedicalCorpus:
             if source.get('document_version') and (source['document_version'] != approval['document_version']
                                                     or source['sha256'] != approval['document_sha256']):
                 continue
-            related = bool(set(products) & set(source['product_ids']))
+            if source['id'] not in source_matches:
+                trial_names = [name for trial in source.get('trials', []) for name in re.findall(
+                    r'\b(?:[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+|monarchE|MONARCH\s*[23])\b', trial)]
+                source_matches[source['id']] = (
+                    not product_ids.isdisjoint(source['product_ids']),
+                    any(compact(trial) in query for trial in trial_names if trial),
+                    any(year in str(source.get('published_at', '')) for year in years),
+                )
+            related, trial_match, year_match = source_matches[source['id']]
             if products and not related and source['kind'] not in ('reimbursement', 'policy', 'reviewed_content'):
                 continue
             body = compact(chunk['text'])
-            score = sum(1 + min(len(token), 12)/12 for token in tokens if token in body)
+            score = sum(weight for token, weight in token_weights if token in body)
             if related:
                 score += 8
             if (source['id'],chunk['page']) in compiled_sources:
                 score += 5
-            trial_names=[name for trial in source.get('trials',[]) for name in re.findall(
-                r'\b(?:[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+|monarchE|MONARCH\s*[23])\b',trial)]
-            if any(compact(trial) in query for trial in trial_names if trial):
+            if trial_match:
                 score += 20
-            if any(year in str(source.get('published_at','')) for year in re.findall(r'\b20\d{2}\b',text)):
+            if year_match:
                 score += 5
-            if source['kind'] == 'label' and re.search('适应|剂量|用法|禁忌|不良|安全|人群|用药', text):
+            if source['kind'] == 'label' and label_query:
                 score += 3 if related else 0
-            if source['kind'] in ('reimbursement','policy') and re.search('医保|报销|支付|商保', text):
+            if source['kind'] in ('reimbursement','policy') and policy_query:
                 score += 8
             if score > (8 if related else 3):
                 ranked.append((score, chunk, source))

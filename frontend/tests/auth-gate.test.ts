@@ -121,7 +121,7 @@ test('invalid credentials keep the form; cookie login and logout update the appl
   })
   app.render(); await settle()
   let view = app.render()
-  assert.equal(find(view, 'a')[0].props.href, '#home')
+  assert.match(text(view), /欢迎来到灵息BREATHON/)
   const password = find(view, 'Input').find(node => node.props.name === 'password')
   assert.equal(password.props.autoComplete, 'current-password')
   assert.equal(password.props.type, 'password')
@@ -277,9 +277,25 @@ test('both login targets omit the removed footer notice', async () => {
     app.render(); await settle()
     const view = app.render()
     assert.equal(find(view, 'form').length, 1)
-    assert.equal(find(view, 'Brand').length, 1)
+    assert.equal(find(view, 'Brand').length, target === 'admin' ? 1 : 0)
     assert.doesNotMatch(text(view), /管理员可查看演练和拜访记录|请勿输入未经授权的患者信息/)
   }
+})
+
+test('Android login follows the reference while retaining accessible password sign-in', async () => {
+  const app = mount(async () => Response.json(anonymous))
+  app.render(); await settle()
+  const view = app.render()
+  assert.equal(find(view, 'main')[0].props.className, 'bp-login')
+  assert.equal(find(view, 'svg')[0].props['aria-hidden'], 'true')
+  assert.match(text(view), /你好.*欢迎来到灵息BREATHON/)
+  assert.doesNotMatch(text(view), /注册|高海拔|用户协议|隐私政策/)
+  const fields = find(view, 'Field')
+  assert.deepEqual(fields.map(field => field.props.label), ['账号', '密码'])
+  const inputs = find(view, 'Input')
+  assert.deepEqual(inputs.map(input => input.props.autoComplete), ['username', 'current-password'])
+  assert.equal(inputs[1].props.type, 'password')
+  assert.equal(text(find(view, 'Button').find(button => button.props.type === 'submit')), '登录')
 })
 
  test('requesting logout and cancelling never revoke the session', async () => {

@@ -16,6 +16,13 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
     memo: (component: unknown) => component,
     lazy: () => "MedicalLibrary",
     Suspense: "Suspense",
+    useMemo(factory: () => unknown, dependencies: unknown[]) {
+      const index = cursor++
+      if (!slots[index] || dependencies.some((value, i) => value !== slots[index].dependencies[i])) {
+        slots[index] = { dependencies, value: factory() }
+      }
+      return slots[index].value
+    },
     useState(initial: any) {
       const index = cursor++
       if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial
@@ -34,7 +41,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   const jsx = (type: unknown, props: any, key: unknown) => ({ type, props, key })
   const exports: Record<string, (props: unknown) => any> = {}
   const source = readFileSync(new URL(`../src/pages/${file}`, import.meta.url), 'utf8')
-  vm.runInNewContext(ts.transpileModule(source + (name === 'CatalogPage' ? '\nexport { CatalogPage }' : ''), {
+  vm.runInNewContext(ts.transpileModule(source + (['CatalogPage', 'Catalogue'].includes(name) ? `\nexport { ${name} }` : ''), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
     exports, Error, AbortController, URL, URLSearchParams, location: { hash },
@@ -49,6 +56,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
     require: (module: string) => {
       if (module === '@/lib/practice-images') return { doctorIllustration: '/doctor.png' }
       if (module === '@/lib/admin-overview') return { overviewSources, overviewSummary }
+      if (module === '@/lib/admin-navigation') return { adminHref: (section: string) => `#admin?section=${section}` }
       if (module === '@/lib/app-drugs') return { isAppDrug }
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
@@ -75,6 +83,25 @@ function find(node: any, type: string): any[] {
   return [...(node.type === type ? [node] : []), ...find(node.props?.children, type)]
 }
 const settle = () => new Promise<void>(resolve => setImmediate(resolve))
+
+test('catalogue avoids serialization for empty searches and reuses unchanged filters', async () => {
+  let serializations = 0
+  const row = { id:'drug-1', name:'Synthetic', status:'draft', updated_at:'2026-10-31', version:1,
+    toJSON() { serializations++; return { name:this.name } } }
+  const app = page('admin-page.tsx', 'Catalogue', async path => path === '/catalog/drug' ? [row] : [])
+  app.render({ kind:'drug' })
+  await settle()
+  let view = app.render({ kind:'drug' })
+  assert.equal(serializations, 0)
+  find(view, 'Input').find(input => input.props.placeholder === '名称、疾病、靶点或地区').props.onChange({ target:{ value:'synthetic' } })
+  view = app.render({ kind:'drug' })
+  assert.equal(listRows(view).length, 1)
+  assert.equal(serializations, 1)
+  app.render({ kind:'drug' })
+  assert.equal(serializations, 1)
+  find(view, 'Input').find(input => input.props.placeholder === '名称、疾病、靶点或地区').props.onChange({ target:{ value:'missing' } })
+  assert.equal(listRows(app.render({ kind:'drug' })).length, 0)
+})
 
 test('saved case responses remain usable when the next list request would fail', async () => {
   const original = { id: 'case-1', version: 1, status: 'draft', title: 'Original', quotes: [], origin_verified: false }

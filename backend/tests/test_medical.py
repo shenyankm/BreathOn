@@ -44,6 +44,34 @@ def model_result(evidence):
         'correction':'测试值应为10%。','citations':[{'chunk_id':evidence[0]['id'],'quote':'测试药甲在测试人群中的指标为10%'}]}]}
 
 
+def test_duplicate_source_receipts_normalize_document_pages_once(tmp_path):
+    from medvisit.knowledge import corpus as module
+    corpus = corpus_fixture(tmp_path)
+    data = corpus.load()
+    source = data['sources'][0]
+    data['sources'] = [dict(source, id=f'source-{i}') for i in range(10)]
+    with patch.object(module, 'quotation_text', wraps=module.quotation_text) as normalize:
+        receipts = corpus.approval_snapshot(data)
+    assert len(receipts) == 11
+    assert normalize.call_count == 11
+    corpus.approved_documents()[0]['status'] = 'retired'
+    assert corpus.approval_snapshot(data) == {}
+
+
+def test_search_reuses_source_matches_without_changing_chunk_order(tmp_path):
+    from medvisit.knowledge import corpus as module
+    corpus = corpus_fixture(tmp_path)
+    data = corpus.load()
+    chunk = data['chunks'][0]
+    data['chunks'] = [dict(chunk, id=f'chunk-{i}') for i in range(40)]
+    approvals = corpus.approval_snapshot(data)
+    with patch.object(module.re, 'findall', wraps=module.re.findall) as findall:
+        rows = corpus.search('测试药甲 TEST-ONE 2026 指标', data=data, approvals=approvals)
+    assert [r['id'] for r in rows if r['source_id'] == 'test-source'] == [f'chunk-{i}' for i in range(4)]
+    assert sum(call.args[1] == 'TEST-ONE' for call in findall.call_args_list) == 1
+    assert all(r['document_version'] == 1 for r in rows)
+
+
 def test_approval_receipts_hash_each_document_once_and_refresh_on_change(tmp_path):
     import hashlib
 

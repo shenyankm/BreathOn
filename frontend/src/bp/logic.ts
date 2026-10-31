@@ -32,7 +32,10 @@ export function greeting(now: Date) {
 }
 
 export function findLesson(levels: Level[], id: string): Lesson | undefined {
-  return levels.flatMap(level => level.lessons).find(lesson => lesson.id === id)
+  for (const level of levels) {
+    const lesson = level.lessons.find(lesson => lesson.id === id)
+    if (lesson) return lesson
+  }
 }
 
 export function lessonForIp(levels: Level[], ipKey: string) {

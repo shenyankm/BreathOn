@@ -35,6 +35,17 @@ function nodes(node: any): any[] {
 }
 const settle = () => new Promise(resolve => setImmediate(resolve))
 
+test('lesson lookup stops at the first match and handles missing lessons', () => {
+  const first = { id: 'first' }
+  const last = { id: 'last' }
+  const levels: any = [{ lessons: [first] }, { lessons: [last] }]
+  assert.equal(logic.findLesson(levels, 'last'), last)
+  assert.equal(logic.findLesson(levels, 'missing'), undefined)
+  assert.equal(logic.findLesson([], 'first'), undefined)
+  Object.defineProperty(levels[1], 'lessons', { get() { throw Error('unneeded traversal') } })
+  assert.equal(logic.findLesson(levels, 'first'), first)
+})
+
 test('doctor refresh reaches the data source and copy reports actual clipboard failure', async () => {
   let reloads = 0, fail = false, copied = ''
   const notices: string[] = []
