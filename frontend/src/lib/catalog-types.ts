@@ -1,9 +1,9 @@
 export type Kind = 'content' | 'doctor' | 'rubric' | 'scenario'
 export type Entity = { id: string; version: number; status: string; created_at: string; updated_at: string; created_by: string }
 export type Content = Entity & { asset_id?: string | null; usable?:boolean; title: string; version_label: string; scope: string; source_url: string; publication_date: string | null; expires_at: string | null; pages: { number: number; text: string }[]; review_reason?: string; approved_by?: string; series_id: string }
-export type ManagedDrug = Entity & {name:string;brand:string;ownership:'company'|'competitor'|'unknown'}
+export type ManagedDrug = Entity & {name:string;brand:string;ownership:'company'|'competitor'|'unknown';practice_departments?:string[]}
 export type Policy = Content & { legal_status: string }
-export type Doctor = Entity & { name: string; display_name: string; specialty: string; hospital?: string; professional_title?: string; research_evidence_review_required?: boolean; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
+export type Doctor = Entity & { name: string; display_name: string; specialty: string; practice_department?: string; hospital?: string; professional_title?: string; research_evidence_review_required?: boolean; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
 export type DoctorDraft = Omit<Doctor, keyof Entity | 'display_name'>
 export type Dimension = { key: string; label: string; weight: number; anchors: string[]; requires_content: boolean }
 export type Rubric = Entity & { name: string; dimensions: Dimension[]; calibration_status: string }

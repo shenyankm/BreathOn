@@ -5,6 +5,7 @@ import json
 import re
 from fastapi import HTTPException
 from .catalog import require_item
+from .departments import require_department_match
 from .models import STAGES, STAGE_LABELS, content_usable, policy_usable
 from .store import now
 from ..agents.doctor import DOCTOR_PROMPT
@@ -61,6 +62,8 @@ def prepare_training(store, user, scenario_id, stage='full', *, preview=False):
         if any(not content_usable(doc) for doc in documents):
             raise HTTPException(409, '场景资料未审核、已过期或停用，请选择有效版本。')
         drugs = [require_item(tx, user['workspace'], 'drug', item_id) for item_id in (scene.get('drug_id'), scene.get('competitor_id')) if item_id]
+        if scene.get('drug_id'):
+            require_department_match(drugs[0], doctor)
         policies = [require_item(tx, user['workspace'], 'policy', item_id) for item_id in scene.get('policy_ids', [])]
         if any(drug['status'] != 'published' for drug in drugs) or any(not policy_usable(policy) for policy in policies):
             raise HTTPException(409, '场景药品或政策已失效，请选择有效版本。')
@@ -81,6 +84,7 @@ def prepare_free_context(store, user, drug_id, doctor_id):
         doctor = require_item(tx, user['workspace'], 'doctor', doctor_id)
         if drug['status'] != 'published' or doctor['status'] != 'published':
             raise HTTPException(409, '自由演练的药品和医生必须已发布。')
+        require_department_match(drug, doctor)
     return {'drug': {key: drug.get(key) for key in ('id', 'version', 'name', 'brand')},
             'doctor': {key: doctor[key] for key in ('id', 'version', 'name', 'display_name', 'specialty',
                 'background_type', 'public_facts', 'sources', 'population', 'focus', 'training_style', 'mood', 'opening')}}
@@ -92,6 +96,10 @@ def check_free_context(store, workspace, free_context):
         current = tx.get(workspace, 'drug', selected['id'])
         if not current or current.get('status') != 'published' or current['version'] != selected['version']:
             raise HTTPException(409, '所选药品已停用或版本改变，请重新选择后开始新的演练。')
+        doctor = require_item(tx, workspace, 'doctor', free_context['doctor']['id'])
+        if doctor.get('status') != 'published':
+            raise HTTPException(409, '所选医生已停用，请重新选择。')
+        require_department_match(current, doctor)
 
 
 def snapshot(training):

@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 from typing import Literal
 from pydantic import Field, field_validator, model_validator
 from .input import Input
+from .departments import DRUG_DEPARTMENTS, department
 from ..agents.web_search import public_url
 
 
@@ -93,6 +94,22 @@ class DrugComparison(Input):
 
 
 class Drug(Input):
+    practice_departments: list[str] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode='before')
+    @classmethod
+    def default_departments(cls, data):
+        if isinstance(data, dict) and 'practice_departments' not in data:
+            data = {**data, 'practice_departments': DRUG_DEPARTMENTS.get(str(data.get('name', '')).strip(), [])}
+        return data
+
+    @field_validator('practice_departments')
+    @classmethod
+    def valid_departments(cls, values):
+        if any(not value.strip() or len(value) > 80 for value in values):
+            raise ValueError('科室名称必须为1至80字符。')
+        return list(dict.fromkeys(department(value) for value in values))
+
     name: str = Field(min_length=1, max_length=120)
     brand: str = Field(default='', max_length=120)
     aliases: list[str] = Field(default_factory=list, max_length=20)

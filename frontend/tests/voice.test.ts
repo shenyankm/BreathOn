@@ -80,13 +80,14 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
   const track = { enabled: true, onended: null as null | (() => void), stop: () => { trackStopped = true } }
   const node = () => ({ connect(target: any) { return target }, disconnect() {} })
   const captures: any[] = []
+  const gains: { value: number }[] = []
   const starts: number[] = []
   let sourceStops = 0
   class Context {
     sampleRate = 16000; state = 'running'; currentTime = 0; destination = {}; audioWorklet = { addModule: async () => {} }
     async resume() {}
     createMediaStreamSource() { return node() }
-    createGain() { return { ...node(), gain: { value: 1 } } }
+    createGain() { const gain = { value: 1 }; gains.push(gain); return { ...node(), gain } }
     createBuffer(channels: number, length: number, rate: number) {
       assert.equal(channels, 1); assert.equal(rate, 24000)
       return { duration: length / rate, copyToChannel(samples: Float32Array) { assert.equal(samples.length, length) } }
@@ -101,6 +102,11 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
     const audio = new BrowserAudio()
     const frames: ArrayBuffer[] = []
     await audio.open(frame => frames.push(frame), () => { lost = true })
+  audio.setOutputMuted(true)
+  assert.equal(gains[0].value, 0)
+  assert.equal(track.enabled, true)
+  audio.setOutputMuted(false)
+  assert.equal(gains[0].value, 1)
     const capture = captures[0]
     const encoded = encodeAudio(new ArrayBuffer(4800))
     audio.play(encoded); audio.play(encoded)
@@ -110,6 +116,14 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
     assert.equal(sourceStops, 2); assert.equal(audio.isPlaying, false)
     audio.play(encoded)
     assert.equal(starts[2], 0.03)
+    audio.interrupt()
+    for (let i = 0; i < 100; i++) audio.play(encoded)
+    assert.ok(audio.isPlaying, 'ten seconds of burst audio must remain playable')
+    assert.ok(Math.abs(starts.at(-1)! - 9.93) < 0.00001)
+    assert.throws(() => audio.play(Buffer.alloc(51 * 24000 * 2).toString('base64')), /超过一分钟/)
+    audio.interrupt()
+    audio.play(encoded)
+    assert.equal(starts.at(-1), 0.03, 'interrupt must discard the queued utterance')
     audio.setMuted(true)
     assert.equal(track.enabled, false)
     capture.port.onmessage({ data: new Uint8Array(640).fill(255).buffer })

@@ -192,7 +192,7 @@ export function VisitsPage() {
   </>
   return <div className="mx-auto max-w-3xl space-y-5">
     <header className="space-y-4">
-      <div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">拜访日记</h1></div><Button className="h-11 shrink-0" variant="ghost" aria-label="刷新日记列表" disabled={busy} onClick={() => void reload().catch(e => setError(message(e)))}><RotateCcw /></Button></div>
+      <div className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">拜访记录</h1></div><Button className="h-11 shrink-0" variant="ghost" aria-label="刷新日记列表" disabled={busy} onClick={() => void reload().catch(e => setError(message(e)))}><RotateCcw /></Button></div>
       <Button className="h-11 w-full sm:w-auto" disabled={busy || recording} onClick={() => navigate({ kind: 'new' })}><Plus />{draft.text || draft.doctor_id || draft.drug_id ? '继续未保存的日记' : '新建日记'}</Button>
     </header>
     {view.kind === 'list' && feedback}

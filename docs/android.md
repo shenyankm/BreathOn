@@ -1,18 +1,38 @@
 # Android 打包与本机 AVD 验收
 
-Android 用户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.medvisit`，调试版追加 `.debug`。Web 构建只包含管理后台；用户端页面与底部标签栏只打入 APK，不再通过 Web 服务分发。
+Android 用户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.medvisit`，调试版追加 `.debug`。Web 构建只包含管理后台；用户端页面与主页面导航只打入 APK，不再通过 Web 服务分发。
+
+## 技术栈
+
+移动端统一采用 React + Tauri 2 + SQLite：React 页面使用 TypeScript，Tauri 2 提供原生容器，Rust 使用内置 SQLite 的 `rusqlite` 保存上次选择的练习方式。数据库位于应用私有数据目录的 `breathon.sqlite3`，首次使用时事务建表并设置 `user_version=1`，按登录账号读取和更新；切换账号使用各自偏好，退出后保留，卸载应用会清除。当前不保存凭据、录音或拜访正文，也不提供离线同步。
+
+前端只能调用 `load_training_preference` / `save_training_preference`，不能传入 SQL 或数据库路径。`build.rs` 为命令生成权限，运行时能力与 Rust 页面地址检查共同限制为 Android 主窗口的内置 `/_android/index.html` 地址；debug 构建额外允许 `localhost` / `127.0.0.1` HTTP 同一路径，release 不授权这些地址。Tauri 会将配置的前端来源归为本地，因此原生命令还会独立检查协议、主机、端口与页面路径，阻止同源普通页面访问。数据库错误不会回传文件路径，读写失败提示用户并保留本次练习能力。
+
+存储回归可在具备 Tauri 桌面编译依赖的开发机运行 `cargo test --manifest-path frontend/src-tauri/Cargo.toml --lib --locked`；Android 另需编译和安装验证。验收时选择实战练习、强制停止并重开应用，确认选项恢复，再验证其他账号使用独立选项。
+
+移动端共用 Python + FastAPI + AgentScope 服务端，通过 API 访问 PostgreSQL 中的服务端数据；后端本地开发使用的 SQLite 不属于移动端实现。端内数据库不替代服务端登录、权限校验或记录归属检查。
 
 ## 页面与 API
 
 `npm run build:android` 将用户端编译到 `frontend/dist-android`。Android Gradle 工程把该目录作为 APK assets，`MainActivity` 使用已有的 AndroidX `WebViewAssetLoader` 读取资源。生产 WebView 的地址为 `https://openwook.cloud/_android/index.html`，其中 `/_android/` 只从 APK 加载；Web 服务器对该路径返回 404。
 
-`/api`、WebSocket、附件和登录 Cookie 仍使用 `https://openwook.cloud`，保持同源。没有放宽 SameSite Cookie、CORS 或来源校验，也没有给远程页面增加 Tauri IPC 权限。原有 Tauri WebViewClient 的导航、加载和安全回调均保留，WebChromeClient 的麦克风和文件选择处理保持不变。 WebView 的四边范围按 Android 系统栏与屏幕缺口的实际 Insets 调整，避免状态栏或导航栏遮挡标题和底部标签。
+`/api`、WebSocket、附件和登录 Cookie 仍使用 `https://openwook.cloud`，保持同源。没有放宽 SameSite Cookie、CORS 或来源校验；上述两个偏好命令仅对内置页面地址授权，普通远程页面不增加 Tauri IPC 权限。原有 Tauri WebViewClient 的导航、加载和安全回调均保留，WebChromeClient 的麦克风和文件选择处理保持不变。 WebView 的四边范围按 Android 系统栏与屏幕缺口的实际 Insets 调整，避免状态栏或导航栏遮挡标题和底部控件。
 
 首次打开时会在原生 WebView 初始化后重新载入一次，确保资源拦截器包在 Tauri 已安装的客户端外层。页面资源可随 APK 离线读取；登录、资料与语音功能仍依赖后端网络。更新用户页面需要重新构建并安装 APK，发布 Web 管理页不会更新用户端。
 
 Python 后端、数据库和服务密钥不打入 APK。Manifest 保留 `RECORD_AUDIO` 与 `MODIFY_AUDIO_SETTINGS`，麦克风由现有 WebView 请求系统权限，无需新增录音插件。
 
 调试版额外允许 `localhost` 与 `127.0.0.1` 的 HTTP 同源地址，供 `adb reverse` 使用；发布版资源拦截只接受生产域名的 HTTPS。
+
+## 药品与医生科室匹配
+
+先选择药品，再从科室对口、已发布的医生中选择练习对象。一个药品可关联多个科室，一个科室可有多个药品和医生；更换药品时保留仍对口的医生，否则清空医生选择。无对口医生、未配置科室、组合失效时不能开始练习。
+
+后端目录返回药品 `practice_departments` 和医生归一后的 `practice_department`，前端只负责筛选；自由练习预览、WebSocket 启动和绑定了药品的评分场景均在服务端校验。既有记录不重写。后台药品草稿中可编辑多个对口科室，发布后生效；显式空清单表示不开放该药品的科室匹配。
+
+内置20种药品的默认科室在 `backend/medvisit/platform/departments.py`；旧目录缺少此字段时按通用名读取默认值，未知药品不会自动匹配全部医生。科室别名统一处理，例如“心内科／心血管代谢中心”和“血液科／白血病诊疗中心”。这里只表示模拟练习的科室领域对口，不判断个人处方权、医院准入或具体患者适用性。药品来源入口沿用 `catalog_seed.json`，医生专业来源沿用 `doctor_profiles.json`。
+
+本次更新需先部署后端及管理端，再更新用户 APK；旧后端未提供科室字段时，新版用户端不会放行未经匹配的组合。
 
 ## 构建环境
 
@@ -74,7 +94,7 @@ adb -s emulator-5554 exec-out screencap -p > /tmp/breathon-avd.png
 adb -s emulator-5554 logcat -b crash -d
 ```
 
-验收底部“练习、学习、我的”三个标签页、药品与医生独立选择、空数据与加载失败、场景切换、复盘弹窗和前后台切换。 Android 系统返回键先收起键盘，再交由打开的对话框或下拉选择框处理 Escape；忙碌中的弹窗可以阻止关闭。带查询参数的详情页先返回所属列表；日记、复盘列表返回“我的”，学习、“我的”和当前演练返回练习首页；首页再按返回键才将 App 放到后台，不清空页面或直接停止演练。普通浏览器访问 `/_android/index.html` 必须返回 404，APK 应能显示同一路径的用户页面，从而确认页面来自安装包。只有明确需要实际语音验收时才开始录音或调用外部服务；服务状态刷新和语音调用会产生用量。
+验收默认主页面（资料空间、公司产品、开始练习、练习记录）、右下角头像进入独立“我的”页（拜访记录、练习记录）、内容页左上角返回主页面，以及辅助练习聊天布局、实战通话布局、选择药品后按科室自动筛选医生、更换药品后清空不匹配医生、空数据与加载失败、场景切换、复盘弹窗和前后台切换。 Android 系统返回键先收起键盘，再交由打开的对话框或下拉选择框处理 Escape；忙碌中的弹窗可以阻止关闭。带查询参数的详情页先返回所属列表；日记、复盘列表返回“我的”，资料空间、公司产品、练习选择、“我的”和当前演练返回练习首页；首页再按返回键才将 App 放到后台，不清空页面或直接停止演练。普通浏览器访问 `/_android/index.html` 必须返回 404，APK 应能显示同一路径的用户页面，从而确认页面来自安装包。只有明确需要实际语音验收时才开始录音或调用外部服务；服务状态刷新和语音调用会产生用量。
 
 `android:dev` 也先构建用户资源，再启动本机 Vite 代理；其 `devUrl` 为 `http://localhost:5173/_android/index.html`。它不使用网页热更新，页面改动后仍需重新构建和安装。已有 5173 服务时不要直接停止他人的进程，应使用独立端口和覆盖配置。
 

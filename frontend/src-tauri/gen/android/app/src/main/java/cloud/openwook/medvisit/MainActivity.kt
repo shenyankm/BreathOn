@@ -48,7 +48,7 @@ private val APP_BACK_SCRIPT = """
       location.replace('#me');
       return true;
     }
-    if (['library', 'me', 'start'].includes(page)) {
+    if (['library', 'products', 'practice', 'me', 'start'].includes(page)) {
       location.replace('#home');
       return true;
     }

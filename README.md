@@ -7,7 +7,15 @@
 - **管理后台**：维护药品、医生、政策、场景和审核资料；审核拜访反馈并查看代表记录。
 - **拜访日记**：记录访后观察或导入已获授权的录音，确认脱敏后提交审核。
 
-技术栈：React / Vite / shadcn/ui Maia + Tauri 2 Android、FastAPI、AgentScope。服务器原生运行 FastAPI（systemd）与 Caddy，只有 PostgreSQL 使用 Docker；本地开发兼容 JSON 存储。
+技术栈规范：
+
+| 范围 | 技术栈 | 职责与当前状态 |
+| --- | --- | --- |
+| 移动端 | React + Tauri 2 + SQLite | React 使用 TypeScript，Tauri 2 提供原生容器；SQLite 按账号保存上次选择的练习方式 |
+| Web 前端 | React + TypeScript | 管理后台界面，通过 HTTP / WebSocket 访问服务端 |
+| 服务端（Web 与移动端共用） | Python + FastAPI + AgentScope + PostgreSQL（pgsql） | 业务 API、权限、AI 编排与服务端数据存储 |
+
+Vite 和 shadcn/ui Maia 分别用于前端构建与 UI。服务器原生运行 FastAPI（systemd）与 Caddy，只有 PostgreSQL 使用 Docker。后端本地开发保留 JSON / SQLite 兼容存储，与移动端 SQLite 分属不同运行环境。完整边界见[架构与部署](docs/architecture.md)。
 
 Android 客户端使用 Tauri 2，构建、USB 调试和签名见 [Android 打包](docs/android.md)。用户界面内置于 APK，Web 只提供管理后台；后端仍由服务器运行。
 

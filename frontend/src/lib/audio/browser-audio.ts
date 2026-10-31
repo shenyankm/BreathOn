@@ -19,6 +19,7 @@ export class BrowserAudio {
   private capture?: AudioWorkletNode
   private input?: MediaStreamAudioSourceNode
   private silent?: GainNode
+  private output?: GainNode
   private playing = new Set<AudioBufferSourceNode>()
   private nextPlayback = 0
   private stopped = false
@@ -34,6 +35,8 @@ export class BrowserAudio {
     const context = new AudioContext({ sampleRate: 16000 })
     this.context = context
     if (context.sampleRate !== 16000) throw new Error('当前浏览器不支持 16 kHz 音频，请使用桌面 Chrome')
+    this.output = context.createGain()
+    this.output.connect(context.destination)
     await context.resume()
     await context.audioWorklet.addModule(new URL('./capture.worklet.js', import.meta.url).href)
     if (this.stopped) return
@@ -51,14 +54,17 @@ export class BrowserAudio {
     const context = this.context
     if (!context || this.stopped) return
     if (context.state !== 'running') throw new Error('音频播放已暂停，请重新开始演练')
-    if (this.nextPlayback - context.currentTime > 2) throw new Error('回复音频积压，请检查网络后重试')
     const samples = decodePcm16(encoded)
     if (!samples.length) return
+    // Providers synthesize faster than playback; bound the whole queued utterance, not arrival speed.
+    if (Math.max(0, this.nextPlayback - context.currentTime) + samples.length / 24000 > 60) {
+      throw new Error('待播放语音超过一分钟，请重新开始演练')
+    }
     const buffer = context.createBuffer(1, samples.length, 24000)
     buffer.copyToChannel(samples, 0)
     const source = context.createBufferSource()
     source.buffer = buffer
-    source.connect(context.destination)
+    source.connect(this.output ?? context.destination)
     source.onended = () => { this.playing.delete(source); source.disconnect() }
     const start = Math.max(context.currentTime + 0.03, this.nextPlayback)
     try { source.start(start) }
@@ -75,6 +81,10 @@ export class BrowserAudio {
     this.nextPlayback = 0
   }
 
+  setOutputMuted(muted: boolean) {
+    if (this.output) this.output.gain.value = muted ? 0 : 1
+  }
+
   setMuted(muted: boolean) {
     this.muted = muted
     for (const track of this.stream?.getAudioTracks() ?? []) track.enabled = !muted
@@ -86,6 +96,7 @@ export class BrowserAudio {
     this.capture?.disconnect()
     this.input?.disconnect()
     this.silent?.disconnect()
+    this.output?.disconnect()
     for (const track of this.stream?.getTracks() ?? []) { track.onended = null; track.stop() }
     if (this.context && this.context.state !== 'closed') void this.context.close()
   }

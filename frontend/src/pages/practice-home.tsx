@@ -41,7 +41,7 @@ export function PracticeHome({ initialChoice, initialPreset, sessionState, secon
     </Card>}
     <nav aria-label="练习快捷入口" className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
       <Button asChild variant="ghost" className="h-11"><a href={latest ? `#records?session=${latest.id}` : '#records'}><RotateCcw />{latest ? '查看最近复盘' : '查看演练记录'}</a></Button>
-      <Button asChild variant="ghost" className="h-11"><a href="#library">学习资料<ArrowRight /></a></Button>
+      <Button asChild variant="ghost" className="h-11"><a href="#library">资料空间<ArrowRight /></a></Button>
     </nav>
   </div>
 }

@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
 from .catalog import Catalog, require_item
+from .departments import with_departments
 from .models import Content, ContentEdit, Policy, PolicyEdit, PolicyRule, PolicyRuleEdit, Drug, DrugEdit, TaxonomyEdit, Doctor, DoctorEdit, Rubric, RubricEdit, Scenario, ScenarioEdit, Publish, Transition, content_usable, policy_usable
 from .pdf_extract import extract_pdf
 from .training import prepare_training, prepare_free_context, snapshot
@@ -263,11 +264,11 @@ def platform_router(store, settings, records):
 
     @router.post('/catalog/{kind}', status_code=201)
     def catalog_create(kind: Kind, body: dict, user=Depends(current_user)):
-        return catalog.create(user, kind, parse(CREATE_MODELS[kind], body))
+        return with_departments(kind, catalog.create(user, kind, parse(CREATE_MODELS[kind], body)))
 
     @router.put('/catalog/{kind}/{item_id}')
     def catalog_edit(kind: Kind, item_id: str, body: dict, user=Depends(current_user)):
-        return catalog.edit(user, kind, item_id, parse(EDIT_MODELS[kind], body))
+        return with_departments(kind, catalog.edit(user, kind, item_id, parse(EDIT_MODELS[kind], body)))
 
     @router.delete('/catalog/doctor/{item_id}')
     def doctor_delete(item_id: str, version: int = Query(ge=1), user=Depends(current_user)):
@@ -275,7 +276,7 @@ def platform_router(store, settings, records):
 
     @router.post('/catalog/{kind}/{item_id}/revision', status_code=201)
     def catalog_revision(kind: Kind, item_id: str, user=Depends(current_user)):
-        return catalog.revision(user, kind, item_id)
+        return with_departments(kind, catalog.revision(user, kind, item_id))
 
     @router.post('/catalog/{kind}/{item_id}/review')
     def content_review(kind: Literal['content', 'policy'], item_id: str, body: Transition, user=Depends(current_user)):
@@ -283,7 +284,7 @@ def platform_router(store, settings, records):
 
     @router.post('/catalog/{kind}/{item_id}/publish')
     def catalog_publish(kind: Literal['doctor','drug','policy_rule','rubric','scenario'], item_id: str, body: Publish, user=Depends(current_user)):
-        return catalog.publish(user, kind, item_id, body.version)
+        return with_departments(kind, catalog.publish(user, kind, item_id, body.version))
 
     @router.post('/catalog/drug/{item_id}/retire')
     def drug_retire(item_id: str, body: Publish, user=Depends(current_user)):

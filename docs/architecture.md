@@ -1,13 +1,24 @@
 # 架构与部署
 
+## 技术栈规范与边界
+
+- 移动端：React + Tauri 2 + SQLite。React 页面使用 TypeScript，Rust 负责 Tauri 原生入口和必要的原生能力；SQLite 承担端内本地持久化。
+- Web 端：React + TypeScript + Python + FastAPI + AgentScope + PostgreSQL（pgsql）。React / TypeScript 负责管理界面；Python / FastAPI 负责业务接口；AgentScope 负责服务端 AI 编排；PostgreSQL 负责服务端结构化数据。
+- Web 与移动端共用同一套服务端 API、账号权限和 AI 服务。移动端通过 API 访问服务端数据，不直接连接 PostgreSQL；供应商密钥保留在服务端。
+
+移动端通过 Rust `rusqlite`（内置 SQLite）将上次选择的练习方式保存到应用私有目录的 `breathon.sqlite3`，按登录账号区分，重启后恢复。数据库使用 `user_version=1`，升级遇到更高版本会拒绝访问并保留原库。仅开放读取、保存练习偏好两个 Tauri 命令，不接受前端传入 SQL 或文件路径；能力限定为 Android 主窗口的 `https://openwook.cloud/_android/index.html`，debug 构建额外允许本机 HTTP 同一路径。普通远程页面没有这些权限。
+
+SQLite 当前只保存非敏感练习偏好，退出后保留供同账号下次登录恢复，不保存密码、Cookie、转录或录音；不是离线业务或自动同步实现。存储失败会提示用户并允许继续练习。现有后端 `platform.sqlite3` 是本地开发兼容存储，不是移动端数据库。
+
 ## 调用关系
 
 ```text
 React + Tauri 2 Android App（用户端，页面内置 APK）
+  ├─ Rust → 端内 SQLite（按账号保存练习方式）
   └─ HTTPS /api HTTP + WSS（登录 Cookie）
-服务器 Caddy（原生，静态 Web 管理端 /admin）
+服务器 Caddy（原生，React + TypeScript 静态 Web 管理端 /admin）
   └─ 同源 /api HTTP + WebSocket 代理
-      └─ FastAPI api/app.py（原生 systemd 单进程）
+      └─ Python + FastAPI api/app.py（原生 systemd 单进程）
           ├─ voice/：SeedASR / Seeduplex / TTS
           ├─ services/practice.py：会话、转录修正、取消、重试、复盘
           │   └─ agents/coach.py：独立 AgentScope Agent → DeepSeek → 输出校验

@@ -16,6 +16,7 @@ export function useVoiceSession() {
   const [messages, setMessages] = useState<VoiceMessage[]>([])
   const [error, setError] = useState('')
   const [muted, setMuted] = useState(false)
+  const [outputMuted, setOutputMuted] = useState(false)
   const [sessionId, setSessionId] = useState('')
   const [saved, setSaved] = useState(false)
   const [seconds, setSeconds] = useState(0)
@@ -50,7 +51,7 @@ export function useVoiceSession() {
     if (old) { old.closing = true; old.audio.stop(); old.ws?.close() }
     const current: Connection = { audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
-    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
+    setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setOutputMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
     medicalText.current.clear()
     setAnalysisStatus('not_started')
     setSpeechState('idle'); setTraining(null); setFreeContext(null); setMode(mode)
@@ -192,7 +193,8 @@ export function useVoiceSession() {
               if (experience === 'practice') setSpeechState('idle')
             } else if (event.type === 'audio' && !current.policyPaused && !current.retired.has(event.response_id)) {
               current.response = event.response_id || current.response
-              current.audio.play(event.audio)
+              try { current.audio.play(event.audio) }
+              catch (cause) { fail(cause instanceof Error ? cause.message : '音频播放失败，请重新开始演练') }
             } else if (event.type === 'muted' && !current.policyPaused) setMuted(event.muted)
           }
         } catch { fail('语音事件或音频格式异常，请重新连接') }
@@ -243,6 +245,13 @@ export function useVoiceSession() {
     setError(''); setPracticeState('thinking')
   }
 
+  function toggleOutputMute() {
+    const current = connection.current
+    if (!current || current.closing) return
+    current.audio.setOutputMuted(!outputMuted)
+    setOutputMuted(!outputMuted)
+  }
+
   function retrySpeech() {
     const current = connection.current
     if (!current || current.closing || current.ws?.readyState !== WebSocket.OPEN) return
@@ -290,5 +299,5 @@ export function useVoiceSession() {
     if (current) { current.closing = true; current.audio.stop(); current.ws?.close() }
   }, [])
 
-  return { mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
+  return { outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }
 }

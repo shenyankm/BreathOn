@@ -71,14 +71,14 @@ function textOf(node: any): string {
 const settle = () => new Promise<void>(resolve => setImmediate(resolve))
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value))
 const drugs = [
-  { id: 'drug-a', version: 1, status: 'published', name: '药品 A', brand: '品牌 A' },
-  { id: 'drug-b', version: 2, status: 'published', name: '药品 B', brand: '品牌 B' },
+  { id: 'drug-a', version: 1, status: 'published', name: '药品 A', brand: '品牌 A', practice_departments: ['内分泌科', '心内科'] },
+  { id: 'drug-b', version: 2, status: 'published', name: '药品 B', brand: '品牌 B', practice_departments: ['内分泌科', '心内科'] },
   { id: 'draft-drug', version: 1, status: 'draft', name: '草稿药品', brand: '' },
 ]
 const doctors = [
-  { id: 'doctor-a', version: 1, status: 'published', display_name: '模拟医生 A', specialty: '内分泌科', sources: [] },
-  { id: 'doctor-b', version: 1, status: 'published', display_name: '模拟医生 B', specialty: '心内科', sources: [] },
-  { id: 'retired-doctor', version: 1, status: 'retired', display_name: '停用医生', specialty: '', sources: [] },
+  { id: 'doctor-a', version: 1, status: 'published', name: '模拟医生 A', display_name: '模拟医生 A（训练模拟）', specialty: '内分泌科', practice_department: '内分泌科', sources: [] },
+  { id: 'doctor-b', version: 1, status: 'published', name: '模拟医生 B', display_name: '模拟医生 B（训练模拟）', specialty: '心内科', practice_department: '心内科', sources: [] },
+  { id: 'retired-doctor', version: 1, status: 'retired', name: '停用医生', display_name: '停用医生（训练模拟）', specialty: '', sources: [] },
 ]
 const scenes = [
   { id: 'scene-a', status: 'published', title: '固定组合场景', drug_id: 'drug-a', doctor_id: 'doctor-a', difficulty: 'basic', stages: ['evidence'] },
@@ -114,7 +114,7 @@ function picker(preview: Api = async path => { throw new Error(`Unexpected previ
   }
 }
 
-test('free practice defaults to independent published drug and doctor choices', async () => {
+test('free practice starts with published drugs and enables matching doctors after selection', async () => {
   const app = picker(async path => {
     const query = new URLSearchParams(path.split('?')[1])
     assert.equal(path.split('?')[0], '/practice/preview')
@@ -125,7 +125,7 @@ test('free practice defaults to independent published drug and doctor choices', 
   let view = await app.flush()
   assert.equal(find(view, 'Tabs')[0].props.value, 'free')
   const options = find(view, 'SelectItem').map(node => node.props.value)
-  for (const id of ['drug-a', 'drug-b', 'doctor-a', 'doctor-b', 'scene-a']) assert.ok(options.includes(id), id)
+  for (const id of ['drug-a', 'drug-b', 'scene-a']) assert.ok(options.includes(id), id)
   for (const id of ['draft-drug', 'retired-doctor', 'draft-scene']) assert.ok(!options.includes(id), id)
   assert.deepEqual(plain(app.value), { scenario_id: '', stage: 'full' })
   assert.equal(app.readiness.at(-1), false)
@@ -146,8 +146,8 @@ test('long drug and doctor labels remain available in the current free-pair summ
     { ...drugs[1], name: '测试药品名称乙——验证重新选择后仍能读取完整名称', brand: '测试长商品名乙' },
   ]
   const longDoctors = [
-    { ...doctors[0], display_name: '某医学中心门诊模拟医生甲（长角色名称）', specialty: '内分泌与代谢病学专科甲' },
-    { ...doctors[1], display_name: '另一医学中心模拟医生乙（完整角色名称）', specialty: '心血管内科学专科乙' },
+    { ...doctors[0], name: '某医学中心门诊模拟医生甲（长角色名称）', specialty: '内分泌与代谢病学专科甲' },
+    { ...doctors[1], name: '另一医学中心模拟医生乙（完整角色名称）', specialty: '心血管内科学专科乙' },
   ]
   const pending: ((value: unknown) => void)[] = []
   const app = picker(() => new Promise(resolve => pending.push(resolve)), undefined, { drugs: longDrugs, doctors: longDoctors, scenes })
@@ -164,8 +164,8 @@ test('long drug and doctor labels remain available in the current free-pair summ
     const summary = find(view, 'p').find(node => node.props['aria-label'] === '本次自由组合')
     assert.ok(summary, 'the chosen pair has an accessible full-label summary')
     const text = textOf(summary)
-    for (const label of [longDrugs[1].name, longDrugs[1].brand, longDoctors[1].display_name, longDoctors[1].specialty]) assert.ok(text.includes(label), label)
-    for (const label of [longDrugs[0].name, longDoctors[0].display_name]) assert.ok(!text.includes(label), label)
+    for (const label of [longDrugs[1].name, longDrugs[1].brand, longDoctors[1].name, longDoctors[1].specialty]) assert.ok(text.includes(label), label)
+    for (const label of [longDrugs[0].name, longDoctors[0].name]) assert.ok(!text.includes(label), label)
   }
   assertCurrentSummary()
   pending.at(-1)!({ drug: longDrugs[1], doctor: longDoctors[1] })
@@ -303,4 +303,45 @@ test('practice choices stay in the app owner when the home page is unmounted for
   const returned = after.render(props())
   assert.deepEqual(plain(find(returned, 'ScenarioPicker')[0].props.value), next)
   assert.equal(find(returned, 'Select')[0].props.value, 'combat')
+})
+
+test('choosing a drug filters doctors and changing drugs clears only an incompatible doctor', async () => {
+  const scopedDrugs = [{ ...drugs[0], practice_departments: ['内分泌科'] }, drugs[1]]
+  const app = picker(async path => { const query = new URLSearchParams(path.split('?')[1]); return freeContext(query.get('drug_id')!, query.get('doctor_id')!) }, undefined, { drugs: scopedDrugs, doctors, scenes })
+  app.render(); await app.flush()
+  app.choose('练习药品', 'drug-b')
+  let view = await app.flush()
+  let options = find(view, 'SelectItem').map(node => node.props.value)
+  assert.ok(options.includes('doctor-a') && options.includes('doctor-b'))
+  app.choose('模拟医生', 'doctor-b'); await app.flush()
+  assert.equal(app.readiness.at(-1), true)
+  app.choose('练习药品', 'drug-a')
+  view = await app.flush()
+  assert.equal(app.value.doctor_id, undefined)
+  assert.equal(app.readiness.at(-1), false)
+  options = find(view, 'SelectItem').map(node => node.props.value)
+  assert.ok(options.includes('doctor-a'))
+  assert.ok(!options.includes('doctor-b'))
+  app.choose('模拟医生', 'doctor-a'); await app.flush()
+  app.choose('练习药品', 'drug-b'); await app.flush()
+  assert.equal(app.value.doctor_id, 'doctor-a')
+  assert.equal(app.readiness.at(-1), true)
+})
+
+test('restored incompatible pairs cannot be previewed or started', async () => {
+  const app = picker(async () => assert.fail('incompatible preview'), { scenario_id: '', stage: 'full', drug_id: 'drug-a', doctor_id: 'doctor-b' },
+    { drugs: [{ ...drugs[0], practice_departments: ['内分泌科'] }], doctors, scenes })
+  app.render(); const view = await app.flush()
+  assert.equal(app.readiness.at(-1), false)
+  assert.match(textOf(view), /科室不匹配/)
+  assert.equal(app.calls.filter(path => path.startsWith('/practice/preview')).length, 0)
+})
+
+test('a drug with no matching published doctors shows an empty state and cannot start', async () => {
+  const app = picker(async () => assert.fail('empty match preview'), { scenario_id: '', stage: 'full', drug_id: 'drug-a' },
+    { drugs: [{ ...drugs[0], practice_departments: ['眼科'] }], doctors, scenes })
+  app.render(); const view = await app.flush()
+  assert.equal(app.readiness.at(-1), false)
+  assert.match(textOf(view), /暂无科室对口的已发布医生/)
+  assert.ok(find(view, 'Select').some(node => node.props.disabled && find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === '模拟医生')))
 })

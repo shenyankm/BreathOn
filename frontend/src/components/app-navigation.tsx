@@ -1,29 +1,30 @@
-import { AudioLines, BookOpen, Play, UserRound } from 'lucide-react'
+import { ArrowLeft, AudioLines, BookOpen, ClipboardList, Menu, Package, Play, UserRound } from 'lucide-react'
 import { Button } from './ui/button'
 import { Brand } from './brand'
+import { Avatar, AvatarFallback } from './ui/avatar'
+
+export function AppHome({ inSession, username }: { inSession: boolean; username?: string }) {
+  const main = [
+    { label: '资料空间', icon: BookOpen, href: '#library' },
+    { label: '公司产品', icon: Package, href: '#products' },
+    { label: '开始练习', icon: Play, href: inSession ? '#start' : '#practice' },
+  ]
+  return <div className="flex min-h-[calc(100svh-7rem)] flex-col">
+    <h1 className="sr-only">BreathOn 主页面</h1>
+    <nav aria-label="主页面导航" className="space-y-3 pt-6">
+      {main.map(item => <Button asChild key={item.href} variant="ghost" className="h-16 w-full justify-start gap-5 rounded-2xl px-5 text-lg font-normal"><a href={item.href}><item.icon aria-hidden="true" className="size-6" />{item.label}</a></Button>)}
+    </nav>
+    <nav aria-label="练习历史" className="mt-8 min-h-0 flex-1 border-t pt-6"><Button asChild variant="ghost" className="h-16 w-full justify-start gap-5 rounded-2xl px-5 text-lg font-normal"><a href="#records"><ClipboardList aria-hidden="true" className="size-6" />练习记录</a></Button></nav>
+    <div className="flex justify-end pt-6"><Button asChild variant="ghost" className="size-16 rounded-full p-1" aria-label="进入我的"><a href="#me"><Avatar className="size-14"><AvatarFallback>{username?.slice(0, 1) || <UserRound aria-hidden="true" className="size-6" />}</AvatarFallback></Avatar></a></Button></div>
+  </div>
+}
 
 export function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
-  const main = [
-    { page: 'home', label: '练习', icon: Play, href: inSession ? '#start' : '#home' },
-    { page: 'library', label: '学习', icon: BookOpen, href: '#library' },
-    { page: 'me', label: '我的', icon: UserRound, href: '#me' },
-  ]
-  const active = page === 'start' ? 'home' : ['visits', 'records'].includes(page) ? 'me' : page
-  const currentTitle = main.find(item => item.page === active)?.label ?? '练习'
-
-  return <>
-    <header className="fixed inset-x-0 top-0 z-40 border-b bg-background pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex h-14 max-w-[960px] items-center justify-between gap-4 px-4 sm:px-6">
-        <a href={inSession ? '#start' : '#home'} aria-label="BreathOn 练习首页" className="flex min-h-11 items-center gap-2.5 font-semibold tracking-tight"><Brand /><span className="ml-3 hidden border-l pl-5 text-sm font-normal tracking-normal text-muted-foreground sm:block">{currentTitle}</span></a>
-        <div className="flex items-center gap-2">
-          {inSession && <Button asChild variant="secondary" size="sm" className="h-11"><a href="#start"><AudioLines aria-hidden="true" />返回演练</a></Button>}
-        </div>
-      </div>
-    </header>
-    <nav aria-label="底部标签栏" className="fixed inset-x-0 bottom-0 z-40 border-t bg-background pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid h-16 max-w-2xl grid-cols-3 gap-1 px-2">
-        {main.map(item => <Button asChild key={item.page} variant="ghost" className="h-full min-w-0 flex-col gap-1 rounded-none px-1 text-xs font-normal text-muted-foreground aria-[current=page]:text-foreground"><a href={item.href} aria-current={active === item.page ? 'page' : undefined}><span className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors ${active === item.page ? 'bg-secondary text-foreground' : ''}`}><item.icon aria-hidden="true" className="size-5" strokeWidth={active === item.page ? 2 : 1.7} /></span><span className={active === item.page ? 'font-semibold' : ''}>{item.label}</span></a></Button>)}
-      </div>
-    </nav>
-  </>
+  const title = ({ practice: '开始练习', start: '拜访练习', library: '资料空间', products: '公司产品', me: '我的', records: '练习记录', visits: '拜访记录' } as Record<string, string>)[page] ?? '开始练习'
+  return <header className="fixed inset-x-0 top-0 z-40 bg-background pt-[env(safe-area-inset-top)]">
+    <div className="mx-auto flex h-16 max-w-[960px] items-center gap-3 px-4 sm:px-6">
+      {page === 'home' ? <Brand /> : <><Button asChild variant="ghost" className="size-12 shrink-0 rounded-full" aria-label={page === 'me' ? '返回主页面' : '打开主页面'}><a href="#home">{page === 'me' ? <ArrowLeft aria-hidden="true" /> : <Menu aria-hidden="true" className="size-6" />}</a></Button><span className="min-w-0 flex-1 truncate text-base font-medium">{title}</span></>}
+      {inSession && page !== 'start' && <Button asChild variant="ghost" className="ml-auto size-12 rounded-full" aria-label="返回演练"><a href="#start"><AudioLines aria-hidden="true" /></a></Button>}
+    </div>
+  </header>
 }

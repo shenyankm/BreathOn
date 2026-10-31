@@ -20,6 +20,7 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     async open() { audioOpened++ }
     stop() {}
     interrupt() {}
+    setOutputMuted() {}
     setMuted(value: boolean) { this.muted = value }
     play() {}
   }
@@ -65,14 +66,14 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
     exports, require: (name: string) => { assert.ok(name in imports, name); return imports[name] },
-    fetch: fetchHealth, AbortSignal, DOMException, Event, URL, performance, WebSocket: Socket, document,
+    fetch: fetchHealth, AbortSignal, DOMException, Error, Event, URL, performance, WebSocket: Socket, document,
     window: { location: { href: 'http://localhost/', protocol: 'http:' },
       addEventListener: (name: string, listener: () => void) => { listeners[name] = listener }, removeEventListener: () => {},
       dispatchEvent: (event: Event) => { listeners[event.type]?.(); return true },
       setTimeout: (callback: () => void) => { timers.set(++nextTimer, callback); return nextTimer },
       clearTimeout: (id: number) => timers.delete(id) },
   })
-  return { sockets, timers, document, listeners, runEffects: () => effects.splice(0).forEach(effect => effect()), audioOpened: () => audioOpened,
+  return { Audio, sockets, timers, document, listeners, runEffects: () => effects.splice(0).forEach(effect => effect()), audioOpened: () => audioOpened,
     render: () => { cursor = 0; return exports.useVoiceSession!() } }
 }
 
@@ -267,4 +268,31 @@ test('free practice sends the selected pair and uses the confirmed snapshot with
   assert.equal(retryUrl.searchParams.get('remediation_id'), 'remediation')
   assert.equal(retryUrl.searchParams.has('drug_id'), false)
   assert.equal(retryUrl.searchParams.has('doctor_id'), false)
+})
+
+test('doctor audio can be muted independently of microphone and resets on restart', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  app.render().toggleOutputMute()
+  assert.equal(app.render().outputMuted, true)
+  assert.equal(app.render().muted, false)
+  app.render().toggleOutputMute()
+  assert.equal(app.render().outputMuted, false)
+  app.render().toggleOutputMute()
+  await app.render().start('independent', 'combat')
+  assert.equal(app.render().outputMuted, false)
+})
+
+test('playback failures preserve the actionable audio error', async () => {
+  const app = session()
+  app.Audio.prototype.play = () => { throw new Error('待播放语音超过一分钟，请重新开始演练') }
+  await app.render().start('independent', 'combat')
+  const socket = app.sockets[0]
+  socket.open()
+  socket.receive({ type: 'ready', session_id: 'audio-failure' })
+  socket.receive({ type: 'audio', response_id: 'greeting', audio: 'AAA=' })
+  assert.equal(app.render().status, 'error')
+  assert.match(app.render().error, /待播放语音超过一分钟/)
+  assert.doesNotMatch(app.render().error, /语音事件或音频格式异常/)
+  assert.equal(socket.readyState, 3)
 })

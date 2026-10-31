@@ -488,3 +488,15 @@ test('opening a newly confirmed candidate adds it to the doctor list', async () 
   assert.equal(find(tree,'DoctorForm')[0].props.item.id,'candidate')
   assert.equal(find(tree,'button').length,1)
 })
+
+test('company products only shows published company products', async () => {
+  const drug = { id: 'company', status: 'published', name: '本公司产品', brand: '', aliases: [], ownership: 'company', category: '', diseases: [], mechanism: '', dosage_form: '', regions: [], indications: [], overview: '', source_url: '', company: '', manufacturer: '' }
+  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/drug' ? [drug, { ...drug, id: 'competitor', ownership: 'competitor', name: '竞品名称' }, { ...drug, id: 'draft', status: 'draft', name: '未发布名称' }] : [])
+  app.render({ companyOnly: true })
+  await settle()
+  const view = app.render({ companyOnly: true })
+  const cards = JSON.stringify(find(view, 'Card'))
+  assert.ok(cards.includes('本公司产品'))
+  assert.ok(!cards.includes('竞品名称'))
+  assert.ok(!cards.includes('未发布名称'))
+})

@@ -6,7 +6,7 @@ import ts from 'typescript'
 
 type Node = { type: string; props: any }
 const jsx = (type: string, props: any): Node => ({ type, props })
-const exports: { AppNavigation?: (props: { page: string; inSession: boolean }) => Node } = {}
+const exports: { AppHome?: (props: { inSession: boolean; username?: string }) => Node; AppNavigation?: (props: { page: string; inSession: boolean }) => Node } = {}
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/app-navigation.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText, {
@@ -29,46 +29,28 @@ function textOf(node: any): string {
 }
 function navigation(page: string, inSession = false) {
   const tree = exports.AppNavigation!({ page, inSession })
-  const nav = find(tree, 'nav').find(node => node.props['aria-label'] === '底部标签栏')
-  assert.ok(nav)
-  return { tree, links: find(nav, 'a') }
+  return { tree, links: find(tree, 'a') }
 }
 
-test('the app exposes exactly three bottom destinations in the intended order', () => {
-  const { links } = navigation('home')
-  assert.deepEqual(links.map(link => [textOf(link), link.props.href]), [
-    ['练习', '#home'], ['学习', '#library'], ['我的', '#me'],
-  ])
-  assert.equal(links.filter(link => link.props['aria-current'] === 'page').length, 1)
+test('the default main page exposes learning, products, practice, history and avatar', () => {
+  const tree = exports.AppHome!({ inSession: false, username: '代表' })
+  const links = find(tree, 'a')
+  assert.deepEqual(links.map(link => link.props.href), ['#library', '#products', '#practice', '#records', '#me'])
+  assert.deepEqual(links.slice(0, 4).map(textOf), ['资料空间', '公司产品', '开始练习', '练习记录'])
+  assert.equal(find(tree, 'Button').filter(node => node.props['aria-label'] === '进入我的').length, 1)
 })
 
-test('records and visits retain the My tab selection', () => {
-  for (const page of ['me', 'records', 'visits']) {
-    const { links } = navigation(page)
-    const current = links.filter(link => link.props['aria-current'] === 'page')
-    assert.equal(current.length, 1, page)
-    assert.equal(current[0].props.href, '#me', page)
-    assert.equal(textOf(current[0]), '我的', page)
-  }
+test('an active practice is reachable from the main page without starting another', () => {
+  const tree = exports.AppHome!({ inSession: true })
+  assert.equal(find(tree, 'a')[2].props.href, '#start')
 })
 
-test('an active practice keeps the Practice tab selected and returns to the session', () => {
-  const { links } = navigation('start', true)
-  assert.equal(links[0].props.href, '#start')
-  assert.equal(links[0].props['aria-current'], 'page')
-  assert.deepEqual(links.slice(1).map(link => [textOf(link), link.props.href]), [
-    ['学习', '#library'], ['我的', '#me'],
-  ])
-  assert.equal(links.filter(link => link.props['aria-current'] === 'page').length, 1)
-  assert.equal(navigation('library', true).links[0].props.href, '#start')
-})
-
-test('the navigation contains no management, legacy destination or account sheet', () => {
-  for (const [page, active] of [['home', false], ['start', true], ['records', false], ['visits', false]] as const) {
-    const { tree, links } = navigation(page, active)
-    assert.equal(links.length, 3)
-    assert.equal(find(tree, 'a').filter(link => /\/admin|#workspace|#settings|#records|#visits/.test(link.props.href)).length, 0)
-    for (const component of ['Sheet', 'SheetTrigger', 'SheetContent']) assert.equal(find(tree, component).length, 0)
-    assert.equal(find(tree, 'Button').filter(node => /退出登录|账号与管理|打开账号/.test(textOf(node) + (node.props['aria-label'] || ''))).length, 0)
+test('content pages return to the main page and keep a live practice reachable', () => {
+  for (const page of ['practice', 'library', 'products', 'records', 'visits', 'me', 'start']) {
+    const { tree, links } = navigation(page, true)
+    assert.equal(links[0].props.href, '#home')
+    assert.equal(find(tree, 'Sheet').length, 0)
+    if (page !== 'start') assert.ok(links.some(link => link.props.href === '#start'))
+    assert.equal(links.some(link => /admin|workspace|settings/.test(link.props.href)), false)
   }
 })

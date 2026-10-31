@@ -44,7 +44,7 @@ function LoadNotice<T>({ state, retry, label }: { state: LoadState<T>; retry: ()
   return null
 }
 
-export function LibraryPage() {
+export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) {
   const [category, setCategory] = useState('drugs')
   const [drugSearch, setDrugSearch] = useState('')
   const [drugOwnership, setDrugOwnership] = useState('all')
@@ -81,7 +81,7 @@ export function LibraryPage() {
   }
   const recheck = () => { setDrugs(emptyState()); setPolicies(emptyState()); setDoctors(emptyState()); setRetry(value => value + 1) }
   const query = drugSearch.trim().toLocaleLowerCase()
-  const filteredDrugs = drugs.data.filter(drug => (drugOwnership === 'all' || drug.ownership === drugOwnership) &&
+  const filteredDrugs = drugs.data.filter(drug => (companyOnly ? drug.ownership === 'company' : drugOwnership === 'all' || drug.ownership === drugOwnership) &&
     (!query || [drug.name, drug.brand, ...drug.aliases, drug.category, drug.mechanism, ...drug.diseases].some(value => value.toLocaleLowerCase().includes(query))))
   const filteredPolicies = policies.data.filter(policy => (policyLevel === 'all' || policy.level === policyLevel) && (policyArea === 'all' || policy.jurisdiction === policyArea))
   const levels = [...new Set(policies.data.map(policy => policy.level).filter(Boolean))].sort()
@@ -89,9 +89,9 @@ export function LibraryPage() {
   const count: Record<string, number | null> = { drugs: drugs.loading || drugs.error ? null : drugs.data.length, medical: null, skills: 1, doctors: doctors.loading || doctors.error ? null : doctors.data.length, policies: policies.loading || policies.error ? null : policies.data.length }
 
   return <div className="min-w-0 space-y-4 sm:space-y-6">
-    <header className="space-y-1.5"><h1 className="text-2xl font-semibold tracking-tight">学习资料</h1></header>
+    <header className="space-y-1.5"><h1 className="text-2xl font-semibold tracking-tight">{companyOnly ? '公司产品' : '资料空间'}</h1></header>
     <Tabs value={category} onValueChange={setCategory} className="min-w-0 gap-4 sm:gap-6">
-      <TabsList className="grid h-auto! w-full grid-cols-5 items-stretch gap-1 rounded-2xl p-1" aria-label="文档分类">
+      <TabsList hidden={companyOnly} className={`${companyOnly ? 'hidden!' : ''} grid h-auto! w-full grid-cols-5 items-stretch gap-1 rounded-2xl p-1`} aria-label="文档分类">
         {modules.map(module => <TabsTrigger key={module.id} value={module.id} aria-label={module.name} className="h-auto min-h-16 min-w-0 flex-col gap-1.5 rounded-xl px-1 py-2 text-xs sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm">
           <module.icon aria-hidden="true" className="size-5 sm:size-4" />
           <span className="sm:hidden">{module.mobileName}</span>
@@ -103,8 +103,8 @@ export function LibraryPage() {
       <TabsContent value="drugs"><section className="space-y-4 sm:space-y-5" aria-label="药品文档资料">
         <header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">药品文档</h2></header>
         <LoadNotice state={drugs} retry={recheck} label="药品" />
-        {!drugs.loading && !drugs.error && <><div className="space-y-1"><label htmlFor="drug-search" className="sr-only">搜索药品、疾病或机制</label><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="drug-search" className="h-11 bg-card pl-9" value={drugSearch} onChange={event => setDrugSearch(event.target.value)} placeholder="搜索药品、别名或疾病" /></div><Accordion type="single" collapsible className="rounded-none border-0"><AccordionItem value="drug-filters"><AccordionTrigger className="min-h-11 px-0 py-2 font-normal">产品归属：{drugOwnership === 'all' ? '全部归属' : ownershipLabels[drugOwnership as keyof typeof ownershipLabels]}</AccordionTrigger><AccordionContent><div className="space-y-2"><label htmlFor="drug-ownership" className="text-sm font-medium">产品归属</label><Select value={drugOwnership} onValueChange={setDrugOwnership}><SelectTrigger id="drug-ownership" className="h-11 w-full sm:max-w-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部归属</SelectItem><SelectItem value="company">本公司产品</SelectItem><SelectItem value="competitor">竞品</SelectItem><SelectItem value="unknown">归属待核实</SelectItem></SelectContent></Select></div></AccordionContent></AccordionItem></Accordion></div>
-          <p role="status" className="text-sm text-muted-foreground">显示 {filteredDrugs.length} / {drugs.data.length} 个产品</p>
+        {!drugs.loading && !drugs.error && <><div className="space-y-1"><label htmlFor="drug-search" className="sr-only">搜索药品、疾病或机制</label><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="drug-search" className="h-11 bg-card pl-9" value={drugSearch} onChange={event => setDrugSearch(event.target.value)} placeholder="搜索药品、别名或疾病" /></div><Accordion type="single" collapsible className={companyOnly ? 'hidden' : 'rounded-none border-0'}><AccordionItem value="drug-filters"><AccordionTrigger className="min-h-11 px-0 py-2 font-normal">产品归属：{drugOwnership === 'all' ? '全部归属' : ownershipLabels[drugOwnership as keyof typeof ownershipLabels]}</AccordionTrigger><AccordionContent><div className="space-y-2"><label htmlFor="drug-ownership" className="text-sm font-medium">产品归属</label><Select value={drugOwnership} onValueChange={setDrugOwnership}><SelectTrigger id="drug-ownership" className="h-11 w-full sm:max-w-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部归属</SelectItem><SelectItem value="company">本公司产品</SelectItem><SelectItem value="competitor">竞品</SelectItem><SelectItem value="unknown">归属待核实</SelectItem></SelectContent></Select></div></AccordionContent></AccordionItem></Accordion></div>
+          <p role="status" className="text-sm text-muted-foreground">显示 {filteredDrugs.length} / {companyOnly ? drugs.data.filter(drug => drug.ownership === 'company').length : drugs.data.length} 个产品</p>
           {filteredDrugs.length ? <div className="grid items-start gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">{filteredDrugs.map(drug => <Card key={drug.id} className="[--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]"><CardContent className="flex min-w-0 flex-1 flex-col items-start gap-4"><div><p className="mb-2 text-xs text-muted-foreground">{ownershipLabels[drug.ownership] ?? '归属待核实'} · {drug.category || '治疗领域待补充'}</p><CardTitle className="break-words text-base leading-7"><h3>{drug.name}</h3></CardTitle><CardDescription className="mt-1">{drug.brand || '商品名未提供'}</CardDescription></div><p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{drug.overview || '暂无产品概述。'}</p><dl className="space-y-1 text-sm leading-6"><div><dt className="inline font-medium">机制：</dt><dd className="inline">{drug.mechanism || '待补充'}</dd></div><div><dt className="inline font-medium">疾病：</dt><dd className="inline">{drug.diseases.join('、') || '待补充'}</dd></div></dl><div className="mt-auto flex flex-wrap gap-2"><Button variant="outline" size="sm" className="min-h-11" onClick={event => openDocument({ name: drug.name, content: [`${drug.brand || drug.name} · ${ownershipLabels[drug.ownership] ?? '归属待核实'}`, drug.overview || '暂无产品概述。', `治疗领域：${drug.category || '待补充'}\n机制：${drug.mechanism || '待补充'}\n剂型：${drug.dosage_form || '待补充'}\n地区：${drug.regions.join('、') || '待补充'}\n适应症：${drug.indications.join('、') || '待补充'}`, `相关企业：${drug.company || '待补充'}\n生产企业：${drug.manufacturer || '待补充'}`].join('\n\n'), url: publicLink(drug.source_url) }, event.currentTarget)}>阅读概述</Button>{publicLink(drug.source_url) && <Button asChild variant="outline" size="sm" className="min-h-11"><a href={publicLink(drug.source_url)} target="_blank" rel="noreferrer">查看来源<ExternalLink aria-hidden="true" /></a></Button>}</div></CardContent></Card>)}</div> : <p className="rounded-xl border px-5 py-8 text-sm text-muted-foreground">{drugs.data.length ? '当前筛选下暂无产品，请调整筛选条件。' : '暂无已发布产品，请联系管理员。'}</p>}</>}
       </section></TabsContent>
       <TabsContent value="policies"><section className="space-y-4 sm:space-y-5" aria-label="政策文档资料">

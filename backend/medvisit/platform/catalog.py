@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from .models import Doctor, Drug, Policy, content_usable, policy_usable
 from .store import now
+from .departments import with_departments, require_department_match
 from ..agents.doctor import DOCTOR_PROFILE, OPENING
 
 DEFAULT_ANCHORS = {
@@ -123,12 +124,12 @@ class Catalog:
         if kind in ('content', 'policy'):
             usable = policy_usable if kind == 'policy' else content_usable
             return [{**{k: v for k,v in r.items() if k != 'pages'}, 'usable':usable(r)} for r in rows]
-        return rows
+        return [with_departments(kind, row) for row in rows]
 
     def get(self, user, kind, item_id):
         with self.store.transaction(user['workspace'], write=False) as tx:
             item = require_item(tx, user['workspace'], kind, item_id)
-        return item
+        return with_departments(kind, item)
 
     def create(self, user, kind, body):
         data = {**body.model_dump(mode='json'), 'status': 'draft', 'created_by': user['id']}
@@ -258,6 +259,9 @@ class Catalog:
                 item = require_item(tx, tenant, kind, item_id)
                 if publishing and item['status'] != 'published':
                     raise HTTPException(409, '场景绑定的药品必须先发布。')
+        if data.get('drug_id'):
+            require_department_match(require_item(tx, tenant, 'drug', data['drug_id']),
+                                     require_item(tx, tenant, 'doctor', data['doctor_id']))
         for item_id in data.get('policy_ids', []):
             item = require_item(tx, tenant, 'policy', item_id)
             if publishing and not policy_usable(item):

@@ -45,8 +45,8 @@ test('the account page shows the complete username and links to visit diaries an
   const records = links.find(node => node.props.href === '#records')
   assert.ok(visits)
   assert.ok(records)
-  assert.ok(textOf(visits).includes('拜访日记'))
-  assert.ok(textOf(records).includes('复盘记录'))
+  assert.ok(textOf(visits).includes('拜访记录'))
+  assert.ok(textOf(records).includes('练习记录'))
   assert.equal(links.filter(node => /\/admin|#workspace|#settings/.test(node.props.href)).length, 0)
 })
 

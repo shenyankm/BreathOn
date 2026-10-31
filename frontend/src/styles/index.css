@@ -145,3 +145,31 @@
 @media (max-width: 640px) {
   [data-slot="button"] { min-height: 2.75rem; }
 }
+
+/* The call surface keeps controls distinct from the conversation canvas. */
+.combat-stage {
+  background: #344d43;
+  color: #fff;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .combat-stage [data-slot="call-identity"] {
+    flex-direction: row;
+    justify-content: center;
+    padding-block: 1rem;
+  }
+  .combat-stage [data-slot="call-identity"] [data-slot="avatar"] {
+    width: 3rem;
+    height: 3rem;
+  }
+  .combat-stage [data-slot="call-status"] {
+    gap: 0.5rem;
+    padding-block: 0.5rem;
+  }
+  .combat-stage [data-slot="call-controls"] {
+    padding-block: 0.75rem;
+  }
+  .combat-stage [data-slot="call-controls"] button {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+}

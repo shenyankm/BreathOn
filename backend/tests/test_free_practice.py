@@ -23,7 +23,7 @@ def selection(client):
         'opening':'这是旧主题的开场，不应替代新选主题。'}).json()
     doctor = client.post(f"/api/catalog/doctor/{doctor['id']}/publish", json={'version':doctor['version']}).json()
     drug = client.post('/api/catalog/drug', json={'name':'虚构训练药品乙', 'brand':'教学乙', 'ownership':'company',
-        'overview':'这段未经审核的概述不能作为药品医学证据。'}).json()
+        'practice_departments':['虚构教学专科'], 'overview':'这段未经审核的概述不能作为药品医学证据。'}).json()
     drug = client.post(f"/api/catalog/drug/{drug['id']}/publish", json={'version':drug['version']}).json()
     assert doctor['status'] == drug['status'] == 'published'
     return drug, doctor
