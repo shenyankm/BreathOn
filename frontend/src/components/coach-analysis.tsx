@@ -1,3 +1,4 @@
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { memo } from 'react'
 import { AssessmentView } from './assessment-view'
 import { Info } from 'lucide-react'
@@ -6,7 +7,7 @@ import type { LiveCoach } from '@/lib/voice-events'
 
 export const CoachAnalysis = memo(function CoachAnalysis({ coach, review = false, expanded = false }: { coach: LiveCoach; review?: boolean; expanded?: boolean }) {
   if (coach.superseded) return <p role="status" className="text-sm text-muted-foreground">转录已修正，这条提示已失效，请以更新后的建议或最终复盘为准。</p>
-  if (!review && !expanded) return <div className="space-y-3"><p className="text-sm font-medium leading-6">{coach.points[0] || coach.focus}</p>{coach.risk && <p className="text-sm leading-6 text-muted-foreground">需核实：{coach.risk}</p>}<details><summary className="min-h-11 cursor-pointer py-3 text-sm underline underline-offset-4 focus-visible:outline-2">查看分析与参考表达</summary><CoachAnalysis coach={coach} expanded /></details></div>
+  if (!review && !expanded) return <div className="space-y-3"><p className="text-sm font-medium leading-6">{coach.points[0] || coach.focus}</p>{coach.risk && <p className="text-sm leading-6 text-muted-foreground">需核实：{coach.risk}</p>}<Collapsible><CollapsibleTrigger>查看分析与参考表达</CollapsibleTrigger><CollapsibleContent><CoachAnalysis coach={coach} expanded /></CollapsibleContent></Collapsible></div>
   return <div className="space-y-5">
     {coach.incomplete && <p className="text-sm text-muted-foreground">本次记录不完整，复盘仅覆盖已收到的内容。</p>}
     <section><h2 className="mb-2 text-sm font-medium">观察重点</h2><p className="mb-2 font-medium leading-7">{coach.focus}</p><p className="text-sm leading-7 text-muted-foreground">{coach.analysis}</p></section>

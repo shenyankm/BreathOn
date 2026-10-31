@@ -148,17 +148,17 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
     <DialogContent role="alertdialog" showCloseButton={false}>
       <DialogHeader><DialogTitle>退出登录？</DialogTitle><DialogDescription>退出后需要重新登录才能继续使用。</DialogDescription></DialogHeader>
       <DialogFooter className="grid grid-cols-2 gap-3 sm:flex">
-        <Button variant="outline" className="min-h-11" onClick={() => setConfirmLogout(false)}>取消</Button>
-        <Button className="min-h-11" disabled={busy} onClick={() => { setConfirmLogout(false); return logout() }}>确认退出</Button>
+        <Button variant="outline" onClick={() => setConfirmLogout(false)}>取消</Button>
+        <Button disabled={busy} onClick={() => { setConfirmLogout(false); return logout() }}>确认退出</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>
   const reconnect = () => { setError(''); setRetry(value => value + 1) }
   if (session && (session.authenticated || target === 'admin' && !session.enabled)) {
-    if (target === 'admin' && session.enabled && session.role !== 'admin') return <><main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button className="h-11" variant="outline" disabled={busy} onClick={requestLogout}>退出登录</Button></main>{logoutConfirmation}</>
+    if (target === 'admin' && session.enabled && session.role !== 'admin') return <><main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button variant="outline" disabled={busy} onClick={requestLogout}>退出登录</Button></main>{logoutConfirmation}</>
     return <>
       {logoutConfirmation}
-      {error && <Alert variant="destructive" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-lg"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="outline" className="h-11" disabled={busy} onClick={reconnect}>重新连接</Button></AlertDescription></Alert>}
+      {error && <Alert variant="destructive" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-lg"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="outline" disabled={busy} onClick={reconnect}>重新连接</Button></AlertDescription></Alert>}
       <AppComponent key={`${session.username ?? 'local'}:${session.role ?? 'admin'}`} onLogout={session.enabled ? requestLogout : undefined} username={session.username ?? undefined} role={session.enabled ? session.role ?? 'representative' : 'admin'} />
     </>
   }
@@ -168,10 +168,10 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
       <a href={target === 'android' ? '#home' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
       <h1 id="login-title" className="mb-6 text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录 BreathOn'}</h1>
       {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{error}</AlertDescription></Alert>}
-      {!session ? error ? <Button className="h-11 w-full" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="h-11 w-full" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
-        <Field label="账号" htmlFor="username"><Input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={100} className="h-11" disabled={busy} /></Field>
-        <Field label="密码" htmlFor="password"><div className="relative"><Input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={512} className="h-11 pr-12" disabled={busy} /><Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-11 w-11" aria-label={visible ? '隐藏密码' : '显示密码'} aria-pressed={visible} disabled={busy} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</Button></div></Field>
-        <Button type="submit" className="h-11 w-full" disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
+      {!session ? error ? <Button className="w-full" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="w-full" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
+        <Field label="账号" htmlFor="username"><Input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={100} disabled={busy} /></Field>
+        <Field label="密码" htmlFor="password"><div className="relative"><Input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={512} className="pr-12" disabled={busy} /><Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-11 w-11" aria-label={visible ? '隐藏密码' : '显示密码'} aria-pressed={visible} disabled={busy} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</Button></div></Field>
+        <Button type="submit" className="w-full" disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
       </form>}
     </section>
   </main>

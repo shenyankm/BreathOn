@@ -63,6 +63,9 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   }
 }
 
+// List rows are the shadcn Buttons inside the list <ul>; other Buttons (refresh, back, actions) are not rows.
+const listRows = (view: any) => find(find(view, 'ul'), 'Button')
+
 function find(node: any, type: string): any[] {
   if (!node || typeof node !== 'object') return []
   if (Array.isArray(node)) return node.flatMap(child => find(child, type))
@@ -112,7 +115,7 @@ test('catalog save acknowledges the returned version without a fallible list rel
   app.render({ kind: 'doctor' })
   await settle()
   let view = app.render({ kind: 'doctor' })
-  find(view, 'button')[0].props.onClick()
+  listRows(view)[0].props.onClick()
   await settle()
   view = app.render({ kind: 'doctor' })
   find(view, 'DoctorForm')[0].props.save({ name: 'Saved' })
@@ -132,14 +135,14 @@ test('an older case list cannot hide a newly imported case', async () => {
     return new Promise(resolve => { finishRead = resolve })
   })
   let view = app.render()
-  find(view, 'input')[0].props.onChange({ target: { files: [{ size: 2, text: async () => '{}' }], value: 'case.json' } })
+  find(view, 'Input')[0].props.onChange({ target: { files: [{ size: 2, text: async () => '{}' }], value: 'case.json' } })
   await settle()
   assert.equal(find(app.render(), 'form')[0].key, 'imported-1')
   finishRead([{ ...imported, id: 'existing-case', title: 'Existing' }])
   await settle()
   view = app.render()
   assert.equal(find(view, 'form')[0]?.key, 'imported-1')
-  assert.equal(find(view, 'button').length, 2)
+  assert.equal(listRows(view).length, 2)
 })
 
 test('an older catalog list cannot remove a newly saved entry', async () => {
@@ -157,7 +160,7 @@ test('an older catalog list cannot remove a newly saved entry', async () => {
   await settle()
   view = app.render({ kind: 'doctor' })
   assert.equal(find(view, 'DoctorForm')[0].key, 'new-doctor-1')
-  assert.equal(find(view, 'button').length, 2)
+  assert.equal(listRows(view).length, 2)
 })
 
 test('an older catalog list cannot remove a generated scene', async () => {
@@ -171,7 +174,7 @@ test('an older catalog list cannot remove a generated scene', async () => {
   await settle()
   finishRead([{ id: 'existing-scene', version: 1, status: 'draft', title: 'Existing' }])
   await settle()
-  assert.equal(find(app.render({ kind: 'scenario' }), 'button').length, 2)
+  assert.equal(listRows(app.render({ kind: 'scenario' })).length, 2)
 })
 
 test('a refreshed case list preserves concurrent edits and merges other records', async () => {
@@ -192,7 +195,7 @@ test('a refreshed case list preserves concurrent edits and merges other records'
   finishRead([original, { ...original, id: 'other', title: 'Other' }])
   await settle()
   assert.equal(find(app.render(), 'form')[0].key, 'case-1-2')
-  assert.equal(find(app.render(), 'button').length, 2)
+  assert.equal(listRows(app.render()).length, 2)
 })
 
 test('a pending catalog read cannot resurrect a doctor deleted after creation', async () => {
@@ -213,7 +216,7 @@ test('a pending catalog read cannot resurrect a doctor deleted after creation', 
   finishRead([saved, { ...saved, id: 'other-doctor', name: 'Other' }])
   await settle()
   view = app.render({ kind: 'doctor' })
-  const rows = find(view, 'button')
+  const rows = listRows(view)
   assert.equal(rows.length, 1)
   assert.equal(find(rows[0], 'span')[0].props.children, 'Other')
   assert.equal(find(view, 'DoctorForm').length, 0)
@@ -371,7 +374,7 @@ test('published doctor changes require a draft and publishing returns to stable 
     throw new Error(`Unexpected path ${path}`)
   })
   app.render({kind:'doctor'}); await settle()
-  find(app.render({kind:'doctor'}), 'button')[0].props.onClick(); await settle()
+  listRows(app.render({kind:'doctor'}))[0].props.onClick(); await settle()
   let view=app.render({kind:'doctor'})
   assert.equal(find(view,'DoctorForm')[0].props.disabled,true)
   find(view,'Button').find(button=>button.props.children==='创建新版本').props.onClick(); await settle()
@@ -381,7 +384,7 @@ test('published doctor changes require a draft and publishing returns to stable 
   view=app.render({kind:'doctor'})
   assert.equal(find(view,'DoctorForm')[0].key,'doctor-1-2')
   assert.equal(find(view,'DoctorForm')[0].props.disabled,true)
-  assert.equal(find(view,'button').length,1)
+  assert.equal(listRows(view).length,1)
   assert.deepEqual(calls,['/catalog/doctor','/catalog/doctor/doctor-1','/catalog/doctor/doctor-1/revision','/catalog/doctor/revision-1/publish'])
 })
 
@@ -493,7 +496,7 @@ test('opening a newly confirmed candidate adds it to the doctor list', async () 
   await settle()
   const tree=app.render({kind:'doctor'})
   assert.equal(find(tree,'DoctorForm')[0].props.item.id,'candidate')
-  assert.equal(find(tree,'button').length,1)
+  assert.equal(listRows(tree).length,1)
 })
 
 test('company products only shows published company products', async () => {

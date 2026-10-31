@@ -1,4 +1,7 @@
-"""Paid, opt-in checks: PYTHONPATH=. .venv/bin/python tests/live_coaching.py --live."""
+"""Paid, opt-in checks: PYTHONPATH=. .venv/bin/python tests/live_coaching.py --live.
+
+Every run is scored against tests/agent_eval.py and prints a pass rate. Re-score a saved report for free with
+--replay <report.json>; compare pass rates before and after a prompt, skill or model change."""
 import argparse
 import asyncio
 from datetime import datetime
@@ -11,6 +14,7 @@ from zoneinfo import ZoneInfo
 from medvisit.agents.coach import coaching_skill_names, generate_reply, parse_reply
 from medvisit.agents.doctor import DOCTOR_PROFILE
 from medvisit.core.config import Settings
+from agent_eval import format_summary, score_report
 
 
 CASES = [
@@ -124,13 +128,22 @@ async def main(cases=CASES, report_name='coaching-live'):
         temporary.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         temporary.replace(output)
         print(json.dumps(result, ensure_ascii=False), flush=True)
+    report['evaluation'] = score_report(report)
+    output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(format_summary(report['evaluation']), flush=True)
     print(f'REPORT={output}', flush=True)
     assert all(result['schema_valid'] for result in report['results']), 'At least one request failed'
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--live', action='store_true', required=True, help='Call the configured paid DeepSeek API')
+    parser.add_argument('--live', action='store_true', help='Call the configured paid DeepSeek API')
+    parser.add_argument('--replay', metavar='REPORT', help='Score a saved report without calling the API')
     parser.add_argument('--doctor', action='store_true', help='Check the sourced doctor persona instead of the coaching suite')
     args = parser.parse_args()
+    if args.replay:
+        print(format_summary(score_report(json.loads(Path(args.replay).read_text(encoding='utf-8')))))
+        raise SystemExit(0)
+    if not args.live:
+        parser.error('pass --live (paid) or --replay REPORT')
     asyncio.run(main(DOCTOR_CASES, 'doctor-live') if args.doctor else main())

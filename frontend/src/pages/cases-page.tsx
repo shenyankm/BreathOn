@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
-import { Field, inputClass } from '@/components/ui/form-field'
+import { LoadingBlock } from '@/components/loading-block'
+import { Field } from '@/components/ui/form-field'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/platform-api'
 import type { TrainingCase } from '@/lib/catalog-types'
@@ -43,11 +46,11 @@ export function CasesPage() {
   }
   return <div className="space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-medium">经验案例</h2><p className="mt-2 text-sm leading-7 text-muted-foreground">案例仅作沟通参考，不作为独立医学证据。</p></div><Button variant="outline" disabled={busy} onClick={()=>{setError('');setRefresh(value=>value+1)}}>刷新案例</Button></div>
-    <label className="grid max-w-lg gap-2 text-sm font-medium">导入分享的 JSON 案例<input type="file" accept="application/json,.json" className={inputClass} disabled={busy} onChange={event=>{void importFile(event.target.files?.[0]);event.target.value=''}}/><span className="text-xs font-normal leading-6 text-muted-foreground">导入后为待核对草稿，原话与来源未核实。</span></label>
+    <div className="grid max-w-lg gap-2"><Label htmlFor="case-import">导入分享的 JSON 案例</Label><Input id="case-import" type="file" accept="application/json,.json" disabled={busy} onChange={event=>{void importFile(event.target.files?.[0]);event.target.value=''}}/><span className="text-xs font-normal leading-6 text-muted-foreground">导入后为待核对草稿，原话与来源未核实。</span></div>
     {notice&&<p role="status" className="text-sm leading-7">{notice}</p>}{error&&<p role="alert" className="text-sm leading-7 text-destructive">{error}</p>}
     <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
       <section aria-label="经验案例列表" className={`rounded-xl border bg-background ${selected?'hidden lg:block':''}`}>
-        {rows===null?<p role="status" className="p-5 text-sm">正在加载案例…</p>:rows.length===0?<div className="space-y-3 p-5 text-sm leading-7"><p>暂无经验案例。可从审核队列采纳已脱敏的拜访记录，或导入案例草稿。</p></div>:<ul>{rows.map(row=><li key={row.id} className="border-b last:border-0"><button className={`min-h-11 w-full p-4 text-left text-sm leading-7 ${selected===row.id?'bg-muted':'hover:bg-muted/40'}`} disabled={busy} onClick={()=>{setSelected(row.id);setDirty(false);setError('')}}><span className="block break-words font-medium">{row.title}</span><span className="text-xs text-foreground/70">{row.status==='confirmed'?'已确认':'待核对'} · {row.origin_verified?'本机原记录':'外来素材'}</span></button></li>)}</ul>}
+        {rows===null?<LoadingBlock className="p-5" label="正在加载案例…" />:rows.length===0?<div className="space-y-3 p-5 text-sm leading-7"><p>暂无经验案例。可从审核队列采纳已脱敏的拜访记录，或导入案例草稿。</p></div>:<ul>{rows.map(row=><li key={row.id} className="border-b last:border-0"><Button variant="ghost" className={`h-auto min-h-11 w-full justify-start whitespace-normal rounded-none p-4 text-left text-sm leading-7 ${selected===row.id?'bg-muted':''}`} disabled={busy} onClick={()=>{setSelected(row.id);setDirty(false);setError('')}}><span className="block break-words font-medium">{row.title}</span><span className="text-xs text-foreground/70">{row.status==='confirmed'?'已确认':'待核对'} · {row.origin_verified?'本机原记录':'外来素材'}</span></Button></li>)}</ul>}
       </section>
       <section className={`min-w-0 space-y-5 rounded-xl border bg-background p-5 sm:p-6 ${selected?'':'hidden lg:block'}`}>
         {!selected?<p className="text-sm leading-7 text-muted-foreground">选择案例查看详情</p>:!item?<div className="space-y-3 text-sm"><p>{rows===null?'正在读取案例…':'此案例不存在，请返回列表重新选择。'}</p><Button variant="outline" onClick={()=>setSelected(null)}>返回列表</Button></div>:<>

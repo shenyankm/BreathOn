@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowLeft, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminPage } from '@/pages/admin-page'
+import { AdminHeader, adminWidth } from '@/components/admin-shell'
+import { LoadingBlock } from '@/components/loading-block'
 
 const PlatformPage = lazy(() => import('@/pages/platform-page').then(module => ({default:module.PlatformPage})))
 const ServiceSettings = lazy(() => import('@/pages/service-settings').then(module => ({default:module.ServiceSettings})))
@@ -14,5 +16,5 @@ export function AdminApp({onLogout,username}:{onLogout?:()=>void;username?:strin
     return ()=>window.removeEventListener('hashchange',navigate)
   },[])
   if(page==='admin') return <AdminPage onLogout={onLogout} username={username} onSettings={()=>{window.location.hash='settings'}} onWorkspace={tab=>{window.location.hash=`workspace?tab=${encodeURIComponent(tab)}`}} />
-  return <div className="min-h-svh bg-muted/30"><header className="border-b bg-background"><div className="mx-auto flex min-h-16 max-w-[1296px] items-center justify-between gap-4 px-4 sm:px-8"><Button asChild variant="ghost" className="h-11"><a href="#admin"><ArrowLeft />返回管理后台</a></Button>{onLogout&&<Button className="h-11" variant="ghost" onClick={onLogout}><LogOut />退出登录</Button>}</div></header><main className="mx-auto max-w-[1296px] px-4 py-6 sm:px-8 sm:py-8"><Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载管理内容…</p>}>{page==='workspace'?<PlatformPage />:<ServiceSettings />}</Suspense></main></div>
+  return <div className="min-h-svh bg-muted/30"><AdminHeader><Button asChild variant="ghost"><a href="#admin"><ArrowLeft />返回管理后台</a></Button>{onLogout&&<Button variant="ghost" onClick={onLogout}><LogOut />退出登录</Button>}</AdminHeader><main className={`${adminWidth} py-6 sm:py-8`}><Suspense fallback={<LoadingBlock label="正在加载管理内容…" />}>{page==='workspace'?<PlatformPage />:<ServiceSettings />}</Suspense></main></div>
 }

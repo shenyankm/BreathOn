@@ -2,13 +2,14 @@ import { memo } from 'react'
 import { ChevronRight, ClipboardList, LogOut, NotebookPen, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const MePage = memo(function MePage({ username, onLogout, logoutDisabled = false }: {
   username?: string; onLogout?: () => void; logoutDisabled?: boolean
 }) {
   return <div className="space-y-6">
-    <h1 className="sr-only">我的</h1>
+    <PageHeader title="我的" />
     <Card className="gap-0 bg-transparent py-0 ring-0">
       <CardContent className="flex flex-col items-center gap-4 px-4 py-8">
         <Avatar aria-hidden="true" className="size-24"><AvatarFallback className="text-3xl">{username?.slice(0, 1) || <UserRound aria-hidden="true" className="size-10" />}</AvatarFallback></Avatar>
@@ -20,7 +21,7 @@ export const MePage = memo(function MePage({ username, onLogout, logoutDisabled 
       </nav>
     </Card>
     {onLogout && <div className="space-y-3">
-      <Button variant="outline" className="h-12 w-full" disabled={logoutDisabled} onClick={onLogout}><LogOut aria-hidden="true" />退出登录</Button>
+      <Button variant="outline" size="lg" className="w-full" disabled={logoutDisabled} onClick={onLogout}><LogOut aria-hidden="true" />退出登录</Button>
       {logoutDisabled && <p className="text-sm leading-6 text-muted-foreground">请先结束演练并确认保存，再退出登录。</p>}
     </div>}
   </div>

@@ -25,6 +25,42 @@ CONFIG = json.loads(Path(__file__).with_name('agents.json').read_text())
 PROFILES = CONFIG['agents']
 
 
+class ResearchValidationError(ValueError):
+    """A result that failed source checks. `kind` is stable so failures can be counted by cause instead of by message text."""
+    kind = 'validation'
+
+
+class FieldNotAllowed(ResearchValidationError):
+    kind = 'field_not_allowed'          # the model used a fact label outside this assistant's profile
+
+
+class EvidenceNotReturned(ResearchValidationError):
+    kind = 'evidence_not_returned'      # a quoted passage was never returned by the archive tools
+
+
+class SourceHostNotAllowed(ResearchValidationError):
+    kind = 'source_host_not_allowed'    # drug facts must come from government, regulator or configured manufacturer hosts
+
+
+class NoArchivedSource(ResearchValidationError):
+    kind = 'no_archived_source'         # nothing was archived, so there is nothing to cite
+
+
+class TooFewSearches(ResearchValidationError):
+    kind = 'too_few_searches'           # fewer distinct queries than the profile requires
+
+
+def failure_kind(error: BaseException) -> str:
+    """Classify any run failure: model/config problems are separated from source-quality problems."""
+    if isinstance(error, ResearchValidationError):
+        return error.kind
+    if isinstance(error, TimeoutError):
+        return 'timeout'
+    if isinstance(error, ValueError):
+        return 'invalid_output'         # unparseable JSON or schema mismatch: the model, not the sources
+    return 'service_error'
+
+
 def research_mcp(settings, root, job_dir, seeds=()):
     return MCPClient(name=CONFIG['mcp']['name'], is_stateful=True,
         execution_timeout=75, enable_tools=CONFIG['mcp']['tools'],
@@ -61,20 +97,20 @@ def validate_result(result, profile, root, captured):
     for finding in output['findings']:
         for detail in finding['details']:
             if detail['label'] not in profile['fields']:
-                raise ValueError(f'事实字段“{detail["label"]}”不在当前助手允许的范围内。')
+                raise FieldNotAllowed(f'事实字段“{detail["label"]}”不在当前助手允许的范围内。')
             key = (detail['source_id'],detail['evidence_id'])
             if key not in evidence or detail['evidence_id'] not in captured.get('evidence_seen',{}).get(detail['source_id'],[]):
-                raise ValueError('引文片段未由本次工具实际返回，未保存未经核对的事实结果。')
+                raise EvidenceNotReturned('引文片段未由本次工具实际返回，未保存未经核对的事实结果。')
             source, quote = evidence[key]
             hosts = profile.get('primary_hosts', [])
             host = urlsplit(source['resolved_url']).hostname or ''
             if hosts and not any(host == primary or host.endswith('.'+primary) for primary in hosts):
-                raise ValueError('药品事实需要政府、监管机构或已配置厂家官网原文；新闻与行业转载仅保留为线索。')
+                raise SourceHostNotAllowed('药品事实需要政府、监管机构或已配置厂家官网原文；新闻与行业转载仅保留为线索。')
             detail.update(quote=quote, source_version=source['raw_sha256'])
     if not captured['archives']:
-        raise ValueError('本次未获取到可归档的原文，请核对来源或稍后重试。')
+        raise NoArchivedSource('本次未获取到可归档的原文，请核对来源或稍后重试。')
     if len(set(captured['queries'])) < profile['minimum_searches']:
-        raise ValueError(f'本次需完成{profile["minimum_searches"]}次不同查询；医生核对机构来源，药品查监管原文与厂家说明书。')
+        raise TooFewSearches(f'本次需完成{profile["minimum_searches"]}次不同查询；医生核对机构来源，药品查监管原文与厂家说明书。')
     return output
 
 
@@ -140,6 +176,7 @@ async def run_agent(settings, kind, query, root, job_dir, seeds=()):
                     profile, root, observations(job_dir))
             except ValueError as exc:
                 write_private(job_dir/'validation-error.txt', str(exc).encode())
+                write_private(job_dir/'validation-kind.txt', failure_kind(exc).encode())
                 repaired = await agent.reply(Msg(name='source_validation', role='user', content=[TextBlock(text=(
                     '结果未通过原有校验，需修正后再输出同一JSON结构。校验规则不变，不允许放宽引文或来源要求。'
                     '若搜索不足，使用剩余搜索核对；原文支持不足的事实删除并列入further_checks；'

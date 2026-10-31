@@ -17,7 +17,7 @@ from ..core.tasks import drain, work
 from ..platform.store import now
 from ..platform.models import Policy
 from ..platform.pdf_extract import extract_pdf
-from .agents import PROFILES, observations, run_agent, validate_result
+from .agents import PROFILES, failure_kind, observations, run_agent, validate_result
 from .archive import canonical_url, read_source, write_private
 from .doctor import doctor_draft, candidate_draft, doctor_evidence, matched_finding
 from .word_extract import extract_word
@@ -292,7 +292,7 @@ class ResearchService:
             return await work(self.get_job, job_id)
 
     async def _run(self, job):
-        result, usage, error, interrupted = None, {}, '', False
+        result, usage, error, interrupted, kind = None, {}, '', False, ''
         job_dir = self.base / 'jobs' / job['id']
         try:
             if self._closing:
@@ -301,9 +301,12 @@ class ResearchService:
         except asyncio.CancelledError:
             interrupted, error = True, '本次检索已停止，已归档的原件保留。'
         except (ValueError, TimeoutError) as exc:
-            error = str(exc)[:500] or '检索超时，已归档的原件保留。'
-        except Exception:
-            error = '检索未完成，已归档的原件保留；请核对服务配置或稍后重试。'
+            error, kind = str(exc)[:500] or '检索超时，已归档的原件保留。', failure_kind(exc)
+        except Exception as exc:
+            error, kind = '检索未完成，已归档的原件保留；请核对服务配置或稍后重试。', failure_kind(exc)
+        if kind:
+            # One greppable line per failed job: count by kind to tell model/config faults from source-quality faults.
+            logger.warning('research_job_failed_kind job_id=%s kind=%s agent=%s', job['id'], kind, job['kind'])
         captured = self._observations(job['id'])
         if not usage:
             try:
@@ -324,7 +327,7 @@ class ResearchService:
                     self._save_result(job, result, usage)
                 except OSError:
                     logger.error('research_result_checkpoint_failed job_id=%s', job['id'])
-            self._finish(job, result, usage, error, interrupted, captured)
+            self._finish(job, result, usage, error, interrupted, captured, kind)
         await work(finish)
         if interrupted:
             raise asyncio.CancelledError
@@ -337,7 +340,7 @@ class ResearchService:
                 detail.pop('source_version', None)
         write_private(self.base/'jobs'/job['id']/'result.json', json.dumps({'result':report,'usage':usage}).encode())
 
-    def _finish(self, job, result, usage, error, interrupted, captured):
+    def _finish(self, job, result, usage, error, interrupted, captured, kind=''):
         checked_at, source_ids, changes = now(), [], []
         draft = {}
         if job.get('doctor_identity') and result and not interrupted:
@@ -388,7 +391,7 @@ class ResearchService:
             status = 'interrupted' if interrupted else 'completed' if result and result['findings'] and not captured['errors'] else 'partial' if source_ids else 'failed'
             current = tx.get(self.workspace, 'research_job', job['id'])
             finished = tx.update(self.workspace, 'research_job', job['id'], {**current, **draft, 'status':status,
-                'finished_at':checked_at, 'result':result, 'usage':usage, 'error':error,
+                'finished_at':checked_at, 'result':result, 'usage':usage, 'error':error, 'error_kind':kind,
                 'source_ids':source_ids, 'changes':changes, 'search_queries':captured['queries'],
                 'source_metadata':[{key:source.get(key) for key in ('id','raw_sha256','url','resolved_url','title','kind','retrieved_at')} for source in captured['archives']],
                 'search_results':captured['search_results'], 'source_errors':captured['errors'],

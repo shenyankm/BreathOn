@@ -57,6 +57,7 @@ class Settings:
     deepseek_api_key: str = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY", ""), repr=False)
     deepseek_model: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL", "deepseek-flash"))
     deepseek_endpoint: str = DEEPSEEK_URL
+    doctor_temperature: float = field(default_factory=lambda: float(os.getenv("DOCTOR_TEMPERATURE", "0.3")))
     deepseek_search_enabled: bool = field(default_factory=lambda: os.getenv("DEEPSEEK_SEARCH_ENABLED", "true").lower() == "true")
     deepseek_max_concurrency: int = field(default_factory=lambda: integer_env("DEEPSEEK_MAX_CONCURRENCY", "2500"))
     deepseek_search_qps: int = field(default_factory=lambda: integer_env("DEEPSEEK_SEARCH_QPS", "100"))
@@ -78,6 +79,8 @@ class Settings:
             value = getattr(self, name)
             if type(value) is not int or value <= 0:
                 raise ValueError(f"{name.upper()} must be a positive integer")
+        if type(self.doctor_temperature) not in (int, float) or not 0 <= self.doctor_temperature <= 1:
+            raise ValueError("DOCTOR_TEMPERATURE must be between 0 and 1")
         for name in ("session_seconds", "handshake_seconds"):
             value = getattr(self, name)
             if type(value) not in (int, float) or not 0 < value < math.inf:

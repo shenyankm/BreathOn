@@ -15,7 +15,7 @@ export function TrainingProgress({refresh}:{refresh:number}) {
   const loading=settled!==requestKey
   useEffect(()=>{const controller=new AbortController();api<ProgressData>(`/progress?days=${days}`,{signal:controller.signal}).then(data=>{if(!controller.signal.aborted){setReport(data);setError('')}}).catch(cause=>{if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'训练进步加载失败')}).finally(()=>{if(!controller.signal.aborted)setSettled(requestKey)});return()=>controller.abort()},[days,refresh,retry,requestKey])
   return <section className="space-y-4 rounded-xl border bg-background p-5 sm:p-6" aria-label="个人训练进步">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium">个人训练进步</h2><div className="flex gap-1" aria-label="统计时间范围">{[7,30,90].map(value=><Button key={value} className="h-11" variant={days===value?'secondary':'ghost'} aria-pressed={days===value} onClick={()=>setDays(value)}>{value} 天</Button>)}</div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium">个人训练进步</h2><div className="flex gap-1" aria-label="统计时间范围">{[7,30,90].map(value=><Button key={value} variant={days===value?'secondary':'ghost'} aria-pressed={days===value} onClick={()=>setDays(value)}>{value} 天</Button>)}</div></div>
     {loading&&<p role="status" className="text-sm text-muted-foreground">正在读取近 {days} 天的训练记录…</p>}
     {error&&!loading&&<div role="alert" className="flex flex-wrap items-center gap-3 text-sm"><p className="text-destructive">{error}</p><Button variant="outline" disabled={loading} onClick={()=>setRetry(value=>value+1)}>重试统计</Button></div>}
     {report&&<>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { api } from '@/lib/platform-api'
+import { Label } from '@/components/ui/label'
 
 export function SelfReportRecorder({ visitId, onUploaded }: { visitId: string; onUploaded: () => void }) {
   const [consent, setConsent] = useState(false)
@@ -63,5 +64,5 @@ export function SelfReportRecorder({ visitId, onUploaded }: { visitId: string; o
     } catch (cause) { setError(cause instanceof Error ? cause.message : '上传失败，请重试。') }
     finally { operation.current = false; if (alive.current) setBusy(false) }
   }
-  return <div className="space-y-3 rounded-lg bg-muted/40 p-4"><h3 className="font-medium">录制访后自述</h3><p className="text-sm leading-6">请在拜访结束后口述，最长两分钟。录音会上传并由第三方语音服务转写，管理员可查看；首次确认转写后 7 天删除，最长保存 30 天。</p><label htmlFor={`self-report-consent-${visitId}`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6"><Checkbox id={`self-report-consent-${visitId}`} className="mt-1" checked={consent} disabled={recording || busy} onCheckedChange={value => setConsent(value === true)} /><span>我了解录音的处理方式与可见范围。</span></label>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex flex-wrap gap-2"><Button className="h-11" type="button" variant="outline" disabled={busy || !consent} onClick={() => recording ? stop() : void start()}>{recording ? '停止录音' : audio ? '重新录音' : '开始录音'}</Button>{audio && <Button className="h-11" type="button" disabled={busy || recording || !consent} onClick={() => void upload()}>{busy ? '正在上传…' : '上传录音'}</Button>}</div>{audio && <p role="status" className="text-sm">录音暂存于当前页面，请在离开前上传，再启动转写。</p>}</div>
+  return <div className="space-y-3 rounded-lg bg-muted/40 p-4"><h3 className="font-medium">录制访后自述</h3><p className="text-sm leading-6">请在拜访结束后口述，最长两分钟。录音会上传并由第三方语音服务转写，管理员可查看；首次确认转写后 7 天删除，最长保存 30 天。</p><Label htmlFor={`self-report-consent-${visitId}`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 font-normal"><Checkbox id={`self-report-consent-${visitId}`} className="mt-1" checked={consent} disabled={recording || busy} onCheckedChange={value => setConsent(value === true)} /><span>我了解录音的处理方式与可见范围。</span></Label>{error && <p role="alert" className="text-sm text-destructive">{error}</p>}<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={busy || !consent} onClick={() => recording ? stop() : void start()}>{recording ? '停止录音' : audio ? '重新录音' : '开始录音'}</Button>{audio && <Button type="button" disabled={busy || recording || !consent} onClick={() => void upload()}>{busy ? '正在上传…' : '上传录音'}</Button>}</div>{audio && <p role="status" className="text-sm">录音暂存于当前页面，请在离开前上传，再启动转写。</p>}</div>
 }

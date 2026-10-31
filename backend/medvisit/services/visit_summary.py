@@ -1,10 +1,9 @@
 """A single 40/30/30 visit card, bound to actual trainee words and medical checks."""
-import asyncio
 from datetime import datetime, timezone
-import json
 
-from openai import AsyncOpenAI, APIError
+from openai import APIError
 
+from ..agents.completion import json_completion
 from ..knowledge.corpus import quotation_text
 from ..knowledge.live import checked_snapshot, validate_snapshot
 from ..voice.protocol import BridgeError
@@ -91,24 +90,14 @@ async def build_visit_summary(settings, record):
     checks = await checked_snapshot(record)
     if not any(m['speaker']=='trainee' and m['final'] for m in history) or not settings.deepseek_api_key:
         return validate_summary({},record,settings.deepseek_model,medical_checks=checks)
-    client=AsyncOpenAI(api_key=settings.deepseek_api_key,
-        base_url=settings.deepseek_endpoint.removesuffix('/chat/completions'),timeout=12,max_retries=0)
     prompt = PROMPT
     if record.data.get('free_context'):
         prompt += '\n本次为自由组合练习，不评分。所有score只能为null，保留具体文字观察与改写建议。free_context只说明模拟医生和药品主题，不是已审核医学证据，不据此补充临床结论。'
     try:
-        async with asyncio.timeout(15),settings._deepseek_slots:
-            response=await client.chat.completions.create(model=settings.deepseek_model,temperature=0,max_tokens=3500,
-                response_format={'type':'json_object'},extra_body={'thinking':{'type':'disabled'}},
-                messages=[{'role':'system','content':prompt},{'role':'user','content':json.dumps({'transcript':history[-80:],
-                    'medical_checks':checks[-30:], **({'free_context':record.data['free_context']} if record.data.get('free_context') else {})},ensure_ascii=False)}])
-            if response.usage:
-                record.data['usage'].append({'provider':'deepseek','purpose':'visit_summary','model':settings.deepseek_model,
-                    **response.usage.model_dump(include={'prompt_tokens','completion_tokens','total_tokens'})})
-            if response.choices[0].finish_reason!='stop': raise ValueError('Incomplete summary')
-            await validate_snapshot(record, checks)
-            return validate_summary(json.loads(response.choices[0].message.content or ''),record,settings.deepseek_model,medical_checks=checks)
+        raw=await json_completion(settings,record,purpose='visit_summary',system=prompt,max_tokens=3500,
+            user={'transcript':history[-80:],'medical_checks':checks[-30:],
+                  **({'free_context':record.data['free_context']} if record.data.get('free_context') else {})})
+        await validate_snapshot(record, checks)
+        return validate_summary(raw,record,settings.deepseek_model,medical_checks=checks)
     except (APIError,TimeoutError,ValueError,TypeError,KeyError,IndexError,BridgeError):
         return validate_summary({},record,settings.deepseek_model,medical_checks=await checked_snapshot(record))
-    finally:
-        await client.close()
