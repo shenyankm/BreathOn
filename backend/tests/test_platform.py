@@ -161,6 +161,26 @@ def test_static_catalog_seeding_is_idempotent_and_unreviewed(client):
     assert client.post(path, json={'version':submitted['version'], 'action':'approve', 'reason':'核对'}).status_code == 409
 
 
+def test_researched_doctor_seeding_preserves_edits_and_deletions(client):
+    store = client.app.state.platform
+    tenant = client.app.state.local_user['workspace']
+    doctors = [row for row in client.get('/api/catalog/doctor').json()
+               if row.get('imported_from') == 'doctor_research_agent 2026-10-31']
+    assert {row['name'] for row in doctors} == {'纪立农', '李建军', '张建中', '曾小峰', '周慧芳', '吴一龙',
+        '沈琳', '朱军', '徐兵', '江倩', '王建祥', '江泽飞'}
+    assert all(row['status'] == 'published' and row['sources'] and '待核对说明' in row['public_facts']
+               and row['display_name'].endswith('（训练模拟）') and not row.get('research_job_id') for row in doctors)
+    changed, removed = doctors[:2]
+    with store.transaction(tenant) as tx:
+        edited = tx.update(tenant, 'doctor', changed['id'], {**changed, 'focus':'管理员调整的训练设定'}, changed['version'])
+    assert client.delete(f"/api/catalog/doctor/{removed['id']}?version={removed['version']}").status_code == 200
+    Catalog(store).seed(tenant, 'local')
+    after = client.get('/api/catalog/doctor').json()
+    assert next(row for row in after if row['id'] == changed['id']) == edited
+    assert removed['id'] not in {row['id'] for row in after}
+    assert len(after) == len(doctors)  # Twelve researched profiles plus the existing default, minus the deletion.
+
+
 def test_taxonomy_requires_review_and_protects_published_drugs(client):
     taxonomies = client.get('/api/catalog/taxonomy').json()
     category = next(row for row in taxonomies if row['kind'] == 'category')

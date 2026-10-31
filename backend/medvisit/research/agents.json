@@ -9,16 +9,6 @@
     "archive_requests": 8
   },
   "agents": {
-    "policy": {
-      "name": "policy_watch_agent",
-      "label": "政策检索与追踪",
-      "skill": "policy-source-research",
-      "minimum_searches": 2,
-      "primary_hosts": ["gov.cn"],
-      "description": "核对发布机关、文号、层级、主题、施行日期及后续修订或废止线索，保留原文和检查记录。",
-      "source_priority": "首次搜索必须在查询里加 site:gov.cn，寻找原发布机关官网、政府公报、法规库；第二次查修订、废止或替代文件。转载用于发现线索，须区分转载日期与原文日期。",
-      "fields": ["发布机关", "发布层级", "政策分类", "文号", "发布日期", "施行日期", "修订或废止线索", "适用范围"]
-    },
     "doctor": {
       "name": "doctor_research_agent",
       "label": "医生公开资料检索",

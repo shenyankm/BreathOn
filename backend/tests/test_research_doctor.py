@@ -100,6 +100,7 @@ def test_doctor_identity_validation_runs_before_search(client, field, value):
 
 @pytest.mark.parametrize('change', ['other_name', 'other_hospital', 'missing_department', 'multiple_candidates', 'conflicting_field', 'missing_quote', 'unknown_version'])
 def test_ambiguous_or_unbacked_identity_never_creates_a_role(client, monkeypatch, change):
+    original = client.get('/api/catalog/doctor').json()
     service = configured(client)
     _, captured, report = evidence(service, monkeypatch)
     finding = report['findings'][0]
@@ -123,7 +124,7 @@ def test_ambiguous_or_unbacked_identity_never_creates_a_role(client, monkeypatch
     service._finish(job, report, {}, '', False, captured)
     finished = service.get_job(job['id'])
     assert 'doctor_draft' not in finished and finished['doctor_draft_error']
-    assert len(client.get('/api/catalog/doctor').json()) == 1
+    assert client.get('/api/catalog/doctor').json() == original
 
 
 def test_doctor_checkpoint_recovers_draft_without_searching_again(client, monkeypatch):
@@ -174,13 +175,14 @@ def test_doctor_search_uses_existing_origin_and_service_configuration_checks(cli
 
 def test_doctor_draft_link_cannot_reference_pending_or_foreign_research(client):
     from test_platform import DOCTOR
+    original = client.get('/api/catalog/doctor').json()
     service = configured(client)
     pending = service._create_job(DoctorResearchRequest(**IDENTITY))
     assert client.post('/api/catalog/doctor', json={**DOCTOR, 'research_job_id':pending['id']}).status_code == 409
     with service.store.transaction('other') as tx:
         foreign = tx.create('other', 'research_job', {'kind':'doctor', 'status':'completed', 'doctor_draft':{}})
     assert client.post('/api/catalog/doctor', json={**DOCTOR, 'research_job_id':foreign['id']}).status_code == 404
-    assert len(client.get('/api/catalog/doctor').json()) == 1
+    assert client.get('/api/catalog/doctor').json() == original
 
 
 def test_deleting_an_unused_researched_role_preserves_the_original_draft(client, monkeypatch):

@@ -72,13 +72,13 @@ async def test_research_storage_finishes_before_shutdown(tmp_path, database_url,
             if operation.startswith('cancel_running'):
                 service.settings.deepseek_api_key = 'synthetic-not-a-live-key'
                 service.settings.deepseek_search_enabled = True
-                job = service._create_job(ResearchRequest(kind='policy', query='Synthetic lifecycle regression'))
+                job = service._create_job(ResearchRequest(kind='drug', query='Synthetic lifecycle regression'))
             else:
                 with service.store.transaction(service.workspace) as tx:
-                    job = tx.create(service.workspace, 'research_job', {'status':'completed', 'kind':'policy', 'query':'Synthetic software test'})
+                    job = tx.create(service.workspace, 'research_job', {'status':'completed', 'kind':'drug', 'query':'Synthetic software test'})
         elif operation == 'watch_error':
             with service.store.transaction(service.workspace) as tx:
-                tx.create(service.workspace, 'research_watch', {'enabled':True, 'kind':'policy',
+                tx.create(service.workspace, 'research_watch', {'enabled':True, 'kind':'drug',
                     'query':'Synthetic public policy', 'next_check_at':datetime.now(timezone.utc).isoformat(), 'source_ids':[]})
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://testserver', headers=ORIGIN) as client:
             with patch.object(service, target, held):
@@ -171,7 +171,7 @@ async def test_concurrent_research_close_joins_one_outcome(tmp_path, database_ur
             await service.close()
         assert app.state.records.pool.closed and not app.state.ready
         with pytest.raises(Exception) as closed:
-            await service.start(ResearchRequest(kind='policy', query='Synthetic request after shutdown'))
+            await service.start(ResearchRequest(kind='drug', query='Synthetic request after shutdown'))
         assert closed.value.status_code == 503
         with patch.object(service.store, 'transaction') as transaction:
             for operation in (service.cancel('missing'), service.import_policy_file('Synthetic', b'')):
@@ -197,7 +197,7 @@ async def test_research_close_waits_for_admission_lock_under_cancellation(tmp_pa
         return create(*args)
 
     with patch.object(service, '_create_job', held), patch('medvisit.research.service.run_agent', AsyncMock()) as provider:
-        admission = asyncio.create_task(service.start(ResearchRequest(kind='policy', query='Synthetic admission')))
+        admission = asyncio.create_task(service.start(ResearchRequest(kind='drug', query='Synthetic admission')))
         exiting = None
         try:
             assert await asyncio.to_thread(entered.wait, 2)
@@ -222,7 +222,7 @@ async def test_research_real_pool_timeout_and_restart_recovery(tmp_path, databas
     lifecycle = app.router.lifespan_context(app)
     await lifecycle.__aenter__()
     service, pool = app.state.research, app.state.records.pool
-    job = service._create_job(ResearchRequest(kind='policy', query='Synthetic restart recovery'))
+    job = service._create_job(ResearchRequest(kind='drug', query='Synthetic restart recovery'))
     ticks = []
 
     async def heartbeat():

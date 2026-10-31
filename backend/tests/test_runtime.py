@@ -102,12 +102,12 @@ def test_passive_liveness_and_readiness_include_storage_and_archive_files(tmp_pa
 
 def test_validation_errors_do_not_reflect_rejected_private_input(tmp_path):
     with LocalClient(create_app(settings(tmp_path))) as client:
-        response = client.post('/api/research/jobs', json={'kind':'policy', 'query':'x'*10000, 'token':'private-rejected-value'})
+        response = client.post('/api/research/jobs', json={'kind':'doctor', 'query':'x'*10000, 'token':'private-rejected-value'})
         assert response.status_code == 422 and len(response.content) < 1500
         assert 'private-rejected-value' not in response.text
         assert all(set(error) == {'loc','msg','type'} for error in response.json()['detail'])
         unknown = 'private-unknown-key-'+'x'*10000
-        body = {'kind':'policy', 'query':'公开政策', unknown:'value', **{f'extra-{i}':i for i in range(40)}}
+        body = {'kind':'doctor', 'query':'公开医生资料', unknown:'value', **{f'extra-{i}':i for i in range(40)}}
         response = client.post('/api/research/jobs', json=body)
         assert response.status_code == 422 and len(response.content) < 4000
         assert 'private-unknown-key-' not in response.text

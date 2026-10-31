@@ -230,6 +230,8 @@ class ResearchService:
         return item, raw
 
     def _create_job(self, request, watch_id=None):
+        if request.kind not in PROFILES:
+            raise HTTPException(422, '该检索助手已停用，历史资料仍可查看。')
         if not self.settings.deepseek_api_key or not self.settings.deepseek_search_enabled:
             raise HTTPException(503, '请先配置 DeepSeek 并开启 DEEPSEEK_SEARCH_ENABLED。')
         private = re.search(r'(?<!\d)(?:1[3-9]\d{9}|\d{17}[\dXx])(?!\d)|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}', request.query)
@@ -412,6 +414,8 @@ class ResearchService:
             job = tx.get(self.workspace, 'research_job', job_id)
             if not job:
                 raise HTTPException(404, '检索记录不存在。')
+            if enabled and job['kind'] not in PROFILES:
+                raise HTTPException(422, '该检索助手已停用，不能开启追踪。')
             if job['status'] not in ('completed', 'partial') or not job['source_ids']:
                 raise HTTPException(409, '先完成一次原文归档，再开启追踪。')
             watch_id = hashlib.sha256(f'{job["kind"]}\n{job["query"]}'.encode()).hexdigest()[:24]
@@ -454,7 +458,7 @@ class ResearchService:
                 return
             watches = await work(self.list, 'research_watch')
         for watch in watches:
-            if not watch['enabled'] or datetime.fromisoformat(watch['next_check_at']) > datetime.now(timezone.utc):
+            if watch['kind'] not in PROFILES or not watch['enabled'] or datetime.fromisoformat(watch['next_check_at']) > datetime.now(timezone.utc):
                 continue
             try:
                 await self.start(ResearchRequest(kind=watch['kind'], query=watch['query']), watch['id'])

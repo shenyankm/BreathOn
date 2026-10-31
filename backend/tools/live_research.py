@@ -20,8 +20,7 @@ async def run(output, only_kind=None):
     store.open()
     service = ResearchService(store, settings, lambda: {'workspace':'research-acceptance'})
     report = {'started_at':now(), 'mocked_services':False, 'medical_or_legal_review':False, 'agents':[]}
-    queries = {'policy':'中国 医药代表管理办法 最新修订 废止 原发布机关',
-        'doctor':'复旦大学附属中山医院 李小英 内分泌科 官方医生资料',
+    queries = {'doctor':'复旦大学附属中山医院 李小英 内分泌科 官方医生资料',
         'drug':'玛仕度肽 中国 成人体重管理 同类药品 获批说明书'}
     if only_kind:
         queries = {only_kind:queries[only_kind]}
@@ -59,7 +58,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true', help='确认执行真实模型与搜索调用，会产生用量。')
     parser.add_argument('--output', type=Path, default=Path('data/validation/research-live'))
-    parser.add_argument('--kind', choices=['policy','doctor','drug'], help='只复验指定助手，避免重复真实调用。')
+    parser.add_argument('--kind', choices=['doctor','drug'], help='只复验指定助手，避免重复真实调用。')
     args = parser.parse_args()
     if not args.live:
         parser.error('真实验收需要显式 --live；没有执行调用。')

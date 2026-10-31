@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock
 from zipfile import ZipFile
 
 from medvisit.research import archive
-from medvisit.research.models import ResearchRequest
 from test_platform import client, pdf_fixture
 from test_storage import database_url
 from test_research_archive import URL, TEXT, page
@@ -17,7 +16,9 @@ def test_import_policy_archive_rechecks_original_and_is_idempotent(client, monke
     metadata, original_text = asyncio.run(archive.archive_source(service.archives, URL))
     captured = {'queries':['政策', '政策更新'], 'search_results':[], 'archives':[metadata], 'errors':[]}
     monkeypatch.setattr(service, '_observations', lambda _:captured)
-    job = service._create_job(ResearchRequest(kind='policy', query='政策 文件'))
+    # Historical policy archives remain importable after the policy agent is removed.
+    with service.store.transaction(service.workspace) as tx:
+        job = tx.create(service.workspace, 'research_job', {'kind':'policy', 'status':'running'})
     service._finish(job, {'findings':[{'title':'政策','details':[],'caveats':[]}], 'further_checks':[]}, {}, '', False, captured)
     body = {'source_id':metadata['id'], 'source_version':metadata['raw_sha256']}
     path = f'/api/research/jobs/{job["id"]}/policy-draft'

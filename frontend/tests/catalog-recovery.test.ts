@@ -385,3 +385,25 @@ test('doctor draft deep link opens the reviewed draft', async () => {
   const view=app.render({kind:'doctor'})
   assert.equal(find(view,'DoctorForm')[0].key,'draft-1-1')
 })
+
+for (const enabled of [false, true]) {
+  test(`retired policy research keeps archives readable without offering new tracking (${enabled})`, async () => {
+    const date = '2026-10-31T00:00:00Z'
+    const job = { id: 'old-policy', kind: 'policy', query: '历史政策', status: 'completed', created_at: date,
+      finished_at: date, source_ids: ['source'], changes: [{ source_id: 'source', status: 'first_archive', version: 'v1' }], result: null }
+    const state = { configured: true, profiles: [{ kind: 'doctor', label: '医生' }, { kind: 'drug', label: '药品' }], jobs: [job],
+      sources: [{ id: 'source', title: '历史原文', url: 'https://example.gov.cn/policy', versions: [{ raw_sha256: 'v1', retrieved_at: date }] }],
+      watches: [{ id: 'watch', kind: 'policy', query: job.query, enabled, source_ids: ['source'], last_job_id: job.id, next_check_at: date }] }
+    const app = page('../components/research-panel.tsx', 'ResearchPanel', async () => state, '#workspace?tab=research&agent=policy')
+    app.render()
+    await settle()
+    const view = app.render()
+    assert.equal(find(view, 'Select')[0].props.value, 'doctor')
+    assert.ok(!find(view, 'SelectItem').some(item => item.props.value === 'policy'))
+    assert.ok(find(view, 'a').some(link => link.props.href === '/api/research/sources/source/v1/html'))
+    const buttons = find(view, 'Button')
+    assert.ok(!buttons.some(button => String(button.props.children).includes('开启每日追踪')))
+    assert.ok(!buttons.some(button => button.props.children === '恢复追踪'))
+    assert.equal(buttons.some(button => button.props.children === '暂停追踪'), enabled)
+  })
+}

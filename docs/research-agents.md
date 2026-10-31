@@ -1,10 +1,10 @@
-# 政策 医生与同类药品检索助手
+# 医生与同类药品检索助手
 
-三个 AgentScope 助手查找公开原文、整理带引用的事实，并保存可阅读的 HTML 和原始文件。政策助手同时检查后续修订、废止或替代文件；医生助手核对公开职业背景；药品助手按机制和获批范围寻找同类候选。结果保留核验时间和待核对项，由使用者核对后再加入训练资料。
+两个 AgentScope 助手查找公开原文、整理带引用的事实，并保存可阅读的 HTML 和原始文件。医生助手核对公开职业背景；药品助手按机制和获批范围寻找同类候选。结果保留核验时间和待核对项，由使用者核对后再加入训练资料。
 
 ## 页面入口
 
-打开「训练管理 → 内容准备 → 资料检索」，选择助手并输入主题。学习资料中的「检索与追踪政策」「查找医生公开资料」「查找同类药品」也会进入对应助手。
+打开「训练管理 → 内容准备 → 资料检索」，选择助手并输入主题。政策检索助手已移除，不再创建政策检索或执行政策每日追踪；历史任务、原文和政策草稿继续保留，政策文件仍可手动导入。
 
 点击「开始检索并归档」才会调用模型与搜索。页面打开、读取历史记录、查看 HTML 不调用模型或服务可用性检测。需要在 `backend/.env` 配置 `DEEPSEEK_API_KEY` 并启用 `DEEPSEEK_SEARCH_ENABLED=true`；沿用项目的模型和接口配置。
 
@@ -20,17 +20,16 @@
 
 | 助手 | Agent 名称 | Skill | 核对内容 |
 | --- | --- | --- | --- |
-| 政策 | `policy_watch_agent` | [policy-source-research](../backend/medvisit/agents/skills/policy-source-research/SKILL.md) | 原发布机关、发布层级、政策分类、文号、发布及施行日期、适用范围、修订或废止线索 |
 | 医生 | `doctor_research_agent` | [doctor-source-research](../backend/medvisit/agents/skills/doctor-source-research/SKILL.md) | 姓名、医院、科室、专业职称、公开学术背景、专业方向、同名或时效疑点 |
 | 同类药品 | `similar_drug_research_agent` | [drug-source-research](../backend/medvisit/agents/skills/drug-source-research/SKILL.md) | 通用名、商品名、厂家、机制、获批地区、适应症与人群、说明书版本、同类依据和比较边界 |
 
-政策和药品事实需要配置中认可的政府、监管或厂家官网原文；转载与新闻用于发现线索。增加厂家的来源域名时应核对其官方身份。医生优先医院、大学及专业协会的公开页面，保留同名、历史任职和来源性质的疑点；公开简介不等同执业资质认证，也不用于推断私人联系方式或真实医生的性格。
+药品事实需要配置中认可的政府、监管或厂家官网原文；转载与新闻用于发现线索。增加厂家的来源域名时应核对其官方身份。医生优先医院、大学及专业协会的公开页面，保留同名、历史任职和来源性质的疑点；公开简介不等同执业资质认证，也不用于推断私人联系方式或真实医生的性格。
 
 每次至少完成两次不同查询，单次最多搜索 4 次，每次最多 5 条结果，最多尝试归档 8 个来源。AgentScope 推理最多 12 轮，总运行限时 240 秒；未完整完成的来源与已落盘原件分别保留。
 
 ## MCP 配置
 
-三个助手共用项目内的有状态 STDIO MCP 服务，无需额外部署通用浏览器或文件系统 MCP。运行时以当前 Python 环境启动：
+两个助手共用项目内的有状态 STDIO MCP 服务，无需额外部署通用浏览器或文件系统 MCP。运行时以当前 Python 环境启动：
 
 ```sh
 python -m medvisit.research.mcp_server
@@ -79,7 +78,7 @@ DOCX 使用标准库读取正文、脚注和尾注；旧 DOC 在 macOS 使用系
 | 方法与路径 | 行为 |
 | --- | --- |
 | `GET /api/research` | 读取助手配置、最近 20 次任务、归档来源与追踪主题 |
-| `POST /api/research/jobs` | 按 `kind: policy/doctor/drug` 和 `query` 发起任务 |
+| `POST /api/research/jobs` | 按 `kind: doctor/drug` 和 `query` 发起任务 |
 | `POST /api/research/doctor-jobs` | 按 `name`、`hospital`、`department` 发起医生检索，完成后生成待人工核对的画像草稿 |
 | `GET /api/research/jobs/{id}` | 读取进度与结果 |
 | `POST /api/research/jobs/{id}/cancel` | 停止任务，保留已归档原件 |
@@ -89,7 +88,9 @@ DOCX 使用标准库读取正文、脚注和尾注；旧 DOC 在 macOS 使用系
 
 同一工作区只运行一个检索任务。写操作沿用应用的 Origin 检查，归档读取同时检查工作区元数据与版本。应用继续保持本机单用户运行范围。
 
-## 验收结果
+## 历史验收结果
+
+以下为移除政策助手前的历史记录；当前只提供医生和同类药品两个检索助手。
 
 ### 2026-10-30 医生画像草稿链路
 
@@ -112,7 +113,7 @@ DOCX 使用标准库读取正文、脚注和尾注；旧 DOC 在 macOS 使用系
 ```sh
 uv run --directory backend python -m tools.live_research --live --output data/validation/research-live-new
 # 只复验一个助手
-uv run --directory backend python -m tools.live_research --live --kind policy --output data/validation/research-policy-new
+uv run --directory backend python -m tools.live_research --live --kind doctor --output data/validation/research-doctor-new
 ```
 
 验收使用独立数据库和记录目录，不把合成验收内容写入用户的演练历史。真实麦克风、真人听感和专业审核与此项资料检索验收分别记录。

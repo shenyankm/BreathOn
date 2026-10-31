@@ -206,7 +206,7 @@ async def test_corrupted_archive_text_cannot_be_read_or_used_as_citation(tmp_pat
     path = tmp_path / metadata['id'] / metadata['raw_sha256'] / filename
     damaged = '被损坏的正文，不是已归档原件中的文字，不应成为检索结果引文。'*3
     path.write_text(damaged)
-    result = ResearchResult.model_validate({'findings':[{'title':'软件测试', 'details':[{'label':'发布机关',
+    result = ResearchResult.model_validate({'findings':[{'title':'软件测试', 'details':[{'label':'通用名',
         'value':'软件测试材料', 'source_id':metadata['id'], 'evidence_id':evidence_id}], 'caveats':[]}], 'further_checks':[]})
     with pytest.raises(ValueError, match='损坏'):
         if consumer == 'read':
@@ -214,7 +214,7 @@ async def test_corrupted_archive_text_cannot_be_read_or_used_as_citation(tmp_pat
         elif consumer == 'rearchive':
             await archive.archive_source(tmp_path, URL)
         else:
-            validate_result(result, PROFILES['policy'], tmp_path, {'archives':[metadata],
+            validate_result(result, PROFILES['drug'], tmp_path, {'archives':[metadata],
                 'queries':['软件测试', '软件测试后续更新'], 'evidence_seen':{metadata['id']:[evidence_id]}})
     assert path.read_text() == damaged
 
@@ -238,25 +238,25 @@ def test_document_wraps_do_not_merge_distinct_numeric_values():
     assert archive.normalized_text('浓度为1 2毫克') != archive.normalized_text('浓度为12毫克')
 
 
-async def test_all_three_skills_load_and_fake_citations_are_rejected(tmp_path, monkeypatch):
+async def test_all_research_skills_load_and_fake_citations_are_rejected(tmp_path, monkeypatch):
     for profile in PROFILES.values():
         skill, = await LocalSkillLoader(str(SKILL_ROOT / profile['skill'])).list_skills()
         assert skill.name == profile['skill'] and 'source_id' in skill.markdown
     monkeypatch.setattr(archive, 'download_public', AsyncMock(return_value=(page(), URL, {'content-type':'text/html'})))
     metadata, _ = await archive.archive_source(tmp_path, URL)
     evidence_id = archive.evidence_blocks(archive.read_source(tmp_path,metadata['id'],metadata['raw_sha256'])[1], metadata['raw_sha256'])[0]['id']
-    detail = {'label':'发布机关','value':'软件测试材料','source_id':metadata['id'],'evidence_id':evidence_id}
+    detail = {'label':'通用名','value':'软件测试材料','source_id':metadata['id'],'evidence_id':evidence_id}
     raw = {'findings':[{'title':'软件测试','details':[detail],'caveats':[]}], 'further_checks':[]}
     captured = {'archives':[metadata], 'queries':['软件测试','软件测试后续更新'], 'evidence_seen':{metadata['id']:[evidence_id]}}
-    assert validate_result(ResearchResult(**raw), PROFILES['policy'], tmp_path, captured)['findings']
+    assert validate_result(ResearchResult(**raw), PROFILES['drug'], tmp_path, captured)['findings']
     for change in ({'source_id':'a'*24}, {'evidence_id':'E999-'+metadata['raw_sha256'][:12]}, {'label':'自动医学审核通过'}):
         with pytest.raises(ValueError):
             validate_result(ResearchResult(**{**raw,'findings':[{'title':'软件测试','details':[{**detail,**change}],'caveats':[]}]}),
-                PROFILES['policy'], tmp_path, captured)
+                PROFILES['drug'], tmp_path, captured)
     with pytest.raises(ValueError, match='不同查询'):
-        validate_result(ResearchResult(**raw), PROFILES['policy'], tmp_path, {**captured,'queries':['软件测试']})
+        validate_result(ResearchResult(**raw), PROFILES['drug'], tmp_path, {**captured,'queries':['软件测试']})
     with pytest.raises(ValueError, match='政府'):
-        validate_result(ResearchResult(**raw), PROFILES['policy'], tmp_path,
+        validate_result(ResearchResult(**raw), PROFILES['drug'], tmp_path,
             {**captured,'archives':[{**metadata,'resolved_url':'https://news.example.com/article'}]})
 
 
@@ -284,6 +284,6 @@ async def test_actual_stdio_mcp_exposes_only_bounded_tools_and_blocks_private_ur
 
 def test_research_query_requires_public_topic_and_forbids_extra_fields():
     from pydantic import ValidationError
-    for body in ({'kind':'policy','query':' x '}, {'kind':'shell','query':'医药代表'}, {'kind':'policy','query':'医药代表','command':'ls'}):
+    for body in ({'kind':'drug','query':' x '}, {'kind':'shell','query':'医药代表'}, {'kind':'drug','query':'医药代表','command':'ls'}):
         with pytest.raises(ValidationError):
             ResearchRequest(**body)

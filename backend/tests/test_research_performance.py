@@ -49,7 +49,7 @@ async def test_validation_reads_each_archived_version_once_without_relaxing_sour
     monkeypatch.setattr(archive, 'download_public', AsyncMock(return_value=(page(), URL, {'content-type':'text/html'})))
     metadata, text = await archive.archive_source(tmp_path, URL)
     block = archive.evidence_blocks(text, metadata['raw_sha256'])[0]
-    result = ResearchResult(findings=[{'title':'测试', 'details':[{'label':'发布机关', 'value':'测试材料',
+    result = ResearchResult(findings=[{'title':'测试', 'details':[{'label':'通用名', 'value':'测试材料',
         'source_id':metadata['id'], 'evidence_id':block['id']}], 'caveats':[]}], further_checks=[])
     captured = {'archives':[dict(metadata) for _ in range(8)], 'queries':['查询原文', '查询更新'],
         'evidence_seen':{metadata['id']:[block['id']]}}
@@ -57,30 +57,30 @@ async def test_validation_reads_each_archived_version_once_without_relaxing_sour
     split = Mock(wraps=archive.evidence_blocks)
     monkeypatch.setattr(agents, 'read_source', read)
     monkeypatch.setattr(agents, 'evidence_blocks', split)
-    output = agents.validate_result(result, agents.PROFILES['policy'], tmp_path, captured)
+    output = agents.validate_result(result, agents.PROFILES['drug'], tmp_path, captured)
     assert read.call_count == split.call_count == 1
     assert TEXT in output['findings'][0]['details'][0]['quote']
     captured['archives'][-1]['resolved_url'] = 'https://news.example.com/article'
     with pytest.raises(ValueError, match='政府'):
-        agents.validate_result(result, agents.PROFILES['policy'], tmp_path, captured)
+        agents.validate_result(result, agents.PROFILES['drug'], tmp_path, captured)
     captured['archives'][-1]['resolved_url'] = URL
     monkeypatch.setattr(archive, 'download_public', AsyncMock(return_value=(page(TEXT+' 修订正文。'), URL, {'content-type':'text/html'})))
     newer, _ = await archive.archive_source(tmp_path, URL)
     captured['archives'].append(newer)
     read.reset_mock(); split.reset_mock()
-    assert agents.validate_result(result, agents.PROFILES['policy'], tmp_path, captured) == output
+    assert agents.validate_result(result, agents.PROFILES['drug'], tmp_path, captured) == output
     assert read.call_count == split.call_count == 2
     (tmp_path/newer['id']/newer['raw_sha256']/'content.txt').write_text('damaged uncited version')
     with pytest.raises(ValueError, match='损坏'):
-        agents.validate_result(result, agents.PROFILES['policy'], tmp_path, captured)
+        agents.validate_result(result, agents.PROFILES['drug'], tmp_path, captured)
     (tmp_path/metadata['id']/metadata['raw_sha256']/'content.txt').write_text('damaged')
     with pytest.raises(ValueError, match='损坏'):
-        agents.validate_result(result, agents.PROFILES['policy'], tmp_path, captured)
+        agents.validate_result(result, agents.PROFILES['drug'], tmp_path, captured)
 
 
 def test_checkpoint_does_not_serialize_discarded_quotes_or_modify_result(tmp_path):
     service = ResearchService(None, settings(tmp_path), lambda: {'workspace':'test'})
-    result = {'findings':[{'title':'测试', 'details':[{'label':'发布机关', 'value':'测试材料',
+    result = {'findings':[{'title':'测试', 'details':[{'label':'通用名', 'value':'测试材料',
         'source_id':'a'*24, 'evidence_id':'E1-'+('b'*12), 'quote':TEXT*12, 'source_version':'b'*64}],
         'caveats':['待核对']}], 'further_checks':['后续更新']}
     original = copy.deepcopy(result)

@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..platform.input import Input
 
-ResearchKind = Literal['policy', 'doctor', 'drug']
+ResearchKind = Literal['doctor', 'drug']
 
 
 class DoctorResearchRequest(Input):

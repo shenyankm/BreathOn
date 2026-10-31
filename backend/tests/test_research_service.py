@@ -26,8 +26,8 @@ def capture(service, monkeypatch, text=TEXT):
 
 
 def complete(service, metadata, *, errors=(), result=True):
-    job = service._create_job(ResearchRequest(kind='policy', query='公开政策软件测试'))
-    report = {'findings':[{'title':'软件测试','details':[{'label':'发布机关','value':'软件测试材料',
+    job = service._create_job(ResearchRequest(kind='drug', query='公开政策软件测试'))
+    report = {'findings':[{'title':'软件测试','details':[{'label':'通用名','value':'软件测试材料',
         'source_id':metadata['id'],'quote':TEXT}],'caveats':[]}], 'further_checks':[]} if result else None
     captured = {'queries':['软件测试'], 'search_results':[], 'archives':[metadata] if metadata else [], 'errors':list(errors)}
     service._finish(job, report, {'model':'fake'}, '', False, captured)
@@ -38,7 +38,7 @@ def test_reading_research_state_never_starts_a_provider_request(client):
     with patch('medvisit.research.service.run_agent', AsyncMock()) as model:
         response = client.get('/api/research')
         assert response.status_code == 200
-        assert {profile['kind'] for profile in response.json()['profiles']} == {'policy','doctor','drug'}
+        assert {profile['kind'] for profile in response.json()['profiles']} == {'doctor','drug'}
         assert response.json()['jobs'] == [] and response.json()['watches'] == []
         model.assert_not_awaited()
 
@@ -100,8 +100,8 @@ def test_one_run_keeps_all_captured_versions_and_compares_against_its_start(clie
     complete(service, initial)
     first = capture(service, monkeypatch, TEXT+' 第一份修订。')
     latest = capture(service, monkeypatch, TEXT+' 第二份修订。')
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试单次多版本'))
-    report = {'findings':[{'title':'测试','details':[{'label':'发布机关', 'value':'测试',
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试单次多版本'))
+    report = {'findings':[{'title':'测试','details':[{'label':'通用名', 'value':'测试',
         'source_id':first['id'], 'source_version':first['raw_sha256'], 'quote':TEXT}], 'caveats':[]}], 'further_checks':[]}
     service._finish(job, report, {}, '', False,
         {'queries':['测试'], 'search_results':[], 'archives':[first, latest], 'errors':[]})
@@ -126,13 +126,13 @@ def test_start_blocks_concurrent_jobs_and_rejects_unknown_or_private_input(clien
     response = client.post('/api/research/jobs', json={'kind':'drug','query':'玛仕度肽公开说明书'})
     assert response.status_code == 409
     assert client.post('/api/research/jobs', json={'kind':'shell','query':'公开资料'}).status_code == 422
-    assert client.post('/api/research/jobs', json={'kind':'policy','query':'公开资料'}, headers={'origin':'https://evil.test'}).status_code == 403
+    assert client.post('/api/research/jobs', json={'kind':'drug','query':'公开资料'}, headers={'origin':'https://evil.test'}).status_code == 403
 
 
 def test_recovery_indexes_already_saved_originals_and_keeps_result_unreviewed(client, monkeypatch):
     service = configured(client)
     metadata = capture(service, monkeypatch)
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试中断恢复'))
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试中断恢复'))
     captured = {'queries':['软件测试'], 'search_results':[], 'archives':[metadata], 'errors':[]}
     write_private(service.base/'jobs'/job['id']/'observations.json', json.dumps(captured).encode())
     service.recover()
@@ -165,7 +165,7 @@ def test_cancel_keeps_archives_and_releases_the_single_active_job(client, monkey
             await asyncio.sleep(0)
         raise AssertionError('mock research did not start')
     with patch('medvisit.research.service.run_agent', running):
-        job = client.post('/api/research/jobs', json={'kind':'policy','query':'软件测试取消'}).json()
+        job = client.post('/api/research/jobs', json={'kind':'drug','query':'软件测试取消'}).json()
         client.portal.call(ready, job['id'])
         response = client.post(f'/api/research/jobs/{job["id"]}/cancel')
         assert response.status_code == 200 and response.json()['status'] == 'interrupted'
@@ -176,7 +176,7 @@ def test_cancel_keeps_archives_and_releases_the_single_active_job(client, monkey
 def test_immediate_shutdown_finalizes_a_job_before_its_task_starts(client):
     service = configured(client)
     async def start_and_close():
-        job = await service.start(ResearchRequest(kind='policy', query='软件测试立即停止'))
+        job = await service.start(ResearchRequest(kind='drug', query='软件测试立即停止'))
         await service.close()
         return job['id']
     with patch('medvisit.research.service.run_agent', AsyncMock()) as provider:
@@ -184,7 +184,7 @@ def test_immediate_shutdown_finalizes_a_job_before_its_task_starts(client):
         provider.assert_not_awaited()
     assert service.get_job(job_id)['status'] == 'interrupted'
     with pytest.raises(Exception) as closing:
-        client.portal.call(service.start, ResearchRequest(kind='policy', query='软件测试停止后启动'))
+        client.portal.call(service.start, ResearchRequest(kind='drug', query='软件测试停止后启动'))
     assert closing.value.status_code == 503
 
 
@@ -193,7 +193,7 @@ def test_immediate_shutdown_finalizes_a_job_before_its_task_starts(client):
     '{"queries":[],"search_results":[],"archives":[],"errors":[{}]}'])
 def test_recovery_keeps_damaged_observations_and_unblocks_new_jobs(client, damaged):
     service = configured(client)
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试损坏恢复'))
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试损坏恢复'))
     path = service.base/'jobs'/job['id']/'observations.json'
     write_private(path, damaged.encode())
     assert service.get_job(job['id'])['progress'] == {'searches':0, 'archives':0}
@@ -202,7 +202,7 @@ def test_recovery_keeps_damaged_observations_and_unblocks_new_jobs(client, damag
     assert recovered['status'] == 'interrupted' and recovered['reviewed'] is False
     assert recovered['source_errors'][0]['operation'] == 'recovery'
     assert path.read_text() == damaged
-    service._create_job(ResearchRequest(kind='policy', query='软件测试恢复后可以启动'))
+    service._create_job(ResearchRequest(kind='drug', query='软件测试恢复后可以启动'))
 
 
 @pytest.mark.parametrize('cancel_twice', [False, True])
@@ -217,7 +217,7 @@ def test_cancellation_waits_for_the_single_final_write(client, cancel_twice):
         assert release.wait(timeout=5)
         return finish(*args)
     async def cancel_during_write():
-        job = await service.start(ResearchRequest(kind='policy', query='软件测试保存时停止'))
+        job = await service.start(ResearchRequest(kind='drug', query='软件测试保存时停止'))
         assert await asyncio.to_thread(entered.wait, 5)
         task = service.job_tasks[job['id']]
         cancelled = asyncio.create_task(service.cancel(job['id']))
@@ -243,7 +243,7 @@ def test_cancellation_waits_for_the_single_final_write(client, cancel_twice):
 def test_failed_background_persistence_is_logged_without_secrets_and_can_be_stopped(client, caplog):
     service = configured(client)
     async def failed_run():
-        job = await service.start(ResearchRequest(kind='policy', query='软件测试保存失败'))
+        job = await service.start(ResearchRequest(kind='drug', query='软件测试保存失败'))
         await asyncio.gather(*list(service.tasks), return_exceptions=True)
         return job['id']
     with patch('medvisit.research.service.run_agent', AsyncMock(return_value=(None, {}))), \
@@ -259,7 +259,7 @@ def test_failed_background_persistence_is_logged_without_secrets_and_can_be_stop
 @pytest.mark.parametrize('operation', ['cancel', 'close'])
 def test_orphan_recovery_keeps_lifecycle_locked_through_repeated_cancellation(client, operation):
     service = configured(client)
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试取消孤立任务恢复'))
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试取消孤立任务恢复'))
     entered, release = Event(), Event()
     interrupt = service._interrupt
     calls = []
@@ -293,7 +293,7 @@ def test_orphan_recovery_keeps_lifecycle_locked_through_repeated_cancellation(cl
 @pytest.mark.parametrize('damaged', ['{', '[]', 'null', '"unusable"'])
 def test_damaged_usage_does_not_leave_research_running(client, damaged):
     service = configured(client)
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试用量损坏'))
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试用量损坏'))
     path = service.base/'jobs'/job['id']/'usage.json'
     write_private(path, damaged.encode())
     with patch('medvisit.research.service.run_agent', AsyncMock(side_effect=ValueError('结果未通过校验'))):
@@ -302,7 +302,7 @@ def test_damaged_usage_does_not_leave_research_running(client, damaged):
     assert finished['status'] == 'failed'
     assert finished['source_errors'][0]['operation'] == 'recovery'
     assert path.read_text() == damaged
-    service._create_job(ResearchRequest(kind='policy', query='软件测试用量恢复后启动'))
+    service._create_job(ResearchRequest(kind='drug', query='软件测试用量恢复后启动'))
 
 
 @pytest.mark.parametrize('cancel_again_during', [None, 'creation', 'interruption'])
@@ -324,7 +324,7 @@ def test_cancelled_start_waits_for_creation_and_finalizes_its_persisted_job(clie
             assert interrupt_release.wait(timeout=5)
         return interrupt(job)
     async def cancelled_start():
-        starting = asyncio.create_task(service.start(ResearchRequest(kind='policy', query='软件测试创建时停止')))
+        starting = asyncio.create_task(service.start(ResearchRequest(kind='drug', query='软件测试创建时停止')))
         assert await asyncio.to_thread(entered.wait, 5)
         try:
             starting.cancel()
@@ -358,13 +358,13 @@ def test_completed_research_recovers_after_database_failure_without_repeating_pr
     metadata = capture(service, monkeypatch)
     text = archive.read_source(service.archives, metadata['id'], metadata['raw_sha256'])[1]
     evidence = archive.evidence_blocks(text, metadata['raw_sha256'])[0]['id']
-    job = service._create_job(ResearchRequest(kind='policy', query='软件测试结果恢复'))
+    job = service._create_job(ResearchRequest(kind='drug', query='软件测试结果恢复'))
     captured = {'queries':['测试公开原文','测试后续更新'], 'search_results':[], 'archives':[metadata], 'errors':[],
         'evidence_seen':{metadata['id']:[evidence]}}
     write_private(service.base/'jobs'/job['id']/'observations.json', json.dumps(captured).encode())
-    raw = {'findings':[{'title':'测试','details':[{'label':'发布机关','value':'测试机关',
+    raw = {'findings':[{'title':'测试','details':[{'label':'通用名','value':'测试机关',
         'source_id':metadata['id'],'evidence_id':evidence}],'caveats':[]}], 'further_checks':[]}
-    result = validate_result(ResearchResult(**raw), PROFILES['policy'], service.archives, captured)
+    result = validate_result(ResearchResult(**raw), PROFILES['drug'], service.archives, captured)
     with patch('medvisit.research.service.run_agent', AsyncMock(return_value=(result, {'total_tokens':8}))) as provider:
         with patch.object(service, '_finish', side_effect=OSError('database temporarily unavailable')):
             with pytest.raises(OSError):
@@ -433,11 +433,11 @@ def test_recovery_keeps_live_jobs_and_scheduler_finalizes_orphans(client):
              patch('medvisit.research.service.run_agent', side_effect=provider) as model:
             await service.start_scheduler()
             try:
-                active = await service.start(ResearchRequest(kind='policy', query='软件测试存活任务'))
+                active = await service.start(ResearchRequest(kind='drug', query='软件测试存活任务'))
                 await asyncio.to_thread(service.recover)
                 assert service.get_job(active['id'])['status'] == 'running'
                 await service.cancel(active['id'])
-                orphan = await asyncio.to_thread(service._create_job, ResearchRequest(kind='policy', query='软件测试孤立任务'))
+                orphan = await asyncio.to_thread(service._create_job, ResearchRequest(kind='drug', query='软件测试孤立任务'))
                 tick.set()
                 await asyncio.wait_for(checked.wait(), 2)
                 assert service.get_job(orphan['id'])['status'] == 'interrupted'
@@ -447,3 +447,30 @@ def test_recovery_keeps_live_jobs_and_scheduler_finalizes_orphans(client):
                 await asyncio.gather(service.scheduler, return_exceptions=True)
 
     client.portal.call(verify)
+
+
+def test_removed_policy_agent_preserves_history_and_never_runs_old_watches(client, monkeypatch):
+    service = configured(client)
+    job = complete(service, capture(service, monkeypatch))
+    with service.store.transaction(service.workspace) as tx:
+        legacy = tx.create(service.workspace, 'research_job', {**job, 'kind':'policy', 'query':'历史政策检索'})
+        tx.create(service.workspace, 'research_watch', {'kind':'policy', 'query':legacy['query'],
+            'enabled':True, 'last_job_id':legacy['id'], 'source_ids':job['source_ids'],
+            'next_check_at':(datetime.now(timezone.utc)-timedelta(days=1)).isoformat()})
+    with patch('medvisit.research.service.run_agent', AsyncMock()) as provider:
+        assert client.post('/api/research/jobs', json={'kind':'policy','query':'新政策检索'}).status_code == 422
+        assert client.get(f'/api/research/jobs/{legacy["id"]}').json()['kind'] == 'policy'
+        assert client.put(f'/api/research/jobs/{legacy["id"]}/watch', json={'enabled':True}).status_code == 422
+        with patch.object(service, 'start', AsyncMock()) as start:
+            asyncio.run(service.check_due_watches())
+            start.assert_not_awaited()
+            service.set_watch(job['id'], True)
+            with service.store.transaction(service.workspace) as tx:
+                watch = next(w for w in tx.list(service.workspace, 'research_watch') if w['kind'] == 'drug')
+                tx.update(service.workspace, 'research_watch', watch['id'], {**watch,
+                    'next_check_at':(datetime.now(timezone.utc)-timedelta(days=1)).isoformat()}, watch['version'])
+            asyncio.run(service.check_due_watches())
+            start.assert_awaited_once()
+            assert start.call_args.args[0].kind == 'drug'
+        assert client.put(f'/api/research/jobs/{legacy["id"]}/watch', json={'enabled':False}).status_code == 200
+        provider.assert_not_awaited()

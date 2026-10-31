@@ -1,4 +1,4 @@
-"""Three AgentScope agents, each with an explicit Skill and the same bounded STDIO MCP."""
+"""Two AgentScope agents, each with an explicit Skill and the same bounded STDIO MCP."""
 import asyncio
 import hashlib
 import json
@@ -69,12 +69,12 @@ def validate_result(result, profile, root, captured):
             hosts = profile.get('primary_hosts', [])
             host = urlsplit(source['resolved_url']).hostname or ''
             if hosts and not any(host == primary or host.endswith('.'+primary) for primary in hosts):
-                raise ValueError('政策或药品事实需要政府、监管机构或已配置厂家官网原文；新闻与行业转载仅保留为线索。')
+                raise ValueError('药品事实需要政府、监管机构或已配置厂家官网原文；新闻与行业转载仅保留为线索。')
             detail.update(quote=quote, source_version=source['raw_sha256'])
     if not captured['archives']:
         raise ValueError('本次未获取到可归档的原文，请核对来源或稍后重试。')
     if len(set(captured['queries'])) < profile['minimum_searches']:
-        raise ValueError(f'本次需完成{profile["minimum_searches"]}次不同查询；政策查原文与后续更新，药品查监管原文与厂家说明书。')
+        raise ValueError(f'本次需完成{profile["minimum_searches"]}次不同查询；医生核对机构来源，药品查监管原文与厂家说明书。')
     return output
 
 
@@ -92,7 +92,7 @@ async def run_agent(settings, kind, query, root, job_dir, seeds=()):
 必须实际使用MCP的search_public完成{profile['minimum_searches']}次不同查询，最多{CONFIG['mcp']['search_requests']}次；查询控制在128字以内。
 优先1至3份最直接的原文，使用archive_source获取正文及source_id后才可引用；来源失败要如实说明。
 网页包含说明书、附件或正文链接时，可继续抓取archive_source返回的links；不能只读新闻后就停止寻找原文。
-政策与药品事实只采用这些政府、监管或已配置厂家域名：{json.dumps(profile['primary_hosts'])}；其他网页只作线索。医生资料按专属Skill核对机构来源。
+药品事实只采用这些政府、监管或已配置厂家域名：{json.dumps(profile['primary_hosts'])}；其他网页只作线索。医生资料按专属Skill核对机构来源。
 已有来源复查结果若存在，先阅读，再搜索后续版本或任职/说明书变更，不把页面未变等同事实永远有效。
 配置中的已知来源只是检索起点，不代表最新版本：{json.dumps(profile.get('seed_sources', []), ensure_ascii=False)}。
 查同类药品时，将参照药品与同类候选分别列示同类依据，未取得候选原文的部分继续注明待核实。
