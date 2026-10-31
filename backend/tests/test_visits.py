@@ -1281,10 +1281,15 @@ def test_cleanup_reclaims_only_unreferenced_regular_raw_audio(tmp_path, request,
     assert not active.exists()
 
 
+@pytest.mark.parametrize('file_type', ['audio', 'transcript'])
+@pytest.mark.parametrize('cancel_cleanup', [False, True])
 @pytest.mark.parametrize('commit', [False, True])
 @pytest.mark.parametrize('repeatable_read', [False, True])
-async def test_raw_cleanup_waits_for_uncertain_commit_snapshot(tmp_path, postgres_store, commit, repeatable_read):
-    pytest.importorskip('fcntl')
+async def test_cleanup_waits_for_uncertain_private_file_commit(tmp_path, postgres_store, database_url, commit, repeatable_read, cancel_cleanup, file_type):
+    import json
+    import time
+    if file_type == 'audio':
+        pytest.importorskip('fcntl')
     pool = postgres_store.pool
     with ExitStack() as connections:
         for _ in range(pool.max_size):
@@ -1293,15 +1298,28 @@ async def test_raw_cleanup_waits_for_uncertain_commit_snapshot(tmp_path, postgre
     app, router, store = make_app(tmp_path, pool=pool)
     directory = tmp_path / 'visit-audio'
     directory.mkdir()
-    path = directory / uuid4().hex
-    path.write_bytes(b'synthetic pending transaction')
+    path = directory / (uuid4().hex + ('.transcript' if file_type == 'transcript' else ''))
+    path.write_bytes(json.dumps({'text':'synthetic pending transaction', 'segments':[]}).encode())
+    path.chmod(0o600)
     context = store.transaction('local')
     tx = context.__enter__()
-    item = tx.create('local', 'visit', {'owner_id':'alice', 'source':'recording', 'audio_path':path.name,
+    item = tx.create('local', 'visit', {'owner_id':'alice', 'source':'recording',
+        'audio_path':path.name if file_type == 'audio' else '', 'transcript_file':path.name if file_type == 'transcript' else '',
         'audio_status':'transcription_unavailable', 'audio_uploaded_at':datetime.now(timezone.utc).isoformat()})
-    task = asyncio.create_task(asyncio.to_thread(router.visit_cleanup, 'local'))
+    task = asyncio.create_task(router.visit_work(router.visit_cleanup, 'local'))
+    def waiting_for_original_commit():
+        with connect(database_url, autocommit=True) as observer:
+            deadline = time.monotonic() + 2
+            while not observer.execute("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND wait_event='advisory'").fetchone()[0]:
+                assert time.monotonic() < deadline
+                time.sleep(.005)
+    cancelled = False
     try:
-        await asyncio.sleep(.05)
+        await asyncio.to_thread(waiting_for_original_commit)
+        if cancel_cleanup:
+            task.cancel(); await asyncio.sleep(0)
+            task.cancel(); await asyncio.sleep(0)
+            cancelled = True
         assert not task.done() and path.is_file()
     finally:
         if commit:
@@ -1309,8 +1327,15 @@ async def test_raw_cleanup_waits_for_uncertain_commit_snapshot(tmp_path, postgre
         else:
             error = OperationalError('synthetic original transaction rollback')
             context.__exit__(type(error), error, None)
-        await asyncio.wait_for(task, 3)
+        if cancelled:
+            with pytest.raises(asyncio.CancelledError):
+                await asyncio.wait_for(task, 3)
+        else:
+            await asyncio.wait_for(task, 3)
     assert path.exists() is commit
+    if commit:
+        assert path.read_bytes() == json.dumps({'text':'synthetic pending transaction', 'segments':[]}).encode()
+        assert path.stat().st_mode & 0o777 == 0o600
     with store.transaction('local', write=False) as tx:
         assert tx.get('local', 'visit', item['id']) == (item if commit else None)
     stats = pool.get_stats()
@@ -1383,13 +1408,14 @@ async def test_cleanup_preserves_active_verified_upload(tmp_path, monkeypatch, r
 
 @pytest.mark.parametrize('storage', ['file', 'postgres'])
 @pytest.mark.parametrize('failure', ['snapshot', 'unlink'])
-def test_raw_cleanup_failure_releases_lease_and_recovers(tmp_path, monkeypatch, request, storage, failure):
+@pytest.mark.parametrize('file_type', ['audio', 'transcript'])
+def test_private_cleanup_failure_preserves_file_and_recovers(tmp_path, monkeypatch, request, storage, failure, file_type):
     fcntl = pytest.importorskip('fcntl')
     pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
     app, router, store = make_app(tmp_path, pool=pool)
     directory = tmp_path / 'visit-audio'
     directory.mkdir()
-    path = directory / uuid4().hex
+    path = directory / (uuid4().hex + ('.transcript' if file_type == 'transcript' else ''))
     path.write_bytes(b'synthetic orphan')
     transaction = store.transaction
     @contextmanager
@@ -1497,13 +1523,15 @@ def test_upload_without_posix_locks_preserves_existing_cleanup_behavior(tmp_path
     assert client.get('/api/visits/' + item['id'] + '/audio').content == b'synthetic audio'
 
 
-async def test_raw_cleanup_pool_exhaustion_preserves_orphan_and_event_loop(tmp_path, postgres_store):
-    pytest.importorskip('fcntl')
+@pytest.mark.parametrize('file_type', ['audio', 'transcript'])
+async def test_private_cleanup_pool_exhaustion_preserves_orphan_and_event_loop(tmp_path, postgres_store, file_type):
+    if file_type == 'audio':
+        pytest.importorskip('fcntl')
     from psycopg_pool import PoolTimeout
     app, router, store = make_app(tmp_path, pool=postgres_store.pool)
     directory = tmp_path / 'visit-audio'
     directory.mkdir()
-    path = directory / uuid4().hex
+    path = directory / (uuid4().hex + ('.transcript' if file_type == 'transcript' else ''))
     path.write_bytes(b'synthetic unverified orphan')
     loop = asyncio.get_running_loop()
     with ExitStack() as held:
@@ -1526,3 +1554,103 @@ async def test_raw_cleanup_pool_exhaustion_preserves_orphan_and_event_loop(tmp_p
     assert not path.exists()
     stats = postgres_store.pool.get_stats()
     assert stats['pool_available'] == stats['pool_size'] and stats['requests_waiting'] == 0
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('without_posix_locks', [False, True])
+def test_cleanup_preserves_unexpired_transcripts_across_workspaces(tmp_path, monkeypatch, request, storage, without_posix_locks):
+    from medvisit.visits.api import CreateVisit
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    if without_posix_locks:
+        monkeypatch.setattr('medvisit.visits.api.fcntl', None)
+    client = TestClient(app)
+    body = {'source':'recording', 'visited_at':'2026-10-31', 'text':'Synthetic private reference text'}
+    alice = client.post('/api/visits', json=body).json()
+    bob = client.post('/api/visits', json=body, headers={'x-user':'bob'}).json()
+    create = next(route.endpoint for route in router.routes if route.path == '/api/visits' and 'POST' in route.methods)
+    legacy_user = {'id':'legacy-owner', 'workspace':'legacy-workspace', 'team':''}
+    legacy = create(CreateVisit(**body), user=legacy_user)
+    private_write = next(c.cell_contents for c in create.__closure__ if getattr(c.cell_contents, '__name__', '') == 'private_write')
+    directory = tmp_path / 'visit-audio'
+    rows = []
+    for workspace, item in [('local', alice), ('local', bob), ('legacy-workspace', legacy)]:
+        with store.transaction(workspace, write=False) as tx:
+            saved = tx.get(workspace, 'visit', item['id'])
+        path = directory / saved['transcript_file']
+        rows.append((workspace, saved, path, path.read_bytes()))
+    orphan = directory / private_write({'text':'Synthetic orphan text', 'segments':[]})
+    unmanaged = directory / 'manual-note.transcript'
+    unmanaged.write_bytes(b'synthetic unmanaged note')
+    for _ in range(2):
+        router.visit_cleanup('local')
+        assert not orphan.exists() and unmanaged.read_bytes() == b'synthetic unmanaged note'
+        for workspace, saved, path, content in rows:
+            assert path.is_file() and path.read_bytes() == content
+            assert path.stat().st_mode & 0o777 == 0o600
+            with store.transaction(workspace, write=False) as tx:
+                assert tx.get(workspace, 'visit', saved['id']) == saved
+    assert client.get('/api/visits/' + alice['id']).json()['text'] == body['text']
+    assert client.get('/api/visits/' + bob['id']).status_code == 404
+    assert client.get('/api/visits/' + bob['id'], headers={'x-user':'bob'}).json()['text'] == body['text']
+    detail = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}' and 'GET' in route.methods)
+    assert detail(legacy['id'], user=legacy_user)['text'] == body['text']
+
+
+@pytest.mark.parametrize('storage', ['file', 'postgres'])
+@pytest.mark.parametrize('workspace', ['local', 'legacy-workspace'])
+@pytest.mark.parametrize('expired_by', ['upload', 'confirmation'])
+@pytest.mark.parametrize('already_deleted', [False, True])
+def test_cleanup_enforces_private_retention_and_reconciles_deleted_rows(tmp_path, request, storage, workspace, expired_by, already_deleted):
+    import hashlib
+    from medvisit.visits.api import CreateVisit
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    user = {'id':'alice', 'workspace':workspace, 'team':''}
+    create = next(route.endpoint for route in router.routes if route.path == '/api/visits' and 'POST' in route.methods)
+    item = create(CreateVisit(source='recording', visited_at='2026-10-31', text='Synthetic private transcript'), user=user)
+    directory = tmp_path / 'visit-audio'
+    raw = directory / uuid4().hex
+    raw.write_bytes(b'synthetic expired raw')
+    raw.chmod(0o600)
+    provider_copy = directory / (raw.name + '_' + uuid4().hex + '.provider.ogg')
+    provider_copy.write_bytes(b'synthetic expired copy')
+    provider_copy.chmod(0o600)
+    with store.transaction(workspace) as tx:
+        old = tx.get(workspace, 'visit', item['id'])
+        before = tx.update(workspace, 'visit', item['id'], {**old, 'audio_path':raw.name,
+            'audio_status':'deleted' if already_deleted else 'transcribed',
+            'audio_uploaded_at':(datetime.now(timezone.utc) - timedelta(days=31 if expired_by == 'upload' else 1)).isoformat(),
+            'confirmed_at':(datetime.now(timezone.utc) - timedelta(days=8)).isoformat() if expired_by == 'confirmation' else None,
+            'provider_token_hash':hashlib.sha256(b'not-a-live-token').hexdigest(),
+            'provider_token_expires':(datetime.now(timezone.utc) + timedelta(hours=4)).isoformat(),
+            'text':'Synthetic legacy private text', 'transcription_text':'Synthetic raw transcript',
+            'segments':[{'text':'Synthetic private segment'}], 'redacted_text':'Synthetic confirmed safe text',
+            'review':{'decision':'needs_evidence', 'reason':'Synthetic safe review'}}, old['version'])
+    transcript = directory / before['transcript_file']
+    from concurrent.futures import ThreadPoolExecutor
+    barrier = threading.Barrier(2)
+    def cleanup():
+        barrier.wait(timeout=3)
+        router.visit_cleanup('local')
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        futures = [workers.submit(cleanup) for _ in range(2)]
+        for future in futures:
+            future.result(timeout=5)
+    assert not raw.exists() and not transcript.exists() and not provider_copy.exists()
+    with store.transaction(workspace, write=False) as tx:
+        saved = tx.get(workspace, 'visit', item['id'])
+        audits = [r for r in tx.list(workspace, 'audit') if r['action'] == 'visit.audio_delete' and r['object_id'] == item['id']]
+    assert saved['audio_status'] == 'deleted'
+    assert all(not saved.get(key) for key in ('audio_path', 'transcript_file', 'provider_token_hash', 'provider_token_expires'))
+    assert all(key not in saved for key in ('text', 'transcription_text', 'segments'))
+    assert saved['version'] == before['version'] + 1
+    for key in ('created_at', 'owner_id', 'audio_uploaded_at', 'confirmed_at', 'redacted_text', 'review'):
+        assert saved[key] == before[key]
+    assert len(audits) == 1 and audits[0]['actor_id'] == 'system'
+    detail = next(route.endpoint for route in router.routes if route.path == '/api/visits/{item_id}' and 'GET' in route.methods)
+    assert detail(item['id'], user=user)['text'] == ''
+    router.visit_cleanup('local')
+    with store.transaction(workspace, write=False) as tx:
+        assert tx.get(workspace, 'visit', item['id']) == saved
+        assert len([r for r in tx.list(workspace, 'audit') if r['action'] == 'visit.audio_delete' and r['object_id'] == item['id']]) == 1

@@ -661,29 +661,37 @@ def visits_router(store, settings, current_user):
 
     def cleanup(workspace):
         cutoff = datetime.now(timezone.utc)
-        with store.transaction(workspace) as tx:
-            for item in tx.list(workspace, 'visit'):
-                if not has_private_text(item):
+        def expired(item):
+            needs_cleanup = (item.get('audio_status') != 'deleted'
+                or any(item.get(key) for key in ('audio_path', 'transcript_file', 'provider_token_hash', 'provider_token_expires'))
+                or any(key in item for key in ('text', 'transcription_text', 'segments')))
+            return needs_cleanup and retention_expired(item)
+
+        with store.transaction(write=False) as snapshot:
+            expired_workspaces = {row[0] for row in snapshot.execute(
+                "SELECT tenant_id, document FROM platform_entities WHERE kind='visit' AND tenant_id<>?", (workspace,))
+                if expired(json.loads(row[1]))}
+        for tenant in [*sorted(expired_workspaces), workspace]:
+            with store.transaction(tenant) as tx:
+                for item in tx.list(tenant, 'visit'):
+                    if not expired(item):
+                        continue
+                    name = item.get('audio_path', '')
+                    if re.fullmatch(r'[a-f0-9]{32}', name):
+                        (audio_dir / name).unlink(missing_ok=True)
+                        remove_provider_files(name)
+                    private_delete(item.get('transcript_file', ''))
+                    clean = {k:v for k,v in item.items() if k not in ('text', 'transcription_text', 'segments')}
+                    tx.update(tenant, 'visit', item['id'], {**clean, 'audio_path':'', 'audio_status':'deleted', 'transcript_file':'', 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
+                    tx.audit(tenant, 'system', 'visit.audio_delete', 'visit', item['id'])
+                if tenant != workspace or not audio_dir.is_dir():
                     continue
-                uploaded = item.get('audio_uploaded_at') or item.get('created_at')
-                if not uploaded:
-                    continue
-                deadline = datetime.fromisoformat(uploaded) + timedelta(days=30)
-                if item.get('confirmed_at'):
-                    deadline = min(deadline, datetime.fromisoformat(item['confirmed_at']) + timedelta(days=7))
-                if cutoff < deadline or item.get('audio_status') == 'deleted':
-                    continue
-                name = item.get('audio_path', '')
-                if re.fullmatch(r'[a-f0-9]{32}', name):
-                    (audio_dir / name).unlink(missing_ok=True)
-                    remove_provider_files(name)
-                private_delete(item.get('transcript_file', ''))
-                clean = {k:v for k,v in item.items() if k not in ('text', 'transcription_text', 'segments')}
-                tx.update(workspace, 'visit', item['id'], {**clean, 'audio_path':'', 'audio_status':'deleted', 'transcript_file':'', 'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
-                tx.audit(workspace, 'system', 'visit.audio_delete', 'visit', item['id'])
-            # Files orphaned by a crash are not referenced by any committed visit.
-            referenced = {row.get('transcript_file') for row in tx.list(workspace, 'visit')}
-            if audio_dir.is_dir():
+                # The directory is shared; take a fresh global snapshot after waiting for writers.
+                with store.transaction(workspace, write=False) as snapshot:
+                    referenced = set()
+                    for row in snapshot.execute("SELECT document FROM platform_entities WHERE kind='visit'"):
+                        item = json.loads(row[0])
+                        referenced.update((item.get('audio_path'), item.get('transcript_file')))
                 for path in audio_dir.glob('*.transcript'):
                     if path.name not in referenced:
                         private_delete(path.name)
@@ -694,14 +702,8 @@ def visits_router(store, settings, current_user):
                     except FileNotFoundError:
                         pass
                 if fcntl is not None:
-                    # A separate snapshot sees commits that settled while acquiring the workspace guard.
-                    with store.transaction(workspace, write=False) as snapshot:
-                        raw_references = set()
-                        for row in snapshot.execute("SELECT document FROM platform_entities WHERE kind='visit'"):
-                            item = json.loads(row[0])
-                            raw_references.update((item.get('audio_path'), item.get('transcript_file')))
                     for path in audio_dir.iterdir():
-                        if not re.fullmatch(r'[a-f0-9]{32}', path.name) or path.name in raw_references:
+                        if not re.fullmatch(r'[a-f0-9]{32}', path.name) or path.name in referenced:
                             continue
                         try:
                             if not stat.S_ISREG(path.lstat().st_mode):

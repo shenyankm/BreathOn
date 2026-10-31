@@ -364,3 +364,44 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 ```
 
 上述 helper 只使用本记录指定的自建回环容器、每次新建并删除的 UUID 库和临时目录，ffprobe 子进程 PATH 只指向已验签的本地工具。外部收费请求为零；负对照只在隔离模块执行，不修改工作树。生产 diff 已审查，前端/原生树未变，本项的远程 CI、main 合并和生产确认尚待完成，不能以本地通过替代。三轮最终无新增有效优化复查仍为零。
+
+第十四项最终提交 `f7f9bb114e4c05e4df8eba5f7c7b1536f025ebe2` 已通过分支 [41145094043](https://github.com/shenyankm/BreathOn/actions/runs/41145094043) 四项和 main [41146083976](https://github.com/shenyankm/BreathOn/actions/runs/41146083976) 五项 CI。main 后端为 967 passed；生产日志精确 release SHA、随后外部 live/ready 200 和 ok JSON 均已核对。已同步 main、清理本地/远程源分支，只剩 main，原 stash 保留；完整回执为 `raw-audio-orphan-acceptance.json`。
+
+## 15. 修正私有文件清理的引用与到期边界（改动前标准）
+
+在 f7f9bb1 上，`transcript_reference_probe.py` 用三个 SQLite、三个实际隔离 PG、实际私有文本写入器和 ASGI 读取，六次均删除了旧工作区已提交且未到期的转写文件，数据库引用未变，读取返回 409；当前两位所有者均 200、字节完整。`transcript_pending_reference_probe.py` 十二个实际 PG 案例在独立观察连接看到 advisory lock 等待后，才结束原提交/回滚：repeatable read 的三次提交均被旧快照误删，read committed 的三次提交及六次回滚对照正确。只注入事务时序，不声称捕获网络 ACK 丢失。
+
+同时核对 [既定保留规则](medcoach-prd.md)：私有录音及未脱敏转写取上传后 30 天、首次确认后 7 天的较早期限，清理副本和访问链接，留删除审计，保留已确认脱敏内容。引用保护必须与该规则一起验收。`private_retention_scope_probe.py` 的 SQLite/真实 PG ×当前/旧工作区 ×31 天上传/8 天确认时间注入 ×已标记删除/正常状态共十六种组合，只有四个当前未标记删除的对照完成清理；其余十二个仍留到期文件、私有字段或令牌，或缺少删除审计。时间为注入，不是真实等待 31 天；所有文件和数据库均为隔离合成数据，零收费请求。
+
+在生产改动前，`transcript-reference-acceptance.json` 已补齐上述隐私边界，未放宽延迟或资源门槛。最初核心回归 **21 failed、25 passed、12.37 秒**；到期矩阵再加入两工作线程同时清理与幂等检查后，须在原源码重验再修改。范围只含同一共享目录的文件引用/到期分类、必要测试和本记录：复用现有到期判断；只对确实需要清理的旧工作区处理到期记录，逐个持有工作区写屏障，最后处理当前工作区；复用已有全局新快照供两种孤儿文件检查使用。旧工作区只处理已有数据，不增加新的工作区界面、归属迁移、缓存、依赖或配置。
+
+标准：所有未到期当前/其他所有者/旧工作区引用均须保留精确字节、600 权限及元数据；等待原事务后以新快照核实，覆盖两种隔离级别、提交/回滚及连续取消。真孤儿仍应回收；引用核实失败不得提前删除，原错误可见并能在恢复后重试。十六种到期组合均须删除原件、转写和 provider 副本，清空私有内联字段与令牌，保留脱敏内容、review、所有者和原时间；正确工作区只写一次删除审计，两线程并发及重复清理不得再次增版本或审计。已标记 deleted 却仍有私有残留的行同样核对。
+
+正常负载使用同一环境和输入，SQLite/PG 各三对新进程，候选与原 f7 源码隔离加载；每存储每版 90 次热空闲清理，另各进程 500×64 KB 管理孤儿文件加 20 份未到期私有文本。p50/p95 不得同时退化超过 20% 且 10 ms，每批小于一秒、并行 live p95 小于 50 ms；FD/连接在重复清理后稳定，退出后 PG 连接归零。当前实际 POSIX 正常路径不新增数据查询总数，额外到期旧数据的必要写入单独计量；不凭查询数宣称提速。不具备 POSIX 锁时仍须保护文本引用，沿用 raw 文件的既有兼容行为。
+
+必要验收为相关/完整零跳过实际 PG 后端，之后顺序执行真实 Caddy/Uvicorn/PG 重启及故障恢复、账号与角色隔离；前端/原生树不变时复用同一树已有本地验收，每个新 SHA 仍执行自己的全部远程检查。独立提交推送、分支四项通过后快进 main，main 五项、实际生产 SHA/外部健康通过后清理分支。回退 git revert 本项 SHA，无迁移；按既定期限删除的数据无法撤销，本项不会恢复旧版已经误删的文件，也不执行手工生产数据操作。真机麦克风/扬声器仍待验收；研究服务九次 PoolClosed 和其余候选继续排队，最终干净复查轮次仍为零。
+
+并发到期矩阵加入后，原 f7 源码的正式核心回归为 **21 failed、25 passed、12.39 秒**。生产改动复用 `retention_expired`，先找出确需处理的旧工作区，逐个完成到期清理后再处理当前工作区；不同时持有两个工作区写屏障。已标记 deleted 的行仅在仍有私有文件、内联字段或令牌时再次清理，清理完成后保持幂等。对孤儿文件的两种扫描共用一次全局新引用快照，保留 raw 文件持有锁和普通文件检查。相关 `test_visits.py`、`test_runtime.py` 为 **210 passed、30.46 秒**，原断言保留，增加真实锁等待观察、连续取消和两个清理工作线程的并发核对。
+
+三个正式 helper 分别用原 f7 canonical 模块隔离加载和候选源码，未切换主工作树：旧工作区六次误删变为零，读取均 200 且字节/元数据完整；repeatable read 三次提交误删变为零，read committed 三次和六次回滚对照保持正确；到期矩阵由 **4/16 完整变为 16/16 完整**，脱敏内容、review、原时间、所有者保留，删除审计在正确工作区恰好一次，重复清理不增版本。原始结果为 `private-cleanup-references-before/after.json`、`private-cleanup-pending-before/after.json`、`private-cleanup-retention-before/after.json`。
+
+资源与延迟使用每存储三对交替启动的新进程，每进程一个实际应用，同一查询计数包装器仅记录数量、不记录 SQL 或私有值；所有服务及库均为本机隔离数据。正常负载的 20 份私有文本在两版均完整保留，500×64 KB 孤儿在两版均回收，不将上一项已有收益重复算入本项。每存储每版 90 个热清理样本：文件 p50/p95 **0.758/0.938 → 0.995/1.161 ms**，PG **1.882/2.107 → 2.087/2.173 ms**；正常数据查询均为 3，未放宽 20% 且 10 ms 门槛。候选批量清理文件 44.095–45.119 ms、PG 49.943–50.765 ms；并行 live p95 各批低于 1 ms。热样本完整范围及每进程分布保留，不宣称提速。
+
+每进程三轮各二十次重复清理，候选所有文件存储 FD 均 13/13/13、PG 均 15/15/15，池全部可用且无等待者；RSS 和 CPU 快照保留但不据此宣称长期无泄漏。另每进程加入二十条到期旧工作区记录，候选二十条均完成清理及各一次审计，文件约 9.045–9.987 ms、PG 26.283–27.631 ms；原版约 2.842–4.005 ms，但二十条均未完整清理，不能拿原版少做工作当作正常基准。有效当前文本始终完整，重复处理幂等；退出后实际 PG 连接两秒内归零。十二个服务进程均正常退出，`private-cleanup-resources-paired.json` 和 `private-cleanup-resource-comparison.json` 的全部预设门槛通过。主要收益为数据完整性与既定隐私期限的正确执行，代价是正常清理约 0.2 ms 增量及旧数据真正到期时的必要写入。
+
+完整 `npm run test:api -- -q` 带隔离 PG 管理入口得 **1004 passed、0 skipped、107.63 秒**，之后才执行原生故障集成，结果通过（`private-cleanup-full.log`、`private-cleanup-native-result.json/log`）：实际 Caddy/Uvicorn、进程重启、PG 停机恢复和 Cookie/角色/私有账号隔离；新建库已删除。生产源码 SHA256 为 `8887c1949b13502442a2d8f8e88e58ffb8e85e9c1ff295f95b0e9be3d4cc898d`，与正式行为、资源和全量回归的版本一致。没有更改前端、Android、数据库结构、部署入口或依赖；代码与必要回归 diff 已审查，当前 SHA 的远程检查和生产确认尚待完成，完整回执复用 `transcript-reference-acceptance.json`。
+
+以下从仓库根目录复现；`OPT_DISPOSABLE_DATABASE_URL` 仅指向本记录的自建回环测试容器。helper 自行创建/删除 UUID 库和临时目录，原 f7 代码在隔离 canonical 模块加载，正式工作树不来回切换。原生故障检查必须在其他 PG 测试和探针退出后顺序运行；它复用既有验收 wrapper，标签仅改变证据输出文件名。
+
+```sh
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- tests/test_visits.py tests/test_runtime.py -q
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- -q
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_references_probe.py before
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_references_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_pending_probe.py before
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_pending_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_retention_probe.py before
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_retention_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_resource_probe.py paired
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py private-cleanup
+```
