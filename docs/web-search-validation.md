@@ -17,7 +17,7 @@ DEEPSEEK_FETCH_QPS=25
 
 标准额度为每账号Flash模型2500、Pro模型500并发；Search为100 QPS、Fetch为25 QPS，各自独立。[模型价格](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)、[账号限速](https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/)、[Search/Fetch说明](https://api-docs.deepseek.com/zh-cn/guides/search/)。
 
-教练注册两个只读工具`search_web`、`fetch_web`，使用相同DeepSeek Bearer凭据。每次指导最多2次网页请求、3次模型推理，总等待上限45秒；医生仍独立生成且无网页工具。失败不暴露供应商正文/密钥，不自动重试，不把失败或空内容写成已核实。查询不自动附带完整会话，常见联系方式/身份证/密钥模式被拒绝；未被搜索返回的URL、内网地址和带凭据的URL不能抓取。
+教练注册两个只读工具`search_web`、`fetch_web`，使用相同DeepSeek Bearer凭据。每次指导最多2次网页请求、3次模型推理，总等待上限45秒；医生仍独立生成且无网页工具。失败不暴露供应商正文/密钥，不把失败或空内容写成已核实。网页检索工具本身不重试；教练与医生的模型调用在408、429、5xx或连接错误时重试一次，客户端超时不重试。查询不自动附带完整会话，手机号（含空格或短横线分隔）、身份证号、邮箱、密钥以及病历/住院号/床号、“患者加姓氏”、“性别加年龄”等模式在发送前被拒绝（见[Agent 可靠性](agent-reliability.md)）；未被搜索返回的URL、内网地址和带凭据的URL不能抓取。
 
 来源由工具实际结果生成`coach.sources`，随现有JSON/PostgreSQL记录保存，前端以可点击标题展示并注明未经产品医学审核。来源是检索记录，不代表每个页面都支持全部结论或已被人工审核。网页文本作为不可信数据输入，不是系统指令。
 

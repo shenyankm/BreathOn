@@ -25,7 +25,7 @@ React + Tauri 2 Android App（用户端，页面内置 APK）
           └─ storage/：PostgreSQL（Docker）或 JSON（本地兼容）
 ```
 
-Android 是唯一用户端，底部导航为「练习、学习、我的」，拜访日记和复盘记录属于「我的」。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
+Android 是唯一用户端，底部导航为「首页、医生、训练、教练、我的」，拜访日记和复盘记录属于「我的」。新增页面只复用现有 `/api/catalog/{scenario,drug,doctor}`、`/api/realtime` 等接口，没有新的后端依赖。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
 
 `main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；模型与客户端均关闭自动重试，由现有会话层处理重试和取消。
 
