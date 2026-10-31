@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, ClipboardList, Info, RotateCcw, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { groupByMessage } from '@/lib/voice-events'
 import { formatTime, drugDetails } from '@/lib/session'
 import { TranscriptScrollArea } from '@/components/transcript-scroll-area'
 import { restoreScrollPosition } from '@/lib/scroll-position'
@@ -101,7 +102,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
   const connecting = voice.status === 'connecting'
   const inSession = active || connecting || voice.analysisStatus === 'thinking'
   const unsaved = ended && messages.length > 0 && !voice.saved
-  const latestTrainee = voice.messages.filter(message => message.role === 'trainee').at(-1)
+  const latestTrainee = voice.messages.findLast(message => message.role === 'trainee')
   const coachIsPrevious = latestTrainee && latestTrainee.id !== voice.coach?.based_on
   const latestMedicalConflict = voice.medicalChecks.findLast(check => check.status === 'contradicted')
   const callStatus = { idle: '待开始', connecting: '连接中', active: '通话中', ended: '已结束', error: '连接失败' }[voice.status]
@@ -153,7 +154,10 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
     </CardContent>
   </Card>
 
-  const transcript = <div className="flex h-full min-h-0 flex-1 flex-col">
+  const medicalByMessage = useMemo(() => groupByMessage(voice.medicalChecks), [voice.medicalChecks])
+  const policyByMessage = useMemo(() => groupByMessage(voice.policyChecks), [voice.policyChecks])
+  const unavailableByMessage = useMemo(() => groupByMessage(voice.policyUnavailable), [voice.policyUnavailable])
+  const transcript = useMemo(() => <div className="flex h-full min-h-0 flex-1 flex-col">
     <h2 className="sr-only">对话转录</h2>
     <TranscriptScrollArea messages={messages}>
     <div role="log" aria-label="演练对话转录" aria-live="polite" className="space-y-5 px-1 pb-5 sm:px-4">
@@ -164,16 +168,16 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
         <div className="min-w-0 max-w-[90%] sm:max-w-[82%]">
           <div className={`mb-1.5 flex items-center gap-2 text-xs ${message.role === 'trainee' ? 'justify-end' : ''}`}><span className="font-medium">{message.role === 'doctor' ? doctorName : '我'}</span><span className="tabular-nums text-muted-foreground">{message.time}</span>{(message.interrupted || message.partial) && <Badge variant="outline">{message.interrupted ? '已打断' : '转录中'}</Badge>}</div>
           <p className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-base leading-7 ${message.role === 'trainee' ? 'bg-muted text-foreground' : 'bg-muted/50 text-foreground'}`}>{message.text}</p>
-          {message.role === 'trainee' && voice.medicalChecks.filter(check => check.message_id === message.id).map(check => <MedicalCheckView key={check.message_id} check={check}/>)}
-          {message.role === 'trainee' && voice.policyChecks.filter(check => check.message_id === message.id && (voice.mode === 'assisted' || check.risk === 'high')).map(check => <Alert key={check.rule_id} className="mt-2"><ShieldCheck /><AlertTitle>疑似合规风险 · 自动初筛</AlertTitle><AlertDescription><p>原话：{check.quote}</p><p>{check.reason}</p><p>{check.policy_title} · {check.article}：{check.policy_quote}</p>{check.source_url && <a href={check.source_url} target="_blank" rel="noreferrer" className="underline">核对政策来源</a>}<p>需要人工复核，不构成违法认定。</p></AlertDescription></Alert>)}
-          {message.role === 'trainee' && voice.policyUnavailable.some(check => check.message_id === message.id) && <p role="status" className="mt-2 text-sm text-muted-foreground">合规风险初筛暂不可用，本句需要人工核对。</p>}
+          {message.role === 'trainee' && (medicalByMessage.get(message.id) ?? []).map(check => <MedicalCheckView key={check.message_id} check={check}/>)}
+          {message.role === 'trainee' && (policyByMessage.get(message.id) ?? []).filter(check => voice.mode === 'assisted' || check.risk === 'high').map(check => <Alert key={check.rule_id} className="mt-2"><ShieldCheck /><AlertTitle>疑似合规风险 · 自动初筛</AlertTitle><AlertDescription><p>原话：{check.quote}</p><p>{check.reason}</p><p>{check.policy_title} · {check.article}：{check.policy_quote}</p>{check.source_url && <a href={check.source_url} target="_blank" rel="noreferrer" className="underline">核对政策来源</a>}<p>需要人工复核，不构成违法认定。</p></AlertDescription></Alert>)}
+          {message.role === 'trainee' && unavailableByMessage.has(message.id) && <p role="status" className="mt-2 text-sm text-muted-foreground">合规风险初筛暂不可用，本句需要人工核对。</p>}
         </div>
       </div>)}
       {practice && active && voice.practiceState === 'thinking' && <p role="status" className="pb-3 text-sm text-muted-foreground">医生正在回复…</p>}
     </div>
     </TranscriptScrollArea>
     <div className="mx-1 mt-3 shrink-0 rounded-3xl bg-muted/50 px-5 py-3 text-sm text-muted-foreground">{active ? muted ? '麦克风已静音' : practice ? '请直接说话，停顿后医生与教练会回应' : '请直接说话，支持随时打断医生' : practice ? '语音回答 · 医生语音与文字回复 · 实时教练' : '使用麦克风与医生交流'}</div>
-  </div>
+  </div>, [messages, doctorName, medicalByMessage, policyByMessage, unavailableByMessage, voice.mode, connecting, practice, active, voice.practiceState, muted])
 
   return <div className="flex h-svh flex-col bg-background pb-[calc(5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
     <AppNavigation page={page} inSession={inSession}/>
@@ -186,7 +190,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
       {[...openedLibraries].map(libraryPage => <div key={libraryPage} hidden={page !== libraryPage}><Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载学习资料…</p>}><LibraryPage companyOnly={libraryPage === 'products'} /></Suspense></div>)}
       {page === 'visits' && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载拜访日记…</p>}><VisitsPage /></Suspense>}
       {page === 'records' && <Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载复盘记录…</p>}><RecordsPage onStart={choice=>{if(inSession){window.location.hash='start';return}setNextTraining(choice);setTrainingReady(false);setNextMode(choice.mode??preferredMode);setNextSource(choice.experience??'practice');setSetup(true);window.location.hash='start'}} /></Suspense>}
-      <section hidden={page !== 'start' || voice.status === 'idle'} className={page !== 'start' || voice.status === 'idle' ? 'hidden' : undefined}>
+      {voice.status !== 'idle' && <section hidden={page !== 'start'} className={page !== 'start' ? 'hidden' : undefined}>
       <div className="mb-3 flex items-center justify-end gap-2"><div className="flex shrink-0 items-center gap-2"><Dialog><DialogTrigger asChild><Button variant="outline" className="h-12 rounded-full"><ClipboardList />场景说明</Button></DialogTrigger><DialogContent className="flex h-[88vh] flex-col overflow-hidden sm:max-w-5xl" onOpenAutoFocus={event => { event.preventDefault(); scenarioTitleRef.current?.focus({ preventScroll: true }) }}>
         <DialogHeader className="shrink-0"><DialogTitle ref={scenarioTitleRef} tabIndex={-1} className="outline-none">{voice.training?.scenario.title ?? (voice.freeContext ? `${voice.freeContext.drug.name} · 自由演练` : '研究证据的有效沟通')}</DialogTitle><DialogDescription>{voice.freeContext ? `${doctorName} · 自由组合 · 不评分` : voice.training ? `${voice.training.scenario.disease} · 建议 ${Math.round(voice.training.scenario.duration_seconds / 60)} 分钟` : '成人体重管理 · 基础难度 · 建议 5 分钟'}</DialogDescription></DialogHeader>
         <ScrollArea className="min-h-0 flex-1" >
@@ -231,7 +235,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
       {practice && active && voice.speechState === 'error' && <Button variant="outline" size="sm" className="mb-5" onClick={voice.retrySpeech}><RotateCcw />重试医生朗读</Button>}
       <PracticeStage practice={practice} doctorName={doctorName} seconds={seconds} status={callStatus} error={voice.error} active={active} connecting={connecting} muted={muted} outputMuted={voice.outputMuted} policyPaused={voice.policyPaused} transcript={transcript} coach={coach} onMute={voice.toggleMute} onOutputMute={voice.toggleOutputMute} onInterrupt={voice.interrupt} onEnd={() => { voice.stop(); if (!connecting) setReview(true) }} onRestart={openSetup}/>
 
-      </section>
+      </section>}
     </main>
     <Dialog open={setup} onOpenChange={setSetup}><DialogContent className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col overflow-hidden"><DialogHeader className="shrink-0"><DialogTitle>开始新的演练</DialogTitle><DialogDescription>{unsaved?'本次对话尚未确认保存。重新开始会清空本页对话，请先确认已保留需要的内容。':nextTraining.remediation_id?'沿用原场景、环节和演练方式。':'确认场景与演练方式。'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 flex-1"><div className="space-y-3 py-4 pr-4">{!nextTraining.remediation_id&&<><span id="training-preset-label" className="text-sm font-medium">演练方式</span><div role="group" aria-labelledby="training-preset-label" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(preset=><Button key={preset.id} type="button" variant={presetFor(nextSource,nextMode).id===preset.id?'default':'ghost'} aria-pressed={presetFor(nextSource,nextMode).id===preset.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={()=>{setNextSource(preset.experience);setNextMode(preset.mode)}}>{preset.label}</Button>)}</div><Alert role="status" aria-live="polite" className="rounded-2xl border-0 bg-muted/50 px-4 py-3"><Info aria-hidden="true" className="size-4 text-muted-foreground"/><AlertDescription className="text-sm leading-6 text-foreground/80">{presetFor(nextSource,nextMode).description}</AlertDescription></Alert></>}{nextTraining.remediation_id&&<p className="text-sm leading-7">本次方式：{nextSource==='combat'?'实战练习':nextMode==='assisted'?'辅助练习':'历史练习（无实时辅助）'}</p>}<ScenarioPicker value={nextTraining} onChange={setNextTraining} onReady={setTrainingReady} /></div></ScrollArea><DialogFooter className="shrink-0"><Button variant="outline" onClick={() => setSetup(false)}>取消</Button><Button disabled={!trainingReady||inSession} onClick={restart}>开始演练<ArrowRight /></Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={review} onOpenChange={setReview}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>演练复盘</DialogTitle><DialogDescription>{assisted ? '实时辅助' : '结束后复盘'} · {formatTime(seconds)} · {practice ? '练习模式' : '实战模式'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 [&>[data-slot=scroll-area-viewport]]:max-h-[55vh]"><div className="space-y-5 py-2 pr-4"><Alert><CircleHelp /><AlertTitle>{!voice.coach?.superseded && voice.coach?.assessment?.total != null ? '训练评价' : '本次未形成总分'}</AlertTitle><AlertDescription>评价仅覆盖可观察且有依据的内容，医学判断仍需专业复核。</AlertDescription></Alert><div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm"><div><p className="text-muted-foreground">学员发言</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.filter(message => message.role === 'trainee').length}<span className="text-sm text-muted-foreground"> 次</span></p></div><div><p className="text-muted-foreground">对话记录</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.length}<span className="text-sm text-muted-foreground"> 条</span></p></div></div>{source !== 'combat' && voice.coach && (voice.coach.superseded || !voice.coach.assessment ? <CoachAnalysis coach={voice.coach} review /> : voice.coach.assessment && <AssessmentView assessment={voice.coach.assessment} />)}{source === 'combat' && <section aria-live="polite"><h2 className="mb-4 font-medium">AI 复盘</h2>{voice.analysisStatus === 'thinking' ? <p role="status" className="text-sm text-muted-foreground">正在等待最终转录并整理复盘，请稍候…</p> : voice.coach ? <CoachAnalysis coach={voice.coach} review /> : <p className="text-sm text-muted-foreground">{voice.analysisStatus === 'no_speech' ? '本次没有可分析的学员发言。' : '本次复盘未完成。对话保存状态见下方；请保留原文后重新演练。'}</p>}</section>}<p className="text-sm text-muted-foreground">{voice.saved ? <a className="underline underline-offset-4" href={`#records?session=${voice.sessionId}`} onClick={()=>setReview(false)}>查看完整复盘与原话</a> : '对话尚未确认保存，可返回本页查看。'}</p></div></ScrollArea><DialogFooter><Button variant="outline" onClick={() => setReview(false)}><ArrowLeft />返回演练</Button><Button disabled={inSession} onClick={() => { setReview(false); openSetup() }}><RotateCcw />再练一次</Button></DialogFooter></DialogContent></Dialog>

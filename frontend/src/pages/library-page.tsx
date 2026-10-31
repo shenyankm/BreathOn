@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, memo, Suspense, useEffect, useRef, useState } from 'react'
 import { AlertCircle, ArrowLeft, BookOpen, ExternalLink, GraduationCap, Hospital, Landmark, RotateCcw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MedicalLibrary } from '@/components/medical-library'
+const MedicalLibrary = lazy(() => import('@/components/medical-library').then(module => ({ default: module.MedicalLibrary })))
 import { api } from '@/lib/platform-api'
 
 type Drug = { id: string; status: string; name: string; brand: string; aliases: string[]; ownership: 'company' | 'competitor' | 'unknown'; category: string; diseases: string[]; mechanism: string; dosage_form: string; regions: string[]; indications: string[]; overview: string; source_url: string; company: string; manufacturer: string }
@@ -44,7 +44,7 @@ function LoadNotice<T>({ state, retry, label }: { state: LoadState<T>; retry: ()
   return null
 }
 
-export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) {
+export const LibraryPage = memo(function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) {
   const [category, setCategory] = useState('drugs')
   const [drugSearch, setDrugSearch] = useState('')
   const [drugOwnership, setDrugOwnership] = useState('all')
@@ -68,11 +68,11 @@ export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) 
       })
     }
     // Admins can see drafts through the catalog API; the representative library never displays them.
-    load<Drug>('/catalog/drug', setDrugs, row => row.status === 'published')
-    load<Policy>('/catalog/policy', setPolicies, row => row.status === 'approved' && row.usable === true)
-    load<Doctor>('/catalog/doctor', setDoctors, row => row.status === 'published')
+    if ((companyOnly || category === 'drugs') && drugs.loading) load<Drug>('/catalog/drug', setDrugs, row => row.status === 'published')
+    if (category === 'policies' && policies.loading) load<Policy>('/catalog/policy', setPolicies, row => row.status === 'approved' && row.usable === true)
+    if (category === 'doctors' && doctors.loading) load<Doctor>('/catalog/doctor', setDoctors, row => row.status === 'published')
     return () => controller.abort()
-  }, [retry])
+  }, [category, companyOnly, retry, drugs.loading, policies.loading, doctors.loading])
 
   function openDocument(document: LibraryDocument, button: HTMLButtonElement) {
     openerRef.current = button
@@ -99,7 +99,7 @@ export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) 
           {count[module.id] !== null && <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">{count[module.id]}</span>}
         </TabsTrigger>)}
       </TabsList>
-      <TabsContent value="medical"><MedicalLibrary /></TabsContent>
+      <TabsContent value="medical"><Suspense fallback={<p role="status" className="text-sm text-muted-foreground">正在加载医学依据…</p>}><MedicalLibrary /></Suspense></TabsContent>
       <TabsContent value="drugs"><section className="space-y-4 sm:space-y-5" aria-label="药品文档资料">
         <header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">药品文档</h2></header>
         <LoadNotice state={drugs} retry={recheck} label="药品" />
@@ -127,4 +127,4 @@ export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) 
       </DialogContent>
     </Dialog>
   </div>
-}
+})

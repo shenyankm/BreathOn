@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { AssessmentView } from './assessment-view'
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import type { LiveCoach } from '@/lib/voice-events'
 
-export function CoachAnalysis({ coach, review = false }: { coach: LiveCoach; review?: boolean }) {
+export const CoachAnalysis = memo(function CoachAnalysis({ coach, review = false }: { coach: LiveCoach; review?: boolean }) {
   if (coach.superseded) return <p role="status" className="text-sm text-muted-foreground">转录已修正，这条提示已失效，请以更新后的建议或最终复盘为准。</p>
   return <div className="space-y-5">
     {coach.incomplete && <p className="text-sm text-muted-foreground">本次记录不完整，复盘仅覆盖已收到的内容。</p>}
@@ -17,4 +18,4 @@ export function CoachAnalysis({ coach, review = false }: { coach: LiveCoach; rev
     {!!coach.sources?.length && <section><h2 className="mb-2 text-sm font-medium">检索来源</h2><ul className="space-y-2 text-sm leading-6">{coach.sources.filter(source => /^https?:\/\//i.test(source.url)).map(source => <li key={source.url}><a className="break-words underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4" href={source.url} target="_blank" rel="noopener noreferrer">[{source.id}] {source.title}<span className="sr-only">（在新标签页打开）</span></a>{source.date && <time className="ml-2 text-xs text-muted-foreground" dateTime={source.date}>{new Date(source.date).toLocaleDateString('zh-CN')}</time>}</li>)}</ul><p className="mt-2 text-xs leading-6 text-muted-foreground">公开网页资料未经产品医学审核，使用前请核对原文与当前有效说明书。</p></section>}
     {coach.assessment && <AssessmentView assessment={coach.assessment} />}
   </div>
-}
+})

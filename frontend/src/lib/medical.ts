@@ -9,5 +9,16 @@ export function updateMedicalChecks(previous: MedicalCheck[], check: MedicalChec
 }
 
 export function invalidateMedicalCheck(previous: MedicalCheck[], id: string, text: string) {
-  return previous.map(row => row.message_id === id && row.text !== text ? { ...row, text, status: 'checking' as const, statements: [], reason: '转录已修正，正在重新核验。' } : row)
+  const index = previous.findIndex(row => row.message_id === id && row.text !== text)
+  if (index < 0) return previous
+  const updated = previous.slice()
+  updated[index] = { ...previous[index], text, status: 'checking', statements: [], reason: '转录已修正，正在重新核验。' }
+  return updated
+}
+
+export function indexProductSources<T extends { id: string }>(products: { id: string; sources: string[] }[], sources: T[]) {
+  const byId = new Map(sources.map((source, index) => [source.id, { source, index }]))
+  return new Map(products.map(product => [product.id, [...new Set(product.sources)]
+    .flatMap(id => { const entry = byId.get(id); return entry ? [entry] : [] })
+    .sort((a, b) => a.index - b.index).map(entry => entry.source)]))
 }

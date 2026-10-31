@@ -102,14 +102,18 @@ export function VisitsPage() {
   useEffect(() => {
     if (!selected || !['queued', 'transcribing'].includes(selected.audio_status)) return
     let active = true
+    let pending = false
+    const controller = new AbortController()
     const timer = window.setInterval(() => {
-      api<Visit>(`/visits/${encodeURIComponent(selected.id)}`).then(item => {
+      if (pending || document.visibilityState === 'hidden') return
+      pending = true
+      api<Visit>(`/visits/${encodeURIComponent(selected.id)}`, { signal: controller.signal }).then(item => {
         if (!active) return
         if (['queued', 'transcribing'].includes(item.audio_status)) setSelected(item)
         else { choose(item); setRows(current => [item, ...(current ?? []).filter(row => row.id !== item.id)]) }
-      }).catch(e => { if (active) setError(message(e)) })
+      }).catch(e => { if (active) setError(message(e)) }).finally(() => { pending = false })
     }, 3000)
-    return () => { active = false; window.clearInterval(timer) }
+    return () => { active = false; controller.abort(); window.clearInterval(timer) }
   }, [selected])
   async function transcribe(cancel = false) {
     if (!selected) return

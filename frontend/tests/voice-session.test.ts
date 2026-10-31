@@ -7,7 +7,7 @@ import { formatTime } from '../src/lib/session.ts'
 import { applyTranscript } from '../src/lib/voice-events.ts'
 import { invalidateMedicalCheck, updateMedicalChecks } from '../src/lib/medical.ts'
 
-function session(fetchHealth: () => Promise<Response> = async () => Response.json({
+function session(fetchHealth: (url: string, options: RequestInit) => Promise<Response> = async () => Response.json({
   asr_configured: true, voice_configured: true, analysis_configured: true, tts_configured: true,
 })) {
   const slots: any[] = [], sockets: Socket[] = [], timers = new Map<number, () => void>()
@@ -66,7 +66,7 @@ function session(fetchHealth: () => Promise<Response> = async () => Response.jso
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, {
     exports, require: (name: string) => { assert.ok(name in imports, name); return imports[name] },
-    fetch: fetchHealth, AbortSignal, DOMException, Error, Event, URL, performance, WebSocket: Socket, document,
+    fetch: fetchHealth, AbortController, AbortSignal, DOMException, Error, Event, URL, performance, WebSocket: Socket, document,
     window: { location: { href: 'http://localhost/', protocol: 'http:' },
       addEventListener: (name: string, listener: () => void) => { listeners[name] = listener }, removeEventListener: () => {},
       dispatchEvent: (event: Event) => { listeners[event.type]?.(); return true },
@@ -295,4 +295,19 @@ test('playback failures preserve the actionable audio error', async () => {
   assert.match(app.render().error, /待播放语音超过一分钟/)
   assert.doesNotMatch(app.render().error, /语音事件或音频格式异常/)
   assert.equal(socket.readyState, 3)
+})
+
+test('stop aborts startup health I/O before opening a microphone or websocket', async () => {
+  let signal: AbortSignal | undefined
+  const app = session((_url, options) => new Promise<Response>((_resolve, reject) => {
+    signal = options.signal as AbortSignal
+    signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true })
+  }))
+  const opening = app.render().start('independent', 'combat')
+  app.render().stop()
+  await opening
+  assert.equal(signal?.aborted, true)
+  assert.equal(app.audioOpened(), 0)
+  assert.equal(app.sockets.length, 0)
+  assert.equal(app.render().status, 'ended')
 })

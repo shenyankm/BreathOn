@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import { BookOpen, Play, UserRound } from 'lucide-react'
 import { Button } from './ui/button'
 
-export function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
+export const AppNavigation = memo(function AppNavigation({ page, inSession }: { page: string; inSession: boolean }) {
   const selected = ['library', 'products'].includes(page) ? 'library' : ['me', 'records', 'visits'].includes(page) ? 'me' : 'practice'
   const tabs = [
     { id: 'practice', label: '练习', icon: Play, href: inSession ? '#start' : '#practice' },
@@ -17,4 +18,4 @@ export function AppNavigation({ page, inSession }: { page: string; inSession: bo
         </Button>)}
       </div>
     </nav>
-}
+})

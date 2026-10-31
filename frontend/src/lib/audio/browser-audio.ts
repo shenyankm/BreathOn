@@ -2,11 +2,15 @@ export function decodePcm16(encoded: string): Float32Array<ArrayBuffer> {
   const bytes = atob(encoded)
   if (bytes.length % 2) throw new Error('回复音频格式错误')
   const samples = new Float32Array(bytes.length / 2)
+  writePcm16(bytes, samples)
+  return samples
+}
+
+function writePcm16(bytes: string, samples: Float32Array) {
   for (let i = 0; i < samples.length; i++) {
     const value = bytes.charCodeAt(i * 2) | (bytes.charCodeAt(i * 2 + 1) << 8)
     samples[i] = (value >= 32768 ? value - 65536 : value) / 32768
   }
-  return samples
 }
 
 export function encodeAudio(buffer: ArrayBuffer): string {
@@ -14,6 +18,7 @@ export function encodeAudio(buffer: ArrayBuffer): string {
 }
 
 export class BrowserAudio {
+  private readonly silence = new ArrayBuffer(640)
   private stream?: MediaStream
   private context?: AudioContext
   private capture?: AudioWorkletNode
@@ -42,7 +47,7 @@ export class BrowserAudio {
     if (this.stopped) return
     this.capture = new AudioWorkletNode(context, 'pcm-capture')
     this.capture.port.onmessage = ({ data }) => {
-      if (!this.stopped) onFrame(this.muted ? new ArrayBuffer(640) : data)
+      if (!this.stopped) onFrame(this.muted ? this.silence : data)
     }
     this.input = context.createMediaStreamSource(stream)
     this.silent = context.createGain()
@@ -54,14 +59,16 @@ export class BrowserAudio {
     const context = this.context
     if (!context || this.stopped) return
     if (context.state !== 'running') throw new Error('音频播放已暂停，请重新开始演练')
-    const samples = decodePcm16(encoded)
-    if (!samples.length) return
+    const bytes = atob(encoded)
+    if (bytes.length % 2) throw new Error('回复音频格式错误')
+    const length = bytes.length / 2
+    if (!length) return
     // Providers synthesize faster than playback; bound the whole queued utterance, not arrival speed.
-    if (Math.max(0, this.nextPlayback - context.currentTime) + samples.length / 24000 > 60) {
+    if (Math.max(0, this.nextPlayback - context.currentTime) + length / 24000 > 60) {
       throw new Error('待播放语音超过一分钟，请重新开始演练')
     }
-    const buffer = context.createBuffer(1, samples.length, 24000)
-    buffer.copyToChannel(samples, 0)
+    const buffer = context.createBuffer(1, length, 24000)
+    writePcm16(bytes, buffer.getChannelData(0))
     const source = context.createBufferSource()
     source.buffer = buffer
     source.connect(this.output ?? context.destination)
@@ -93,6 +100,7 @@ export class BrowserAudio {
   stop() {
     this.stopped = true
     this.interrupt()
+    if (this.capture) { this.capture.port.onmessage = null; this.capture.port.close() }
     this.capture?.disconnect()
     this.input?.disconnect()
     this.silent?.disconnect()

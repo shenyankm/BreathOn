@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { ChevronRight, ClipboardList, LogOut, NotebookPen, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
-export function MePage({ username, onLogout, logoutDisabled = false }: {
+export const MePage = memo(function MePage({ username, onLogout, logoutDisabled = false }: {
   username?: string; onLogout?: () => void; logoutDisabled?: boolean
 }) {
   return <div className="space-y-6">
@@ -23,4 +24,4 @@ export function MePage({ username, onLogout, logoutDisabled = false }: {
       {logoutDisabled && <p className="text-sm leading-6 text-muted-foreground">请先结束演练并确认保存，再退出登录。</p>}
     </div>}
   </div>
-}
+})

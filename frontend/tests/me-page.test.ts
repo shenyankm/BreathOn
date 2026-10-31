@@ -16,6 +16,7 @@ function render(props: Props = {}) {
   }).outputText, {
     exports,
     require(module: string) {
+      if (module === 'react') return { memo: (component: unknown) => component }
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       assert.ok(module === 'lucide-react' || module.startsWith('@/components/'), module)
       return new Proxy({}, { get: (_, key) => String(key) })

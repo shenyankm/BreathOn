@@ -22,6 +22,9 @@ const visit = (id: string) => ({ id, version: 1, source: 'self_report', status: 
 function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   const slots: any[] = [], effects: (() => void)[] = [], listeners: Record<string, () => void> = {}, calls: { path: string; options?: RequestInit }[] = []
   let cursor = 0
+  let interval: (() => void) | undefined
+  let detailPending: Promise<unknown> | undefined
+  const document = { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} }
   let listFailure: string | null = null
   const location = { get hash() { return hash }, set hash(value: string) { hash = value.startsWith('#') ? value : `#${value}` } }
   const jsx = (type: string, props: any) => ({ type, props })
@@ -35,7 +38,7 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
     }
     if (path === '/catalog/doctor' || path === '/catalog/drug') return []
     const record = records.find(row => path === `/visits/${row.id}`)
-    if (record) return record
+    if (record) return detailPending ?? record
     throw new Error(`Unexpected request: ${path}`)
   }
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/pages/visits-page.tsx', import.meta.url), 'utf8'), {
@@ -43,8 +46,8 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
   }).outputText, {
     exports, Error, AbortController, URLSearchParams, encodeURIComponent,
     FormData: class { values: Record<string, string>; constructor(values: Record<string, string>) { this.values = values } get(name: string) { return this.values[name] } },
-    document: { addEventListener() {}, removeEventListener() {} },
-    window: { location, history: { replaceState(_state: unknown, _title: string, path: string) { location.hash = path } }, addEventListener(name: string, listener: () => void) { listeners[name] = listener }, removeEventListener() {} },
+    document,
+    window: { setInterval(callback: () => void) { interval = callback; return 1 }, clearInterval() { interval = undefined }, location, history: { replaceState(_state: unknown, _title: string, path: string) { location.hash = path } }, addEventListener(name: string, listener: () => void) { listeners[name] = listener }, removeEventListener() {} },
     require(name: string) {
       if (name === 'react') return {
         useState(initial: any) {
@@ -66,7 +69,10 @@ function mount(hash = '#visits', records = [visit('one'), visit('two')]) {
     },
   })
   return {
-    calls, location,
+    calls, location, document,
+    poll() { interval?.() },
+    deferDetail(promise: Promise<unknown>) { detailPending = promise },
+    unmount() { slots.forEach(slot => slot?.cleanup?.()) },
     failList(message: string | null) { listFailure = message },
     render() { cursor = 0; const tree = exports.VisitsPage!(); effects.splice(0).forEach(effect => effect()); return tree },
     hash(value: string) { location.hash = value; listeners.hashchange() },
@@ -145,4 +151,23 @@ test('visit refresh retains current failures and clears the error after recovery
   assert.equal(find(tree, 'Alert').length, 0)
   assert.equal(find(tree, 'Button').filter(node => textOf(node).includes('2026-10-30')).length, 2)
   assert.equal(app.calls.filter(call => call.path === '/visits').length, 4)
+})
+
+
+test('transcription polling avoids overlapping requests, pauses in background, and aborts on unmount', async () => {
+  const record = { ...visit('polling'), audio_status: 'transcribing' }
+  const app = mount('#visits?visit=polling', [record])
+  app.render(); await settle(); app.render()
+  let finish!: (value: unknown) => void
+  app.deferDetail(new Promise(resolve => { finish = resolve }))
+  const count = () => app.calls.filter(call => call.path === '/visits/polling').length
+  const before = count()
+  app.poll(); app.poll()
+  assert.equal(count(), before + 1)
+  const signal = app.calls.at(-1)!.options!.signal!
+  finish(record); await settle()
+  app.document.visibilityState = 'hidden'; app.poll()
+  assert.equal(count(), before + 1)
+  app.unmount()
+  assert.equal(signal.aborted, true)
 })

@@ -56,7 +56,8 @@ pub fn save(path: &Path, account: &str, experience: &str) -> Result<(), String> 
     open(path)?
         .execute(
             "INSERT INTO training_preferences (account, experience) VALUES (?1, ?2)
-             ON CONFLICT(account) DO UPDATE SET experience = excluded.experience",
+             ON CONFLICT(account) DO UPDATE SET experience = excluded.experience
+             WHERE training_preferences.experience <> excluded.experience",
             [account, experience],
         )
         .map_err(|_| STORAGE_ERROR)?;
@@ -90,6 +91,28 @@ mod tests {
         save(&path, "代表甲", "practice").unwrap();
         assert_eq!(load(&path, "代表乙").unwrap().as_deref(), Some("practice"));
         assert_eq!(load(&path, "代表甲").unwrap().as_deref(), Some("practice"));
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn unchanged_preference_does_not_write_again() {
+        let path = database();
+        save(&path, "representative", "practice").unwrap();
+        let connection = open(&path).unwrap();
+        connection
+            .execute_batch(
+                "CREATE TABLE writes (value TEXT);
+            CREATE TRIGGER record_write AFTER UPDATE ON training_preferences
+            BEGIN INSERT INTO writes VALUES (NEW.experience); END;",
+            )
+            .unwrap();
+        save(&path, "representative", "practice").unwrap();
+        save(&path, "representative", "combat").unwrap();
+        let writes: i64 = connection
+            .query_row("SELECT COUNT(*) FROM writes", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(writes, 1);
+        drop(connection);
         std::fs::remove_file(path).unwrap();
     }
 

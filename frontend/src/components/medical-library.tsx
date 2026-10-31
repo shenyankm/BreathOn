@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Download, ExternalLink, LoaderCircle, Search } from 'lucide-react'
 import { api } from '@/lib/platform-api'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { MedicalCheckView } from './medical-check'
-import type { MedicalCheck } from '@/lib/medical'
+import { indexProductSources, type MedicalCheck } from '@/lib/medical'
 
 type Corpus = { built_at: string | null; version: string; error?: string; compiled?: Record<string, {facts:{claim:string;source_id:string;page:number;quote:string}[];gaps:string[]}>; products: { id: string; name: string; brand: string; sources: string[]; gaps: string[] }[]; sources: { id: string; title: string; kind: string; quality: string; product_ids: string[]; published_at: string | null }[] }
 const kinds: Record<string, string> = { label: '说明书', patient_guide: '患者手册', trial: '研究摘要', guideline: '指南', reimbursement: '医保目录', policy: '实施政策' }
@@ -32,7 +32,9 @@ export function MedicalLibrary() {
     catch (e) { setError(e instanceof Error ? e.message : '核验暂未完成。') }
     finally { setChecking(false) }
   }
-  const products = corpus?.products.filter(product => `${product.name} ${product.brand} ${corpus.sources.filter(s => product.sources.includes(s.id)).map(s => s.title).join(' ')}`.toLowerCase().includes(filter.toLowerCase())) ?? []
+  const sourcesByProduct = useMemo(() => indexProductSources(corpus?.products ?? [], corpus?.sources ?? []), [corpus])
+  const query = filter.toLowerCase()
+  const products = corpus?.products.filter(product => `${product.name} ${product.brand} ${(sourcesByProduct.get(product.id) ?? []).map(source => source.title).join(' ')}`.toLowerCase().includes(query)) ?? []
 
   return <section className="min-w-0 space-y-4 sm:space-y-6" aria-label="医学依据核验">
     <header className="space-y-1.5">
@@ -64,7 +66,7 @@ export function MedicalLibrary() {
               <AccordionContent className="space-y-4 px-1">
                 {!!product.gaps.length && <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted-foreground">{product.gaps.map((gap, i) => <li key={i}>{gap}</li>)}</ul>}
                 {!!corpus.compiled?.[product.id]?.facts.length && <section className="space-y-3"><h3 className="text-sm font-medium">编译的产品要点 · 待医学复核</h3><ul className="list-disc space-y-3 pl-5 text-sm leading-7">{corpus.compiled[product.id].facts.map((fact,index) => <li key={index}>{fact.claim}<a className="ml-2 inline-flex min-h-11 items-center underline underline-offset-4" target="_blank" rel="noreferrer" href={`/api/medical/sources/${encodeURIComponent(fact.source_id)}#p${fact.page}`}>依据原文</a></li>)}</ul></section>}
-                <ul className="divide-y text-sm leading-6">{corpus.sources.filter(source => product.sources.includes(source.id)).map(source => <li key={source.id} className="py-3 first:pt-0 last:pb-0"><p className="mb-1 text-xs text-muted-foreground">{kinds[source.kind] || source.kind} · {source.published_at || '版本日期待核对'}</p><a className="inline-flex min-h-11 items-center gap-2 break-words underline underline-offset-4" target="_blank" rel="noreferrer" href={`/api/medical/sources/${encodeURIComponent(source.id)}`}>{source.title}<ExternalLink aria-hidden="true" className="size-3.5 shrink-0" /></a></li>)}</ul>
+                <ul className="divide-y text-sm leading-6">{(sourcesByProduct.get(product.id) ?? []).map(source => <li key={source.id} className="py-3 first:pt-0 last:pb-0"><p className="mb-1 text-xs text-muted-foreground">{kinds[source.kind] || source.kind} · {source.published_at || '版本日期待核对'}</p><a className="inline-flex min-h-11 items-center gap-2 break-words underline underline-offset-4" target="_blank" rel="noreferrer" href={`/api/medical/sources/${encodeURIComponent(source.id)}`}>{source.title}<ExternalLink aria-hidden="true" className="size-3.5 shrink-0" /></a></li>)}</ul>
               </AccordionContent>
             </AccordionItem>)}
           </Accordion> : <Card><CardContent className="py-4 text-sm leading-7 text-muted-foreground">{corpus.products.length ? '没有匹配的产品或研究，请调整搜索内容。' : '暂无已归档的产品依据。'}</CardContent></Card>}

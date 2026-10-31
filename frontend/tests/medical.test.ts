@@ -14,3 +14,9 @@ test('ASR corrections remove stale medical judgments before a new result arrives
   assert.equal(updated.length, 2)
   assert.equal(updated[0].status, 'insufficient')
 })
+
+test('unchanged or unrelated transcripts reuse medical state', () => {
+  const checks: MedicalCheck[] = [{ message_id: 'u1', text: 'unchanged', status: 'supported', preliminary: true, statements: [] }]
+  assert.equal(invalidateMedicalCheck(checks, 'u1', 'unchanged'), checks)
+  assert.equal(invalidateMedicalCheck(checks, 'u2', 'new'), checks)
+})

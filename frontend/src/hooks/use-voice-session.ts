@@ -8,7 +8,7 @@ import { invalidateMedicalCheck, updateMedicalChecks, type MedicalCheck } from '
 
 type Status = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 type PolicyCheck = { message_id: string; text: string; rule_id: string; quote: string; reason: string; risk: string; status: string; action: string; article: string; policy_quote: string; policy_title: string; source_url: string }
-type Connection = { ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat'; policyPaused?: boolean; resumeMuted?: boolean }
+type Connection = { startup: AbortController; ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat'; policyPaused?: boolean; resumeMuted?: boolean }
 
 export function useVoiceSession() {
   const [status, setStatus] = useState<Status>('idle')
@@ -37,6 +37,7 @@ export function useVoiceSession() {
     const current = connection.current
     if (!current || current.closing) return
     current.closing = true
+    current.startup.abort()
     if (current.started && (current.experience === 'combat' || training || freeContext)) setAnalysisStatus('thinking')
     current.audio.stop()
     if (current.ws?.readyState === WebSocket.OPEN) {
@@ -48,8 +49,8 @@ export function useVoiceSession() {
 
   const start = useCallback(async (mode: string, experience: 'practice' | 'combat', selection?: TrainingChoice) => {
     const old = connection.current
-    if (old) { old.closing = true; old.audio.stop(); old.ws?.close() }
-    const current: Connection = { audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
+    if (old) { old.startup.abort(); old.closing = true; old.audio.stop(); old.ws?.close() }
+    const current: Connection = { startup: new AbortController(), audio: new BrowserAudio(), closing: false, retired: new Set(), started: 0, experience }
     connection.current = current
     setStatus('connecting'); setMessages([]); setMedicalChecks([]); setPolicyChecks([]); setPolicyUnavailable([]); setPolicyPaused(false); setError(''); setMuted(false); setOutputMuted(false); setSessionId(''); setSaved(false); setSeconds(0); setCoach(null); setPracticeState('listening')
     medicalText.current.clear()
@@ -72,7 +73,7 @@ export function useVoiceSession() {
       }
     }
     try {
-      const health = await fetch('/api/health', { signal: AbortSignal.timeout(5000) })
+      const health = await fetch('/api/health', { signal: AbortSignal.any([current.startup.signal, AbortSignal.timeout(5000)]) })
       if (connection.current !== current || current.closing) return
       if (health.status === 401) window.dispatchEvent(new Event('medvisit:unauthorized'))
       if (!health.ok) throw new Error('服务暂时不可用，请稍后重试或联系管理员')
@@ -296,7 +297,7 @@ export function useVoiceSession() {
   useEffect(() => () => {
     const current = connection.current
     connection.current = null
-    if (current) { current.closing = true; current.audio.stop(); current.ws?.close() }
+    if (current) { current.startup.abort(); current.closing = true; current.audio.stop(); current.ws?.close() }
   }, [])
 
   return { outputMuted, toggleOutputMute, mode, training, freeContext, status, messages, medicalChecks, policyChecks, policyUnavailable, policyPaused, error, muted, seconds, sessionId, saved, coach, practiceState, analysisStatus, speechState, start, stop, toggleMute, resumePolicy, interrupt, retryReply, retrySpeech }

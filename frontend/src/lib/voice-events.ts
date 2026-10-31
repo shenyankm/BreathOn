@@ -17,3 +17,14 @@ export function applyTranscript(messages: VoiceMessage[], event: TranscriptEvent
 }
 
 export type LiveCoach = { assessment?: Assessment; based_on: string; doctor_id: string; focus: string; analysis: string; points: string[]; reply: string; risk: string; incomplete?: boolean; superseded?: boolean; sources?: { id: string; title: string; url: string; date: string | null }[]; delivery?: { tone: string; fluency: string; logic: string; turn_taking: string } }
+
+export function groupByMessage<T extends { message_id?: string }>(items: T[]) {
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
+    if (item.message_id === undefined) continue
+    const group = groups.get(item.message_id)
+    if (group) group.push(item)
+    else groups.set(item.message_id, [item])
+  }
+  return groups
+}

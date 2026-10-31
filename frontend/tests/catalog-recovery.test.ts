@@ -10,6 +10,9 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
   let nextTimer = 0
   let cursor = 0
   const react = {
+    memo: (component: unknown) => component,
+    lazy: () => "MedicalLibrary",
+    Suspense: "Suspense",
     useState(initial: any) {
       const index = cursor++
       if (!(index in slots)) slots[index] = typeof initial === 'function' ? initial() : initial
@@ -499,4 +502,18 @@ test('company products only shows published company products', async () => {
   assert.ok(cards.includes('本公司产品'))
   assert.ok(!cards.includes('竞品名称'))
   assert.ok(!cards.includes('未发布名称'))
+})
+
+test('library loads only visited catalogs and reuses already loaded categories', async () => {
+  const calls: string[] = []
+  const app = page('library-page.tsx', 'LibraryPage', async path => { calls.push(path); return [] })
+  app.render(); await settle()
+  let tree = app.render()
+  assert.deepEqual(calls, ['/catalog/drug'])
+  find(tree, 'Tabs')[0].props.onValueChange('doctors')
+  app.render(); await settle(); tree = app.render()
+  assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
+  find(tree, 'Tabs')[0].props.onValueChange('drugs')
+  app.render(); await settle()
+  assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
 })

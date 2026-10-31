@@ -12,6 +12,7 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/ap
 }).outputText, {
   exports,
   require(name: string) {
+    if (name === 'react') return { memo: (component: unknown) => component }
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'Fragment' }
     assert.ok(name === 'lucide-react' || name === './brand' || name.startsWith('./ui/'), name)
     return new Proxy({}, { get: (_, key) => String(key) })

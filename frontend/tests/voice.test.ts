@@ -90,14 +90,14 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
     createGain() { const gain = { value: 1 }; gains.push(gain); return { ...node(), gain } }
     createBuffer(channels: number, length: number, rate: number) {
       assert.equal(channels, 1); assert.equal(rate, 24000)
-      return { duration: length / rate, copyToChannel(samples: Float32Array) { assert.equal(samples.length, length) } }
+      return { duration: length / rate, getChannelData(channel: number) { assert.equal(channel, 0); return new Float32Array(length) } }
     }
     createBufferSource() { return { ...node(), buffer: null, onended: null, start(time: number) { starts.push(time) }, stop() { sourceStops++ } } }
     async close() { this.state = 'closed'; contextClosed = true }
   }
   Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { getUserMedia: async () => ({ getAudioTracks: () => [track], getTracks: () => [track] }) } } })
   Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: Context })
-  Object.defineProperty(globalThis, 'AudioWorkletNode', { configurable: true, value: class { port: any = {}; disconnect() {}; connect(target: any) { return target }; constructor() { captures.push(this) } } })
+  Object.defineProperty(globalThis, 'AudioWorkletNode', { configurable: true, value: class { port: any = { close() {} }; disconnect() {}; connect(target: any) { return target }; constructor() { captures.push(this) } } })
   try {
     const audio = new BrowserAudio()
     const frames: ArrayBuffer[] = []
@@ -128,10 +128,12 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
     assert.equal(track.enabled, false)
     capture.port.onmessage({ data: new Uint8Array(640).fill(255).buffer })
     assert.deepEqual([...new Uint8Array(frames[0])], [...new Uint8Array(640)])
+    capture.port.onmessage({ data: new ArrayBuffer(640) })
+    assert.equal(frames[0], frames[1], 'muted frames share an immutable silence buffer')
     track.onended?.()
     assert.ok(lost && trackStopped && contextClosed)
-    capture.port.onmessage({ data: new ArrayBuffer(640) })
-    assert.equal(frames.length, 1)
+    assert.equal(capture.port.onmessage, null)
+    assert.equal(frames.length, 2)
     audio.stop()
   } finally {
     for (const [name, descriptor] of [['navigator', originalNavigator], ['AudioContext', originalContext], ['AudioWorkletNode', originalWorklet]] as const) {
@@ -165,7 +167,7 @@ test('microphone loss during worklet loading closes audio without starting captu
     async close() { this.state = 'closed'; closed++ }
   } })
   Object.defineProperty(globalThis, 'AudioWorkletNode', { configurable: true, value: class {
-    port = {}; constructor() { captures++ }; disconnect() {}; connect(target: unknown) { return target }
+    port = { close() {} }; constructor() { captures++ }; disconnect() {}; connect(target: unknown) { return target }
   } })
   const audio = new BrowserAudio()
   const opening = audio.open(() => assert.fail('stopped capture emitted a frame'), () => { lost++ })
@@ -197,7 +199,7 @@ test('failed playback scheduling still releases the microphone and audio context
     async resume() {}
     createMediaStreamSource() { return node() }
     createGain() { return { ...node(), gain: { value: 1 } } }
-    createBuffer() { return { duration: .1, copyToChannel() {} } }
+    createBuffer() { return { duration: .1, getChannelData() { return new Float32Array(1) } } }
     createBufferSource() { return { ...node(), buffer: null, onended: null,
       start() { throw new Error('playback scheduling failed') },
       stop() { throw new DOMException('Cannot stop a source that never started', 'InvalidStateError') },
@@ -206,7 +208,7 @@ test('failed playback scheduling still releases the microphone and audio context
     async close() { this.state = 'closed'; closed = true }
   } })
   Object.defineProperty(globalThis, 'AudioWorkletNode', { configurable: true, value: class {
-    port = {}; disconnect() {}; connect(target: unknown) { return target }
+    port = { close() {} }; disconnect() {}; connect(target: unknown) { return target }
   } })
   const audio = new BrowserAudio()
   await audio.open(() => {}, () => {})
