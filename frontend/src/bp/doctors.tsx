@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useBp } from './data'
 import { ipImage } from './images'
 import { AREAS, filterByArea, ipDoctors } from './logic'
-import { Back, Status, Topline } from './parts'
+import { Back, Status } from './parts'
 import type { DoctorRecord } from './types'
 
 /** L3 doctor IP library: filter chips, 2-column grid, detail card with 开始模拟拜访. */
@@ -16,7 +16,6 @@ export function BpDoctors({ selectedId, onSelect, onStart }: { selectedId: strin
     <Back label="返回 L3 医生 IP" href="#level/L3" />
     <div className="topline"><button type="button" className="chip" disabled={doctors.loading} onClick={doctors.reload}>刷新医生资料</button></div>
     <h1 className="page-title">我的医生 IP</h1>
-    <p className="sub">同一份资料，先匹配医生的科室、问题和沟通偏好。</p>
     <div className="chips" role="group" aria-label="按领域筛选">{AREAS.map(item => <button key={item} type="button" className={`chip ${area === item ? 'active' : ''}`} aria-pressed={area === item} onClick={() => setArea(item)}>{item}</button>)}</div>
     <Status loading={doctors.loading} error={doctors.error} retry={doctors.reload}>
       {list.length === 0 ? <p className="sub">暂无已发布的医生 IP。</p> : <>
@@ -55,12 +54,10 @@ export function BpL3({ onOpen }: { onOpen: (id: string) => void }) {
   const lesson = curriculum.data?.levels.find(level => level.level === 'L3')?.lessons[0]
   return <section className="screen active" id="training-level-detail" aria-label="L3 课程目录">
     <Back label="能力训练" href="#training" />
-    <Topline tag="课程目录" />
     <h1 className="page-title">L3 · 医生 IP 与偏好识别</h1>
-    <p className="sub">同一份资料，换一个医生就要换一种入口。</p>
     <Status loading={doctors.loading || curriculum.loading} error={doctors.error || curriculum.error} retry={() => { doctors.reload(); curriculum.reload() }}>
       <div className="mobile-list">{lesson && <a className="mobile-row" href={`#lesson/${lesson.id}`}><span className="row-icon">01</span><span className="row-copy"><strong>{lesson.title}</strong><small>{lesson.summary}</small></span><span className="row-end" aria-hidden="true">›</span></a>}</div>
-      <div className="section-row"><h2>七类医生 IP</h2><span className="tag lilac">选择后查看详情</span></div>
+      <div className="section-row"><h2>医生 IP</h2></div>
       <div className="doctor-grid l3-doctor-library">{list.map(row => <IpCard key={row.id} row={row} active={false} onPick={() => onOpen(row.id)} />)}</div>
       {list.length === 0 && <p className="sub">暂无已发布的医生 IP。</p>}
     </Status>

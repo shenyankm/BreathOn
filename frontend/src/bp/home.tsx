@@ -16,8 +16,7 @@ export function BpHome({ username, sessionLine }: { username?: string; sessionLi
       <div className="brandline"><div className="brandmark" aria-hidden="true">灵</div><div><strong>灵息 BREATHON</strong></div></div>
       <a className="profile-avatar profile-initials" href="#me" aria-label="我的账号">{name.slice(0, 1)}</a>
     </div>
-    <h1 className="hero-title">{greeting(now)}，<br /><span>{name}</span></h1>
-    <p className="sub">今天，把合适的证据交给合适的医生。</p>
+    <h1 className="hero-title">{greeting(now)}，<span>{name}</span></h1>
     {sessionLine && <a className="soft-card" href="#start" style={{ display: 'block', marginTop: 14 }}><strong style={{ fontSize: 12 }}>{sessionLine.text}</strong><small className="sub" style={{ display: 'block', marginTop: 4 }}>点击返回演练 ›</small></a>}
     {(home.error || curriculum.error || doctors.error || settings.error) && <div role="alert" className="soft-card"><p className="sub">部分数据读取失败，请检查网络后重试。</p><button className="mini-btn soft" onClick={refresh}>重新加载</button></div>}
     <div className="date-strip" aria-label="日期">{strip.map(item => <div key={item.day} className={`date ${item.active ? 'active' : ''}`}><b>{item.day}</b>{item.week}</div>)}</div>
@@ -35,11 +34,11 @@ export function BpHome({ username, sessionLine }: { username?: string; sessionLi
       <span className="task-arrow" aria-hidden="true">›</span>
     </a> : <p className="sub">{settings.data?.doctor_recommendation === false ? '医生推荐已关闭，仍可查看全部医生。' : doctors.loading || settings.loading ? '正在加载…' : doctors.error ? '医生资料暂时无法加载。' : '暂无已发布的医生 IP。'}</p>}
     <div className="metrics">
-      <div className="metric"><div className="metric-top">知识掌握度<span className="metric-icon" aria-hidden="true">✦</span></div>
+      <div className="metric"><div className="metric-top">知识掌握度</div>
         <strong>{h ? `${h.mastery_percent}%` : '—'}</strong><small>{curriculum.data ? `已完成 ${curriculum.data.levels.reduce((n, l) => n + l.completed, 0)} / ${curriculum.data.levels.reduce((n, l) => n + l.total, 0)} 个课程` : ' '}</small>
         <div className="progress"><i style={{ width: `${h?.mastery_percent ?? 0}%` }} /></div></div>
-      <div className="metric"><div className="metric-top">训练得分<span className="metric-icon" aria-hidden="true">◔</span></div>
-        <strong>{scoreText(h?.latest_score ?? null)}</strong><small>{h?.latest_score === null || !h ? '完成一次有效评分的练习后显示' : deltaText(h.week_delta)}</small>
+      <div className="metric"><div className="metric-top">训练得分</div>
+        <strong>{scoreText(h?.latest_score ?? null)}</strong><small>{h?.latest_score === null || !h ? '暂无评分' : deltaText(h.week_delta)}</small>
         <div className="progress"><i style={{ width: `${h?.latest_score ?? 0}%` }} /></div></div>
     </div>
     <div className="section-row"><h2>待完成任务</h2><a href="#training" >进入训练 →</a></div>
@@ -47,7 +46,7 @@ export function BpHome({ username, sessionLine }: { username?: string; sessionLi
       {h && h.tasks.length ? h.tasks.map((lesson, index) => <a key={lesson.id} className="task" href={`#lesson/${lesson.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <span className="task-icon">{String(index + 1).padStart(2, '0')}</span>
         <span className="task-text"><strong>{lesson.title}</strong><small>{lesson.level} · {lesson.tagline || lesson.summary}</small></span><span className="task-arrow" aria-hidden="true">›</span></a>)
-        : <p className="training-plan-empty">还没有计划。打开训练里的课程详情，点「加入今日训练计划」。</p>}
+        : <p className="training-plan-empty">暂无计划，可从课程详情加入。</p>}
     </div>
   </section>
 }

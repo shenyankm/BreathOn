@@ -41,7 +41,6 @@
 .bp .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
 .bp .metric{background:#fffdf9;border:1px solid #eee9df;border-radius:17px;padding:14px 13px;min-height:105px}
 .bp .metric .metric-top{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#777}
-.bp .metric-icon{width:20px;height:20px;border-radius:7px;background:#f6d8bd;display:grid;place-items:center;color:#b16c2f}
 .bp .metric strong{font-size:25px;display:block;margin-top:13px;letter-spacing:-.03em}
 .bp .metric small{font-size:9px;color:var(--bp-muted)}
 .bp .progress{height:6px;background:#efeee8;border-radius:99px;margin-top:10px;overflow:hidden}
@@ -99,9 +98,9 @@
 .bp .progress-card p{font-size:10px;color:#687267;margin:0}
 .bp .progress-card .progress{background:#ffffff66;height:8px}
 .bp .progress-card .progress i{background:#fff}
-.bp .coach-top{text-align:center;padding-top:4px}
+.bp .coach-top{text-align:left;padding-top:4px}
 .bp .coach-top h1{font-size:25px;margin:17px 0 4px;letter-spacing:-.03em}
-.bp .coach-top p{font-size:10px;color:var(--bp-muted);margin:0}
+.bp .coach-top p{font-size:14px;line-height:1.6;color:var(--bp-muted);margin:0}
 .bp .orb{width:88px;height:88px;border-radius:50%;margin:16px auto 0;background:radial-gradient(circle at 34% 26%,#fff5ad 0 4%,#ffa9a0 30%,#b7e9d8 56%,#91d1f2 74%,#a993ea 100%);box-shadow:0 14px 35px rgba(149,180,221,.3),inset 0 0 25px #fff8;animation:float 3.5s ease-in-out infinite;position:relative}
 .bp .orb:after{content:"";position:absolute;inset:15px;border-radius:50%;border:1px solid #fff7;filter:blur(1px)}
 @keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.025)}}
@@ -138,9 +137,9 @@
 
 
 .bp .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
-.bp .module-link{border:1px solid #eee9df;background:#fffdf9;border-radius:15px;padding:13px 11px;text-align:left;box-shadow:var(--bp-shadow)}
+.bp .module-link{display:flex;align-items:center;gap:10px;min-width:0;border:1px solid #eee9df;background:#fffdf9;border-radius:15px;padding:14px 12px;text-align:left;box-shadow:var(--bp-shadow)}
 .bp .module-link:active{transform:scale(.98)}
-.bp .module-link .module-icon{width:27px;height:27px;border-radius:9px;display:grid;place-items:center;background:#f5dcc4;color:#a56832;font-size:12px;margin-bottom:9px}
+.bp .module-link .module-icon{width:27px;height:27px;flex:none;border-radius:9px;display:grid;place-items:center;background:#f5dcc4;color:#a56832;font-size:12px}
 .bp .module-link strong{font-size:11px;display:block}
 .bp .module-link small{display:block;color:var(--bp-muted);font-size:9px;line-height:1.4;margin-top:4px}
 .bp .mobile-list{display:grid;gap:9px;margin-top:16px}
@@ -175,7 +174,7 @@ body{background:#e9e7e2}
 .bp .hero-title{font-size:27px;line-height:1.15;margin:25px 0 7px;letter-spacing:-.06em}
 .bp .hero-title em{font-style:normal;color:#242424}
 .bp .hero-title span{font-style:normal;font-weight:850}
-.bp .sub{color:#898a84}
+.bp .sub{color:var(--bp-muted)}
 .bp .date-strip{margin:18px 0 14px;gap:8px}
 .bp .date{background:#fffdf9;border-color:#eee9df;padding:9px 3px;box-shadow:0 4px 10px #8279640c}
 .bp .date b{font-size:14px}
@@ -207,13 +206,12 @@ body{background:#e9e7e2}
 .bp .detail-point strong{display:block;font-size:11px}
 .bp .detail-point small{display:block;color:var(--bp-muted);font-size:9px;line-height:1.5;margin-top:4px}
 .bp .detail-callout{margin-top:13px;padding:12px;border-radius:13px;background:#e7f7f2;color:#377f78;font-size:10px;line-height:1.6}
-.bp .scenario-grid{display:grid;gap:9px;margin-top:13px}
-.bp .scenario-card{display:flex;align-items:center;gap:11px;padding:13px 12px;border-radius:16px;background:#fffdf9;border:1px solid #eee9df;box-shadow:var(--bp-shadow);text-align:left}
+.bp .scenario-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:13px}
+.bp .scenario-card{display:grid;justify-items:center;align-content:center;gap:8px;min-width:0;padding:12px 6px;border-radius:16px;background:#fffdf9;border:1px solid #eee9df;text-align:center}
 .bp .scenario-card.active{border-color:#8bd7d2;background:#f4fcfa;box-shadow:0 0 0 2px #d9f3ef}
-.bp .scenario-num{width:31px;height:31px;border-radius:11px;background:#f4dfc9;color:#a56b35;display:grid;place-items:center;font-size:11px;font-weight:850;flex:none}
 .bp .scenario-card strong{display:block;font-size:11px}
 .bp .scenario-card small{display:block;color:var(--bp-muted);font-size:9px;line-height:1.4;margin-top:4px}
-.bp .scenario-card .check{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1px solid #ddd;background:#fff;color:transparent;display:grid;place-items:center;font-size:12px}
+.bp .scenario-card .check{width:18px;height:18px;border-radius:50%;border:1px solid #ddd;background:#fff;color:transparent;display:grid;place-items:center;font-size:12px}
 .bp .scenario-card.active .check{background:#65c9bd;border-color:#65c9bd;color:#fff}
 .bp .l3-doctor-library{margin-top:16px}
 .bp .l3-doctor-library .section-row{margin-top:0}
@@ -222,9 +220,14 @@ body{background:#e9e7e2}
 .bp .l3-doctor-library .doctor-card .body{padding:10px}
 .bp .l3-doctor-library .doctor-card strong{font-size:11px}
 .bp .coach-settings{margin-top:14px}
-.bp .coach-settings .setting-label{font-size:11px;font-weight:800;margin:0 0 9px}
+.bp .coach-settings .setting-label{font-size:14px;font-weight:600;margin:0 0 10px}
 .bp .coach-settings .scenario-grid{margin-top:0}
-.bp .coach-settings .coach-start{margin-top:13px}
+.bp .coach-settings .coach-focus-description{margin:12px 0 20px}
+.bp .coach-settings .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;margin:0 0 10px}
+.bp .coach-settings .coach-permission{margin-top:16px}
+.bp .coach-settings .coach-start{width:100%;margin-top:16px}
+.bp .coach-heading{gap:12px;margin:0 0 16px}
+.bp .coach-heading .page-title{margin:0}
 .bp .coach-settings.hidden{display:none}
 .bp .coach-chat-hidden{display:none!important}
 .bp .focus-card{display:block;width:100%}
@@ -253,7 +256,7 @@ body{background:#e9e7e2}
 .bp .plan-item:last-child{border-bottom:0}
 .bp .plan-item .plan-mark{width:27px;height:27px;border-radius:9px;background:#e4f6f1;color:#338f86;display:grid;place-items:center;font-size:9px;font-weight:850;flex:none}
 .bp .plan-item .plan-copy{flex:1;min-width:0}
-.bp .plan-item strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bp .plan-item strong{display:block;font-size:10px;line-height:1.5}
 .bp .plan-item small{display:block;color:var(--bp-muted);font-size:9px;margin-top:3px}
 .bp .plan-item .plan-arrow{color:var(--bp-muted);font-size:17px}
 .bp .training-plan-panel{margin-top:13px;background:#fffdf9;border:1px solid #eee9df;border-radius:19px;padding:12px 14px;box-shadow:var(--bp-shadow)}
@@ -316,7 +319,7 @@ body{background:#e9e7e2}
 .bp{font-size:15px}
 .bp .sub{font-size:14px}.bp .eyebrow{font-size:12px}.bp .tag{font-size:12px;padding:5px 9px}
 .bp .brandline strong{font-size:16px}.bp .brandline small{font-size:10px}
-.bp .hero-title,.bp .coach-top h1{font-size:32px}.bp .page-title{font-size:30px}
+.bp .hero-title,.bp .coach-top h1{font-size:28px}.bp .page-title{font-size:28px;line-height:1.3;margin-block:16px 20px}
 .bp .date{font-size:11px}.bp .date b{font-size:17px}
 .bp .focus-card h2{font-size:24px}.bp .focus-label,.bp .prep-count,.bp .prep-step{font-size:12px}
 .bp .section-row h2{font-size:17px}.bp .section-row button,.bp .section-row a{font-size:12px}
@@ -349,6 +352,11 @@ body{background:#e9e7e2}
 .bp .section-row>a,.bp .section-row>button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:8px;font-size:13px;color:var(--bp-muted)}
 .bp .setting{gap:12px}.bp .settings-list{margin-bottom:20px}
 .bp .level-left,.bp .row-copy,.bp .coach-doctor>div,.bp .task-text{min-width:0}
+.bp .level-left{flex:1}.bp .level-left>div{min-width:0}
+.bp .level-badge,.bp .level-chevron,.bp .row-end,.bp .coach-doctor>img,.bp .profile-box>img,.bp .doctor-mini>img{flex:none}
+.bp .level-head,.bp .section-row,.bp .record-row{gap:12px}
+.bp .profile-box>div{min-width:0}
+.bp .screen small{line-height:1.6}
 .bp .screen :is(h1,h2,h3,strong,p,small){overflow-wrap:anywhere}
 .bp .level-head strong{font-size:15px}.bp .level-head small,.bp .coach-top>p{font-size:14px}
 .bp .mini-btn,.bp .chip{display:inline-flex;align-items:center;justify-content:center;text-align:center}

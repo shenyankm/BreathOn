@@ -73,6 +73,18 @@ test('home distinguishes disabled recommendations from an empty published catalo
   assert.doesNotMatch(text, /暂无已发布的医生/)
 })
 
+test('account shortcuts lead with records and retain tools and the unsaved-session logout guard', () => {
+  const render = load('me', { home: {}, settings: {}, doctors: { data: [] } })
+  const logout = () => {}
+  const view = render('BpMe', { username: '测试代表', onLogout: logout, logoutDisabled: true })
+  const paths = nodes(view).map(node => node.props?.href).filter(Boolean)
+  assert.deepEqual(paths.slice(0, 2), ['#records', '#visits'])
+  for (const path of ['#workspace', '#products', '#audiences', '#policies', '#audit']) assert.ok(paths.includes(path), path)
+  assert.equal(new Set(paths).size, paths.length)
+  assert.equal(nodes(view).find(node => node.props?.onClick === logout)?.props.disabled, true)
+  assert.match(JSON.stringify(view), /尚未保存/)
+})
+
 test('coach drug loading has a recoverable network error rather than an empty catalogue claim', async () => {
   let fail = true
   const render = load('coach', {}, { api: async () => { if (fail) throw new Error('offline'); return [{ id: 'drug', name: '玛仕度肽', status: 'published' }] } })

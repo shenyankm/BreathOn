@@ -1,7 +1,7 @@
 import type { Scenario } from './catalog-types.ts'
 
 export const trainingPresets = [
-  { id: 'coached', label: '辅助练习', description: '对话中提供建议，结束后复盘；自由练习不评分。', experience: 'practice', mode: 'assisted' },
+  { id: 'coached', label: '辅助练习', description: '实时建议与结束后复盘；自由练习不评分。', experience: 'practice', mode: 'assisted' },
   { id: 'combat', label: '实战练习', description: '无实时提示，结束后复盘；自由练习不评分。', experience: 'combat', mode: 'independent' },
 ] as const
 

@@ -17,7 +17,6 @@ export function BpTraining() {
   return <section className="screen active" id="training" aria-label="训练">
     <Topline tag={streak ? `${streak} 天连续练习` : '开始你的第一天'} />
     <h1 className="page-title">能力训练</h1>
-    <p className="sub">从产品底盘，到疾病线，再到真实医生沟通。</p>
     <div className="progress-card">
       <div className="row"><span>当前学习进度</span><b>{level ? `${level.percent}%` : '—'}</b></div>
       <h2>{level ? `${level.level} · ${level.title}` : '正在加载…'}</h2>
@@ -27,7 +26,7 @@ export function BpTraining() {
     <Status loading={curriculum.loading} error={curriculum.error} retry={curriculum.reload}>
       <div className="training-plan-panel" id="trainingPlanPanel">
         <div className="section-row"><h2>我的训练计划</h2><span className="tag teal">{curriculum.data?.plan.length ?? 0} 项</span></div>
-        {curriculum.data?.plan.length ? curriculum.data.plan.map(item => <PlanItem key={item.id} lesson={item} />) : <div className="training-plan-empty">从课程详情加入后，会出现在这里。</div>}
+        {curriculum.data?.plan.length ? curriculum.data.plan.map(item => <PlanItem key={item.id} lesson={item} />) : <div className="training-plan-empty">从课程详情加入训练计划。</div>}
       </div>
       <div className="level-list">
         {curriculum.data?.levels.map(item => {
@@ -56,7 +55,6 @@ export function BpLevel({ level }: { level: string }) {
   const item = curriculum.data?.levels.find(row => row.level === level)
   return <section className="screen active" id="training-level-detail" aria-label={`${level} 课程目录`}>
     <Back label="能力训练" href="#training" />
-    <Topline tag="课程目录" />
     <Status loading={curriculum.loading} error={curriculum.error} retry={curriculum.reload}>
       {item ? <><h1 className="page-title">{item.level} · {item.title}</h1><p className="sub">{item.subtitle}</p>
         <div className="mobile-list">{item.lessons.map((lesson, index) => <Row key={lesson.id} index={String(index + 1).padStart(2, '0')} title={lesson.title} note={lesson.summary} href={`#lesson/${lesson.id}`} />)}</div></>

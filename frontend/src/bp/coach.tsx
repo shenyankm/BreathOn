@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Check } from 'lucide-react'
 import { isAppDrug } from '@/lib/app-drugs'
 import { trainingPresets, type TrainingPreset } from '@/lib/training-setup'
 import type { ManagedDrug } from '@/lib/catalog-types'
@@ -26,7 +27,6 @@ export function useAppDrug() {
   return { drug, error, reload: () => { setError(''); setDrug(undefined); setRevision(value => value + 1) } }
 }
 
-/** Coach landing: orb, current doctor IP, scenario cards, 辅助/实战 switch and the start button. */
 export function BpCoach({ choice, onChoice, preset, onPreset, onStart, session }: {
   choice: CoachChoice; onChoice: (value: CoachChoice) => void; preset: TrainingPreset; onPreset: (value: TrainingPreset) => void
   onStart: (drugId: string) => void; session: { title: string; note: string } | null
@@ -38,9 +38,7 @@ export function BpCoach({ choice, onChoice, preset, onPreset, onStart, session }
   const ip = doctor?.ip_profile
   const info = scenarios[choice.scenario]
   return <section className="screen active coach-top" id="coach" aria-label="AI 教练">
-    <Topline tag={session ? '演练进行中' : '语音练习'} tone="orange" />
-    <div className="orb" aria-hidden="true" />
-    <h1>开始今天的练习</h1><p>选择一个医生 IP，开始今天的模拟拜访。</p>
+    <div className="section-row coach-heading"><h1 className="page-title">AI 教练</h1><a href="#records">练习记录 →</a></div>
     {session ? <a className="coach-doctor" href="#start" style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ flex: 1 }}><strong>{session.title}</strong><small>{session.note}</small></div><span className="chip">返回演练</span></a> : <>
       <Status loading={doctors.loading} error={doctors.error} retry={doctors.reload}>
         {doctor && ip ? <div className="coach-doctor"><img src={ipImage(ip.ip_key)} alt="" /><div style={{ flex: 1 }}><strong>{doctor.name}</strong><small>{ip.style} · 关注{doctor.focus}</small></div>
@@ -48,20 +46,20 @@ export function BpCoach({ choice, onChoice, preset, onPreset, onStart, session }
       </Status>
       <div className="coach-settings" id="coachSettings" style={{ textAlign: 'left' }}>
         <div className="soft-card" style={{ marginTop: 12 }}>
-          <p className="setting-label">AI 对话设置</p>
-          <div className="scenario-grid" role="radiogroup" aria-label="练习重点">{scenarioOrder.map((key, index) =>
+          <p className="setting-label">练习重点</p>
+          <div className="scenario-grid" role="radiogroup" aria-label="练习重点" aria-describedby="coach-focus-description">{scenarioOrder.map(key =>
             <button key={key} type="button" role="radio" aria-checked={choice.scenario === key} className={`scenario-card ${choice.scenario === key ? 'active' : ''}`} onClick={() => onChoice({ ...choice, scenario: key })}>
-              <span className="scenario-num">{String(index + 1).padStart(2, '0')}</span><span><strong>{scenarios[key].label}</strong><small>{scenarios[key].desc}</small></span><span className="check" aria-hidden="true">✓</span></button>)}</div>
-          <div role="group" aria-label="演练方式" className="chips" style={{ marginTop: 12 }}>{trainingPresets.map(item => <button key={item.id} type="button" className={`chip ${preset.id === item.id ? 'active' : ''}`} aria-pressed={preset.id === item.id} onClick={() => onPreset(item)}>{item.label}</button>)}</div>
-          <p className="sub" style={{ margin: '0 0 8px' }}>{preset.description}</p>
-          <button type="button" className="mini-btn coach-start" style={{ width: '100%', padding: 14, fontSize: 12, borderRadius: 14 }} disabled={!doctor || !drug} onClick={() => drug && onStart(drug.id)}>开始本轮对话</button>
+              <strong>{scenarios[key].label}</strong><span className="check" aria-hidden="true"><Check size={12} /></span></button>)}</div>
+          <p id="coach-focus-description" className="sub coach-focus-description">{info.desc}</p>
+          <p className="setting-label">演练方式</p>
+          <div role="group" aria-label="演练方式" aria-describedby="coach-mode-description" className="chips">{trainingPresets.map(item => <button key={item.id} type="button" className={`chip ${preset.id === item.id ? 'active' : ''}`} aria-pressed={preset.id === item.id} onClick={() => onPreset(item)}>{item.label}</button>)}</div>
+          <p id="coach-mode-description" className="sub">{preset.description}</p>
+          <p id="coach-permission" className="sub coach-permission">练习药品：{drug ? drug.name : drug === undefined ? '加载中…' : '暂无可用药品'} · 需麦克风权限</p>
+          <button type="button" className="mini-btn coach-start" aria-describedby="coach-permission" disabled={!doctor || !drug} onClick={() => drug && onStart(drug.id)}>开始本轮对话</button>
           {drugError && <div role="alert"><p className="sub">{drugError}</p><button className="mini-btn soft" onClick={reloadDrug}>重新加载药品</button></div>}
           {drug === null && !drugError && <p role="alert" className="sub" style={{ marginTop: 8 }}>暂无已发布的练习药品，暂时不能开始。</p>}
-          <p className="sub" style={{ marginTop: 8 }}>本轮对话为语音演练，需要麦克风权限；练习药品：{drug ? `${drug.name}（${drug.brand}）` : drug === undefined ? '加载中…' : '暂无可用药品'}。</p>
         </div>
-        <div className="section-row"><h2>本轮训练关注</h2><a href="#records">练习记录 →</a></div>
-        <div className="tag-row">{['需求探索', '证据匹配', '合规边界', '推进下一步'].map((tag, index) => <span key={tag} className={`tag ${['teal', 'lilac', 'orange', ''][index]}`}>{tag}</span>)}</div>
-        <p className="sub" style={{ marginTop: 10 }}>{info.prompt && `开场参考：${info.prompt}`}</p>
+        <p className="sub" style={{ marginTop: 16 }}>{info.prompt && `开场参考：${info.prompt}`}</p>
       </div></>}
   </section>
 }
@@ -72,7 +70,7 @@ export function BpPicker({ onChoose }: { onChoose: (id: string) => void }) {
   return <section className="screen active" id="coach-doctor-picker" aria-label="选择医生 IP">
     <Back label="返回 AI 教练" href="#coach" />
     <Topline tag={`${list.length} 类医生 IP`} />
-    <h1 className="page-title">选择医生 IP</h1><p className="sub">选择本轮要训练的医生，先看关注点，再开始对话。</p>
+    <h1 className="page-title">选择医生 IP</h1>
     <Status loading={doctors.loading} error={doctors.error} retry={doctors.reload}>
       <div className="doctor-picker-grid">{list.map(row => <button key={row.id} type="button" className="doctor-picker-card" onClick={() => onChoose(row.id)} style={{ padding: 0 }}>
         <img src={ipImage(row.ip_profile!.ip_key)} alt="" /><div className="body"><strong>{row.name}</strong><small>{row.ip_profile!.style}<br />{row.ip_profile!.domain}</small>
@@ -85,7 +83,7 @@ export function BpPicker({ onChoose }: { onChoose: (id: string) => void }) {
 export function BpBrief({ row, onChoose }: { row: DoctorRecord | undefined; onChoose: () => void }) {
   const ip = row?.ip_profile
   return <section className="screen active" id="coach-doctor-detail" aria-label="医生 IP 详情">
-    <Back label="七类医生 IP" href="#pick" />
+    <Back label="选择医生 IP" href="#pick" />
     <Topline tag="培训要点" tone="lilac" />
     {row && ip ? <div className="doctor-detail-panel">
       <div className="doctor-detail-head"><img src={ipImage(ip.ip_key)} alt="" /><div><h3>{row.name}</h3><p>{ip.style}<br />{ip.domain}<br />重点：{row.focus}</p></div></div>
