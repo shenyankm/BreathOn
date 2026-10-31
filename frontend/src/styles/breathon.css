@@ -6,7 +6,7 @@
   --card-foreground: #293d37;
   --popover: #fffefb;
   --popover-foreground: #293d37;
-  --primary: #171717;
+  --primary: #ad501f;
   --brand-heading: #bd511b;
   --primary-foreground: #fffefb;
   --secondary: #e7f7f4;
@@ -44,6 +44,7 @@
 /* The legacy pages and portalled controls use the same Android prototype surfaces. */
 :root{color-scheme:light}
 [data-slot="button"]{min-height:48px;border-radius:12px}
+[data-slot="button"][data-variant="default"]:not(:disabled):active{background:color-mix(in srgb,var(--primary),#000 12%)}
 [data-slot="button"][data-size^="icon"]{min-width:48px}
 [data-slot="button"][data-variant="outline"],[data-slot="button"][data-variant="secondary"]{background:#e7f7f4;color:#246c61;border-color:transparent}
 [data-slot="button"][data-variant="ghost"]{border-radius:12px}

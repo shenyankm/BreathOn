@@ -1,6 +1,6 @@
 # Android UI review — 2026-10-31
 
-The existing BREATHON mobile prototype remains the visual reference. This pass follows [Impeccable](https://github.com/pbakaus/impeccable)'s audit and polish guidance, preserving the gradient background and card layout. Legacy login, library, records, visit forms and dialogs now share the prototype's cream surfaces, black primary actions, teal secondary actions and rounded controls. Headings retain the orange hue with stronger contrast. Android-only styles do not change the Web theme.
+The existing BREATHON mobile prototype remains the visual reference. This pass follows [Impeccable](https://github.com/pbakaus/impeccable)'s audit and polish guidance, preserving the gradient background and card layout. Legacy login, library, records, visit forms and dialogs now share the prototype's cream surfaces, warm-orange primary actions, teal secondary actions and rounded controls. Headings retain the orange hue with stronger contrast. Android-only styles do not change the Web theme.
 
 ## Fixed
 
