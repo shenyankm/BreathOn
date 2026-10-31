@@ -1,6 +1,7 @@
 """Reusable communication cases retain their original dialogue and source boundaries."""
 import hashlib
 import json
+from functools import cache
 
 from fastapi import HTTPException
 from pydantic import Field, field_validator
@@ -114,6 +115,7 @@ class Cases:
 
     def validate_sources(self, tx, user, item):
         documents = {}
+        normalized = cache(normalize)
         for captured in item.get('documents', []):
             document = require_item(tx, user['workspace'], 'content', captured['id'])
             documents[document['id']] = document
@@ -126,7 +128,7 @@ class Cases:
                 document = require_item(tx, user['workspace'], 'content', citation['document_id'])
                 documents[document['id']] = document
             page = next((page for page in document['pages'] if page['number'] == citation['page']), None)
-            if not any(captured['id'] == document['id'] and captured['version'] == citation['document_version'] for captured in item.get('documents', [])) or not page or normalize(citation['quote']) not in normalize(page['text']):
+            if not any(captured['id'] == document['id'] and captured['version'] == citation['document_version'] for captured in item.get('documents', [])) or not page or normalized(citation['quote']) not in normalized(page['text']):
                 raise HTTPException(422, '案例引文无法与原训练资料核对。')
 
     def confirm(self, user, item_id, version):

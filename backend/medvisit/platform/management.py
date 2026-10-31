@@ -45,9 +45,14 @@ def approval_state(tx, tenant, kind, item):
     votes = entry['votes']
     approved = [v for v in votes if v.get('decision', 'approve') == 'approve']
     rejected = any(v.get('decision') == 'reject' for v in votes)
-    allowed = lambda vote, role: vote['role'] == role and vote['actor'] in config[f'{role}_reviewers']
+    reviewers = {}
+    if mode == 'medical_compliance' and not rejected:
+        for role in ('medical', 'compliance'):
+            assigned = set(config[f'{role}_reviewers'])
+            reviewers[role] = {vote['actor'] for vote in approved if vote['role'] == role and vote['actor'] in assigned}
     ready = not rejected and (mode == 'admin' or (mode == 'two_admins' and len({v['actor'] for v in approved}) >= 2) or (
-        mode == 'medical_compliance' and any(allowed(a, 'medical') and allowed(b, 'compliance') and a['actor'] != b['actor'] for a in approved for b in approved)))
+        mode == 'medical_compliance' and reviewers['medical'] and reviewers['compliance'] and len(reviewers['medical'] | reviewers['compliance']) > 1))
+    ready = bool(ready)
     return {'key': key, 'mode': mode, 'ready': ready, 'votes': votes, 'settings_version': config['version']}
 
 

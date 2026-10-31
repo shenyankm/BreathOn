@@ -1,5 +1,6 @@
 """A single 40/30/30 visit card, bound to actual trainee words and medical checks."""
 from datetime import datetime, timezone
+from functools import cache
 
 from openai import APIError
 
@@ -31,12 +32,20 @@ def validate_summary(raw, record, model, *, medical_checks=None):
     data = record.data
     medical_checks = data.get('medical_checks', []) if medical_checks is None else medical_checks
     trainees = {m['id']:m['text'] for m in data['messages'] if m['role']=='trainee' and m.get('final')}
+    normalized = cache(quotation_text)
+    checks_by_message = {}
+    for check in reversed(medical_checks):
+        if len(checks_by_message) == len(trainees):
+            break
+        message_id = check['message_id']
+        if message_id in trainees and message_id not in checks_by_message and check['text'] == trainees[message_id]:
+            checks_by_message[message_id] = check
     def valid_quote(row):
-        return isinstance(row,dict) and isinstance(row.get('quote'),str) and 1<=len(row['quote'])<=1200 and row.get('message_id') in trainees and quotation_text(row['quote']) in quotation_text(trainees[row['message_id']])
+        return isinstance(row,dict) and isinstance(row.get('quote'),str) and 1<=len(row['quote'])<=1200 and row.get('message_id') in trainees and normalized(row['quote']) in normalized(trainees[row['message_id']])
     medical, edits = [], []
     missing = False
-    for message_id,text in trainees.items():
-        check = next((row for row in reversed(medical_checks) if row['message_id']==message_id and row['text']==text),None)
+    for message_id in trainees:
+        check = checks_by_message.get(message_id)
         if not check or check['status'] in ('insufficient','unavailable','checking'):
             missing = True
         for row in (check or {}).get('statements',[]):
@@ -64,14 +73,17 @@ def validate_summary(raw, record, model, *, medical_checks=None):
             score,reason,quotes=None,'缺少可核对的观察或原话，本维度暂不评分。',[]
         dimensions.append({'key':key,'label':label,'weight':weight,'score':score,'reason':reason,'quotes':quotes})
     proposed=raw.get('edits',[]) if isinstance(raw,dict) else []
+    edit_quotes = {normalized(edit['quote']) for edit in edits} if isinstance(proposed,list) and proposed else set()
     for row in proposed[:3] if isinstance(proposed,list) else []:
         if not valid_quote(row) or row.get('category') not in ('medical','compliance','communication'):
             continue
-        if any(quotation_text(row['quote'])==quotation_text(edit['quote']) for edit in edits): continue
+        quote = normalized(row['quote'])
+        if quote in edit_quotes: continue
         if any(not isinstance(row.get(key),str) or not 1<=len(row[key])<=1200 for key in ('reason','rewrite')): continue
         if row['category']=='medical':
             row={**row,'rewrite':'我会先核对适用人群、原文版本和依据，确认后再回应。','reason':'当前资料不足，需要核实，不能据此断定临床错误。'}
         edits.append({key:row[key] for key in ('message_id','quote','category','reason','rewrite')})
+        edit_quotes.add(quote)
     edits=edits[:3]
     if data.get('free_context'):
         for row in dimensions:
@@ -87,16 +99,17 @@ def validate_summary(raw, record, model, *, medical_checks=None):
 
 
 async def build_visit_summary(settings, record):
-    history=[{'id':m['id'],'speaker':m['role'],'text':m['text'][:4000],'final':m.get('final',False)} for m in record.data['messages']]
+    messages = record.data['messages']
     checks = await checked_snapshot(record)
-    if not any(m['speaker']=='trainee' and m['final'] for m in history) or not settings.deepseek_api_key:
+    if not any(m['role']=='trainee' and m.get('final') for m in messages) or not settings.deepseek_api_key:
         return validate_summary({},record,settings.deepseek_model,medical_checks=checks)
+    history=[{'id':m['id'],'speaker':m['role'],'text':m['text'][:4000],'final':m.get('final',False)} for m in messages[-80:]]
     prompt = PROMPT
     if record.data.get('free_context'):
         prompt += '\n本次为自由组合练习，不评分。所有score只能为null，保留具体文字观察与改写建议。free_context只说明模拟医生和药品主题，不是已审核医学证据，不据此补充临床结论。'
     try:
         raw=await json_completion(settings,record,purpose='visit_summary',system=prompt,max_tokens=3500,
-            user={'transcript':history[-80:],'medical_checks':checks[-30:],
+            user={'transcript':history,'medical_checks':checks[-30:],
                   **({'free_context':record.data['free_context']} if record.data.get('free_context') else {})})
         await validate_snapshot(record, checks)
         return validate_summary(raw,record,settings.deepseek_model,medical_checks=checks)

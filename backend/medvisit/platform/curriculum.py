@@ -5,7 +5,10 @@ lessons and switches, is stored per account. Statistics are derived from the rep
 records and are None when there is nothing to derive them from: no placeholder numbers are ever returned.
 """
 import json
+from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+from heapq import nlargest
+from itertools import islice
 from pathlib import Path
 from typing import Literal
 
@@ -52,7 +55,11 @@ def workspace_curriculum(store, user):
         saved = sorted(tx.list(user['workspace'], 'lesson'), key=lambda row: row['id'])
     if not saved:
         return CURRICULUM
-    return {'levels': [{**level, 'lessons': [row for row in saved if row['level'] == level['level'] and row['status'] == 'published']}
+    published = defaultdict(list)
+    for row in saved:
+        if row['status'] == 'published':
+            published[row['level']].append(row)
+    return {'levels': [{**level, 'lessons': published[level['level']]}
                        for level in CURRICULUM['levels']]}
 
 
@@ -62,9 +69,10 @@ def curriculum(store, user):
         state = _load(tx, user)
     source = workspace_curriculum(store, user)
     lessons_by_id = {lesson['id']:lesson for level in source['levels'] for lesson in level['lessons']}
+    planned = set(state['plan'])
     rows = []
     for level in source['levels']:
-        lessons = [{**lesson, 'state': 'completed' if lesson['id'] in state['completed'] else 'planned' if lesson['id'] in state['plan'] else 'none'}
+        lessons = [{**lesson, 'state': 'completed' if lesson['id'] in state['completed'] else 'planned' if lesson['id'] in planned else 'none'}
                    for lesson in level['lessons']]
         rows.append({**{key: level[key] for key in ('level', 'title', 'subtitle', 'summary')}, 'lessons': lessons,
                      'completed': sum(item['state'] == 'completed' for item in lessons), 'total': len(lessons)})
@@ -163,10 +171,14 @@ def home_summary(store, records, user, today=None):
     def average(items):
         return round(sum(item[1] for item in items) / len(items)) if items else None
 
-    def within(start, end):
-        return [item for item in scored if start <= datetime.fromisoformat(item[0]).astimezone() < end]
-
-    this_week, last_week = within(week_start, week_start + timedelta(days=7)), within(previous_start, week_start)
+    this_week, last_week = [], []
+    week_end = week_start + timedelta(days=7)
+    for item in scored:
+        started = datetime.fromisoformat(item[0]).astimezone()
+        if week_start <= started < week_end:
+            this_week.append(item)
+        elif previous_start <= started < week_start:
+            last_week.append(item)
     this_average, last_average = average(this_week), average(last_week)
     with store.transaction(user['workspace'], write=False) as tx:
         state = _load(tx, user)
@@ -182,7 +194,7 @@ def home_summary(store, records, user, today=None):
             'week_delta': this_average - last_average if this_average is not None and last_average is not None else None,
             'mastery_percent': round(100 * len(completed) / len(lessons_by_id)) if lessons_by_id else 0,
             'level': level_status(completed, source), 'recent': recent,
-            'tasks': [lessons_by_id[item] for item in state['plan'] if item in lessons_by_id][:3]}
+            'tasks': list(islice((lessons_by_id[item] for item in state['plan'] if item in lessons_by_id), 3))}
 
 
 VISIT_STATES = {'draft': '草稿', 'submitted': '待审核', 'reviewed': '已审核', 'confirmed': '已确认'}
@@ -202,5 +214,5 @@ def review_queue(store, user):
     items += [{'id': row['id'], 'kind': 'case', 'type': '案例', 'title': row.get('title') or '案例',
                'status': row.get('status'), 'status_label': CASE_STATES.get(row.get('status'), '处理中'),
                'updated_at': row.get('updated_at')} for row in cases]
-    items.sort(key=lambda item: item.get('updated_at') or '', reverse=True)
-    return {'pending': sum(item['status'] == 'submitted' for item in items), 'items': items[:50]}
+    return {'pending': sum(item['status'] == 'submitted' for item in items),
+            'items': nlargest(50, items, key=lambda item: item.get('updated_at') or '')}

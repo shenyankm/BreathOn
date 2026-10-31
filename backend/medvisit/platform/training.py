@@ -153,7 +153,7 @@ def retrieve(documents, query, *, limit=10):
             for page in doc['pages']:
                 for offset in range(0,len(page['text']),1100):
                     text=page['text'][offset:offset+1300]
-                    lowered=text.lower()
+                    lowered=text.lower() if terms else text
                     score=sum(min(lowered.count(term),4) for term in terms)
                     yield score,doc,page['number'],text
     order=lambda c:(-c[0],c[1]['id'],c[2])

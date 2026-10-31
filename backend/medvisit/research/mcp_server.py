@@ -2,6 +2,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import json
+from heapq import nlargest
 import os
 from pathlib import Path
 import subprocess
@@ -113,7 +114,7 @@ def build_server(settings, root: Path, job_dir: Path, seeds=()):
             def score(block):
                 folded = block['text'].casefold()
                 return sum(term in folded for term in terms)
-            selected = sorted(blocks, key=score, reverse=True)[:8]
+            selected = nlargest(8, blocks, key=score)
             return {'source_id':source_id, 'version':metadata['raw_sha256'], 'evidence':expose(metadata, selected),
                 'notice':'使用实际evidence_id引用片段，原文quote由系统回填，不自行重写。'}
 

@@ -84,3 +84,14 @@ def test_nonempty_material_validation_still_rejects_changed_sources(current):
         check_materials(store, 'workspace', {'documents':[{'id':'doc', 'version':1}]})
     assert error.value.status_code == 409
     transaction.get.assert_called_once_with('workspace', 'content', 'doc')
+
+
+def test_query_without_terms_does_not_lowercase_every_chunk():
+    class Text(str):
+        def __getitem__(self, key):
+            return Text(super().__getitem__(key))
+        def lower(self):
+            pytest.fail('A query with no searchable terms needs no chunk normalization')
+    doc = {'id':'d','version':1,'title':'Synthetic','version_label':'1','source_url':'',
+           'pages':[{'number':1,'text':Text('教学文本。 '*1000)}]}
+    assert len(retrieve([doc], '!?')) == 6

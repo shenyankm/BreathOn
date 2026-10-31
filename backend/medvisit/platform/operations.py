@@ -1,5 +1,6 @@
 """Record comments, evidence-backed adjustments and same-version practice."""
 from uuid import UUID
+from functools import cache
 
 from fastapi import HTTPException
 from pydantic import Field, StrictInt
@@ -39,9 +40,9 @@ class Retrain(Input):
 
 def distinct_valid(rows):
     seen=set();result=[]
-    for row in sorted(rows,key=lambda r:r.get('ended_at') or r['started_at']):
+    for row in sorted((row for row in rows if row.get('valid')),key=lambda r:r.get('ended_at') or r['started_at']):
         key=(row['owner_id'],row.get('scenario_id'),row.get('stage'),row['transcript_hash'])
-        if row.get('valid') and key not in seen:
+        if key not in seen:
             result.append(row);seen.add(key)
     return result
 
@@ -92,6 +93,11 @@ class Operations:
             raise HTTPException(422,'点评的原话不存在。')
         rubric=record.get('training',{}).get('rubric',{})
         dimensions={d['key']:d for d in rubric.get('dimensions',[])}
+        captured_documents = {}
+        for document in record.get('training', {}).get('documents', []):
+            captured_documents.setdefault(document['id'], document)
+        documents, pages = {}, {}
+        normalized = cache(normalize)
         with self.store.transaction(user['workspace']) as tx:
             if len({o.key for o in body.overrides})!=len(body.overrides):
                 raise HTTPException(422,'调整维度不能重复。')
@@ -100,10 +106,15 @@ class Operations:
                 if dimensions[override.key]['requires_content'] and override.score is not None:
                     if not override.citations:raise HTTPException(422,'医学评价调整需要审核资料的原文引用。')
                 for citation in override.citations:
-                    doc=require_item(tx,user['workspace'],'content',citation.document_id)
-                    captured=next((d for d in record['training']['documents'] if d['id']==doc['id']),None)
-                    page=next((p for p in doc['pages'] if p['number']==citation.page),None)
-                    if not captured or captured['version']!=doc['version'] or not content_usable(doc) or not page or normalize(citation.quote) not in normalize(page['text']):
+                    if citation.document_id not in documents:
+                        doc=require_item(tx,user['workspace'],'content',citation.document_id)
+                        documents[citation.document_id] = doc
+                        for page in doc['pages']:
+                            pages.setdefault((doc['id'], page['number']), page)
+                    doc=documents[citation.document_id]
+                    captured=captured_documents.get(doc['id'])
+                    page=pages.get((doc['id'], citation.page))
+                    if not captured or captured['version']!=doc['version'] or not content_usable(doc) or not page or normalized(citation.quote) not in normalized(page['text']):
                         raise HTTPException(422,'调整引用不属于本次有效资料或原文无法核对。')
             item=tx.create(user['workspace'],'review',{'record_id':record_id,'reviewer_id':user['id'],'action':'comment',**body.model_dump(mode='json')})
             tx.audit(user['workspace'],user['id'],'review.comment','review',item['id'],{'record_id':record_id})
