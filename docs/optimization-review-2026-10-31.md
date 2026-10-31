@@ -444,3 +444,32 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 uv run --directory backend --locked python data/validation/optimization-20261031/research_policy_owner_probe.py after
 uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py research-worker
 ```
+
+第十六项最终交付：提交 `0d923de17d211ca520b905e84224dd572aa55dd2` 的分支 CI [41151725109](https://github.com/shenyankm/BreathOn/actions/runs/41151725109) 四项通过，main CI [41152450595](https://github.com/shenyankm/BreathOn/actions/runs/41152450595) 五项通过，远程后端分别实际执行 **1027 passed、154.60 / 185.45 秒**。生产发布日志确认同一完整 SHA，外部 live/ready 各返回 200 和精确正常响应（单次健康检查）；分支已正常删除，仅 main 保留，原 stash 未动。提交后、最终验收前还补充了同源码的 66 次资源观测：11 个阶段各三次，分别让实际工作成功和在实际操作后注入 `RuntimeError`；所有情况均先结束工作再关闭连接池，控制进程在每次应用生命周期前后 FD 4→4、线程 1→1，实际 PG 查询在两秒内归零，再删除隔离库。注入错误不是实际网络错误，不与真实 PG 耗尽检查混淆。证据为 `research-worker-resource-lifecycle.json`、`research-worker-main-production-job.json` 及 `research-worker-lifecycle-acceptance.json`。
+
+## 17. 排队转写任务固定入队时的身份
+
+在已部署的 `0d923de` 上，用一个实际运行的转写任务占住既有单任务槽，再为第二条记录发起转写、取消、重新发起。旧工作协程一直等待槽位，取得槽位后才读取记录中的任务 ID，因此会读取新任务的 ID，却仍带着旧任务的音频令牌：提供方取音频返回 404，正确的新任务随之被标记失败。相同公开 ASGI 路由流程在 SQLite/真实 PG 各三次，**6/6** 复现；独立活动任务的音频 GET 均为 200，排除通用配置错误。输入为标准库生成的一秒 PCM WAV 和合成笔记；提供方响应受控，外部请求为零，不作为真实 ASR/麦克风验收。
+
+修改前已保存 `transcription-identity-acceptance.json`，预先要求：相同六个案例的新任务必须成功转写、保持正确任务 ID，使用有效当前令牌；旧任务不得提交或推进新任务，旧令牌继续 404，每个合法替代任务只提交一次。覆盖槽位等待期间连续取消重提、首次读取前及 begin 前替换、缺失/已删除/其他工作区记录、恢复只查询已有 ID，以及全部原有提交/取消/私有文件边界；槽位须可复用，任务、FD、线程和实际 PG 连接须释放，不降低音频校验、质量、访问隔离或资料审核边界。回退为 revert 本项提交，无数据库迁移。
+
+生产改动仅 14 行 diff：将现有入队 ID 显式传给 `launch`/`run_job`，恢复入口传持久化 ID，在首次读取后核对身份。保留其余各阶段原有状态/ID 校验，公开 HTTP 契约和并发数量不变。检查两个生产调用方、测试导出及直接调用；相关测试只补入已知 ID，未删除或放宽原有断言。三个历史忽略目录探针按内部签名适配，仍能运行其原源码对照。恢复缺少 ID 的损坏记录仍在后台报告既有错误，不将错误改成同步启动失败；数据库故障及后台异常恢复是另一个已复现、尚未修复的问题。
+
+新增公开流程回归先在旧源码得到 **4 failed、1.22 秒**；扩展首次读取前替换及恢复边界后，旧源码 **5 failed、5 passed、1.17 秒**。修复后针对性检查 **22 passed、1.49 秒**，相关 visits/runtime/research 回归 **318 passed、47.73 秒**。测试覆盖连续三次取消重提，逐字节核对实际音频 GET 的生成 WAV，保留说话人/分段请求选项、原笔记和提供方转写；旧令牌及其他账号访问仍被拒绝。恢复只查询保存的 ID、不提交模型，缺失 ID 的错误边界保持。
+
+同输入、同槽位占用方法的六个复现均由新任务失败变为成功，**错误令牌使用 6→0**；活动控制与替代任务音频 GET 均为 200。每例仍只有两个合法任务的两个合成提交，取消 ID 提交数为零，没有重放提交。应用生命周期前后 FD 4→4、线程 1→1，退出后实际 PG 连接为零；槽位可复用。结果见 `transcription-identity-comparison.json` 和 `transcription-replacement-after.json`。收益是取消重提的正确性，不声称延迟或 RSS 改善，也不将实际多写出正确转写结果描述为减少计算量。
+
+完整 `npm run test:api -- -q` 带真实隔离 PG 得 **1036 passed、0 skipped、123.39 秒**；`npm test` **100 passed、0 skipped**，lint 通过（原有三条 Fast Refresh 警告），Web 与 Android 资源构建通过。所有 PG 测试/探针退出后，实际 Caddy/Uvicorn 进程重启、PG 停机/恢复、Cookie/角色/私有账号隔离集成通过，新建库已删除（`transcription-identity-native-result.json/log`）。源码 SHA256 `9e739ed82707cd57f04efb0a061ad9c88dd4ceb7f8c374379a830dea53201852` 与公开流程、相关/全量回归及本次 diff 一致；当前提交的分支 CI、main 合并及生产确认尚待执行，最终回执复用 `transcription-identity-acceptance.json`。
+
+没有修改前端、Android 原生行为、依赖、配置或新增重试/缓存机制。前端/原生树相同的既有 APK 安装验收可复用，新 SHA 的远程 CI 仍须重新编译 ARM64 APK。真机麦克风/扬声器因用户暂无设备仍未验收；数据库恢复、后续有效候选和最终三轮复查仍待继续，goal 未完成。原始证据继续复用忽略目录 `backend/data/validation/optimization-20261031/`。
+
+```sh
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- tests/test_visits.py tests/test_runtime.py tests/test_research_service.py tests/test_research_lifecycle.py tests/test_research_word.py -q
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- -q
+npm test
+npm run lint
+npm run build
+npm run build:android
+uv run --directory backend --locked python data/validation/optimization-20261031/transcription_replacement_after_probe.py
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py transcription-identity
+```

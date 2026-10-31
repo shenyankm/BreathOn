@@ -119,7 +119,7 @@ async def test_provider_fetch_token_and_transcription(tmp_path, monkeypatch):
             yield tx
     with monkeypatch.context() as storage_check:
         storage_check.setattr(store, 'transaction', off_loop)
-        await router.visit_run_job('local', item['id'], 'secret')
+        await router.visit_run_job('local', item['id'], 'abc', 'secret')
     assert requests[0][1]['json']['request']['enable_speaker_info'] is True
     with store.transaction('local', write=False) as tx:
         result = tx.get('local','visit',item['id'])
@@ -178,7 +178,7 @@ async def test_transcription_cancellation_drains_commit_before_releasing_slot(tm
 
     with monkeypatch.context() as storage_check:
         storage_check.setattr(store, 'transaction', delayed_commit)
-        task = asyncio.create_task(router.visit_run_job('local', item['id']))
+        task = asyncio.create_task(router.visit_run_job('local', item['id'], 'synthetic-job'))
         try:
             await asyncio.wait_for(started.wait(), 1)
             task.cancel()
@@ -203,10 +203,11 @@ async def test_transcription_cancellation_drains_commit_before_releasing_slot(tm
         assert [path.name for path in files] == [saved['transcript_file']]
         assert '合成转写' in files[0].read_text()
     # The next job must be admitted after success, cancellation or rollback.
-    await asyncio.wait_for(router.visit_run_job('local', 'missing'), 1)
+    await asyncio.wait_for(router.visit_run_job('local', 'missing', 'synthetic-job'), 1)
 
 
-async def test_superseded_transcription_does_not_submit_or_promote_replacement(tmp_path, monkeypatch):
+@pytest.mark.parametrize('replacement_before_read', [False, True])
+async def test_superseded_transcription_does_not_submit_or_promote_replacement(tmp_path, monkeypatch, replacement_before_read):
     app, router, store = make_app(tmp_path)
     settings = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
     settings.asr_api_key, settings.origins = 'synthetic-key', ('https://example.test',)
@@ -228,11 +229,175 @@ async def test_superseded_transcription_does_not_submit_or_promote_replacement(t
             raise AssertionError('A superseded job attempted a paid request')
 
     monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Client)
-    await router.visit_run_job('local', item['id'], 'old-token')
+    if replacement_before_read:
+        with store.transaction('local') as tx:
+            current = tx.get('local', 'visit', item['id'])
+            tx.update('local', 'visit', item['id'], {**current, 'transcription_job_id':'replacement-job'}, current['version'])
+    await router.visit_run_job('local', item['id'], 'old-job', 'old-token')
     with store.transaction('local', write=False) as tx:
         saved = tx.get('local', 'visit', item['id'])
     assert requests == [] and saved['audio_status'] == 'queued'
     assert saved['transcription_job_id'] == 'replacement-job'
+
+
+@pytest.mark.parametrize('storage', ['sqlite', 'postgres'])
+@pytest.mark.parametrize('replacements', [1, 3])
+async def test_cancelled_queued_transcription_keeps_replacement_identity(tmp_path, monkeypatch, request, storage, replacements):
+    from io import BytesIO
+    from urllib.parse import urlsplit
+    import httpx
+    import wave
+
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    config = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    config.asr_api_key, config.origins = 'synthetic-key', ('https://example.test',)
+    tokens = []
+    def token(_):
+        tokens.append('synthetic-token-' + str(len(tokens)))
+        return tokens[-1]
+    monkeypatch.setattr('medvisit.visits.api.secrets.token_urlsafe', token)
+    raw = BytesIO()
+    with wave.open(raw, 'wb') as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(bytes(32000))
+    data = raw.getvalue()
+    entered, release = asyncio.Event(), asyncio.Event()
+    calls, fetched = [], {}
+    first_job = None
+    client_type = httpx.AsyncClient
+
+    class Provider:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            job_id = kwargs['headers']['X-Api-Request-Id']
+            action = url.rsplit('/', 1)[-1]
+            calls.append((action, job_id))
+            if action == 'submit':
+                target = urlsplit(kwargs['json']['audio']['url'])
+                response = await client.get(target.path + '?' + target.query)
+                fetched[job_id] = response.status_code
+                if response.status_code == 200:
+                    assert response.content == data
+                assert kwargs['json']['request']['enable_speaker_info'] is True
+                assert kwargs['json']['request']['show_utterances'] is True
+                return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'})
+            assert action == 'query'
+            if job_id == first_job:
+                entered.set()
+                await release.wait()
+            return httpx.Response(200, headers={'X-Api-Status-Code':'20000000' if fetched[job_id] == 200 else '40000000'},
+                json={'result':{'text':'Synthetic provider transcript', 'utterances':[]}})
+
+    async with client_type(transport=httpx.ASGITransport(app=app), base_url='http://testserver') as client:
+        items = []
+        directory = tmp_path/'visit-audio'
+        directory.mkdir(exist_ok=True)
+        for _ in range(2):
+            response = await client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'Synthetic original note'})
+            assert response.status_code == 201
+            item = response.json()
+            items.append(item['id'])
+            path = directory/uuid4().hex
+            path.write_bytes(data)
+            path.chmod(0o600)
+            with store.transaction('local') as tx:
+                current = tx.get('local', 'visit', item['id'])
+                tx.update('local', 'visit', item['id'], {**current, 'audio_path':path.name,
+                    'audio_type':'audio/wav', 'audio_duration':1, 'audio_status':'transcription_unavailable'}, current['version'])
+        with monkeypatch.context() as provider:
+            provider.setattr('medvisit.visits.api.httpx.AsyncClient', Provider)
+            try:
+                response = await client.post(f'/api/visits/{items[0]}/transcription')
+                assert response.status_code == 202
+                first_job = response.json()['transcription_job_id']
+                await asyncio.wait_for(entered.wait(), 2)
+                old_jobs, old_tokens = [], []
+                for _ in range(replacements):
+                    response = await client.post(f'/api/visits/{items[1]}/transcription')
+                    assert response.status_code == 202
+                    old_jobs.append(response.json()['transcription_job_id'])
+                    old_tokens.append(tokens[-1])
+                    cancelled = await client.post(f'/api/visits/{items[1]}/transcription/cancel')
+                    assert cancelled.status_code == 200 and cancelled.json()['audio_status'] == 'transcription_interrupted'
+                replacement = await client.post(f'/api/visits/{items[1]}/transcription')
+                assert replacement.status_code == 202
+                replacement_id = replacement.json()['transcription_job_id']
+                assert replacement_id not in old_jobs
+                release.set()
+                async with asyncio.timeout(3):
+                    while True:
+                        response = await client.get('/api/visits/' + items[1])
+                        if response.json()['audio_status'] not in ('queued', 'transcribing'):
+                            break
+                        await asyncio.sleep(.001)
+                assert response.json()['audio_status'] == 'transcribed'
+                assert response.json()['transcription_job_id'] == replacement_id
+                assert response.json()['text'] == 'Synthetic original note'
+                assert response.json()['transcription_text'] == 'Synthetic provider transcript'
+                assert fetched == {first_job:200, replacement_id:200}
+                assert calls.count(('submit', replacement_id)) == calls.count(('query', replacement_id)) == 1
+                assert not any(job_id in old_jobs for _, job_id in calls)
+                for value in old_tokens:
+                    assert (await client.get(f'/api/visits/{items[1]}/provider-audio?token={value}')).status_code == 404
+                assert (await client.get('/api/visits/' + items[1], headers={'x-user':'bob'})).status_code == 404
+                before = list(calls)
+                await router.visit_run_job('other-workspace', items[1], replacement_id)
+                await router.visit_run_job('local', 'missing', replacement_id)
+                with store.transaction('local') as tx:
+                    current = tx.get('local', 'visit', items[1])
+                    tx.update('local', 'visit', items[1], {**current, 'audio_status':'deleted'}, current['version'])
+                await router.visit_run_job('local', items[1], replacement_id)
+                assert calls == before
+            finally:
+                release.set()
+                await router.visit_close()
+    slots = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if isinstance(cell.cell_contents, asyncio.Semaphore))
+    assert not slots.locked()
+
+
+@pytest.mark.parametrize('storage', ['sqlite', 'postgres'])
+@pytest.mark.parametrize('missing_id', [False, True])
+async def test_recovery_transcription_keeps_saved_identity_and_error_boundary(tmp_path, monkeypatch, request, storage, missing_id):
+    import httpx
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, router, store = make_app(tmp_path, pool=pool)
+    config = next(cell.cell_contents for cell in router.visit_run_job.__closure__ if hasattr(cell.cell_contents, 'records'))
+    config.asr_api_key = 'synthetic-key'
+    queries = []
+    class Provider:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def post(self, url, **kwargs):
+            assert url.endswith('/query'), 'Recovery must not resubmit a paid job'
+            queries.append(kwargs['headers']['X-Api-Request-Id'])
+            return httpx.Response(200, headers={'X-Api-Status-Code':'20000000'}, json={'result':{'text':'Synthetic recovered result', 'utterances':[]}})
+    monkeypatch.setattr('medvisit.visits.api.httpx.AsyncClient', Provider)
+    workspace = 'recovery-test-' + uuid4().hex
+    with store.transaction(workspace) as tx:
+        item = tx.create(workspace, 'visit', {'owner_id':'alice', 'source':'recording', 'audio_status':'transcribing',
+            **({} if missing_id else {'transcription_job_id':'saved-job'})})
+    launch = next(cell.cell_contents for name, cell in zip(router.visit_recover.__code__.co_freevars, router.visit_recover.__closure__) if name == 'launch')
+    tasks = next(cell.cell_contents for name, cell in zip(launch.__code__.co_freevars, launch.__closure__) if name == 'tasks')
+    try:
+        router.visit_recover(workspace)
+        results = await asyncio.wait_for(asyncio.gather(*list(tasks), return_exceptions=True), 3)
+        with store.transaction(workspace, write=False) as tx:
+            saved = tx.get(workspace, 'visit', item['id'])
+        if missing_id:
+            assert len(results) == 1 and isinstance(results[0], KeyError)
+            assert saved == item and queries == []
+        else:
+            assert results == [None] and queries == ['saved-job']
+            assert saved['audio_status'] == 'transcribed' and saved['transcription_job_id'] == 'saved-job'
+        assert not tasks
+    finally:
+        await router.visit_close()
 
 
 def test_provider_link_only_accepts_unexpired_token_for_active_job(tmp_path):
@@ -685,7 +850,7 @@ async def test_transcription_cleanup_failure_preserves_committed_result(tmp_path
     with monkeypatch.context() as fault:
         fault.setattr(Path, 'unlink', fail_old)
         with pytest.raises(OSError, match='synthetic old-file cleanup failure'):
-            await router.visit_run_job('local', item['id'])
+            await router.visit_run_job('local', item['id'], 'synthetic-job')
     with store.transaction('local', write=False) as tx:
         saved = tx.get('local', 'visit', item['id'])
     assert saved['version'] == 3 and saved['audio_status'] == 'transcribed'
@@ -743,7 +908,7 @@ async def test_transcription_failed_commit_preserves_only_committed_result(tmp_p
     with monkeypatch.context() as fault:
         fault.setattr(store, 'transaction', fail)
         with pytest.raises(OperationalError, match='synthetic transcription commit failure'):
-            await router.visit_run_job('local', item['id'])
+            await router.visit_run_job('local', item['id'], 'synthetic-job')
     with store.transaction('local', write=False) as tx:
         saved = tx.get('local', 'visit', item['id'])
     if applied:

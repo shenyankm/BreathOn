@@ -414,16 +414,16 @@ def visits_router(store, settings, current_user):
             tx.audit(user['workspace'], user['id'], 'visit.audio_read', 'visit', item_id)
             return FileResponse(audio_dir / name, media_type=item['audio_type'], headers={'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'})
 
-    async def run_job(workspace, item_id, token=None):
+    async def run_job(workspace, item_id, job_id, token=None):
         def read():
             with store.transaction(workspace, write=False) as tx:
                 return tx.get(workspace, 'visit', item_id)
 
         async with slots:
             item = await work(read)
-            if not item or item.get('audio_status') not in ('queued', 'transcribing'):
+            if (not item or item.get('audio_status') not in ('queued', 'transcribing')
+                    or item['transcription_job_id'] != job_id):
                 return
-            job_id = item['transcription_job_id']
 
             def finish(status):
                 with store.transaction(workspace) as tx:
@@ -511,8 +511,8 @@ def visits_router(store, settings, current_user):
                         await asyncio.sleep(15)
                 await work(finish, 'transcription_interrupted')
 
-    def launch(workspace, item_id, token=None):
-        task = asyncio.create_task(run_job(workspace, item_id, token))
+    def launch(workspace, item_id, job_id, token=None):
+        task = asyncio.create_task(run_job(workspace, item_id, job_id, token))
         tasks.add(task)
         task.add_done_callback(tasks.discard)
 
@@ -558,7 +558,7 @@ def visits_router(store, settings, current_user):
                 if item is not None:
                     await work(interrupt)
                 raise
-            launch(user['workspace'], item_id, token)
+            launch(user['workspace'], item_id, job_id, token)
             return public(item)
 
     @router.post('/{item_id}/transcription/cancel')
@@ -637,7 +637,7 @@ def visits_router(store, settings, current_user):
                     tx.update(workspace, 'visit', item['id'], {**item, 'audio_status':'transcription_interrupted',
                         'provider_token_hash':'', 'provider_token_expires':None}, item['version'])
                 elif item.get('audio_status') == 'transcribing':
-                    launch(workspace, item['id'])
+                    launch(workspace, item['id'], item.get('transcription_job_id'))
 
     async def close():
         nonlocal closing
