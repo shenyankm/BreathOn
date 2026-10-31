@@ -213,7 +213,8 @@ def visits_router(store, settings, current_user):
 
     @router.get('')
     def list_visits(user=Depends(current_user)):
-        with store.transaction(user['workspace'], write=admin()) as tx:
+        # Keep referenced private files alive until the read finishes, before replacements can commit.
+        with store.transaction(user['workspace']) as tx:
             items = [public(x) for x in tx.list(user['workspace'], 'visit') if admin() or x['owner_id'] == user['id']]
             if admin():
                 tx.audit(user['workspace'], user['id'], 'visit.list', 'visit', '*')
@@ -240,7 +241,7 @@ def visits_router(store, settings, current_user):
 
     @router.get('/{item_id}')
     def detail(item_id: str, user=Depends(current_user)):
-        with store.transaction(user['workspace'], write=admin()) as tx:
+        with store.transaction(user['workspace']) as tx:
             item = get_item(tx, user, item_id)
             if admin():
                 tx.audit(user['workspace'], user['id'], 'visit.read', 'visit', item_id)

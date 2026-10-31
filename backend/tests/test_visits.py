@@ -58,6 +58,57 @@ def test_visit_access_and_audited_review(tmp_path):
         assert any(x['action'] == 'visit.read' for x in tx.list('local', 'audit'))
 
 
+@pytest.mark.parametrize('storage', ['sqlite', 'postgres'])
+@pytest.mark.parametrize('listing', [False, True])
+def test_private_transcript_read_finishes_before_replacement_cleanup(tmp_path, monkeypatch, request, storage, listing):
+    from concurrent.futures import ThreadPoolExecutor
+    import json
+    from pathlib import Path
+
+    pool = request.getfixturevalue('postgres_store').pool if storage == 'postgres' else None
+    app, _, store = make_app(tmp_path, pool=pool)
+    with store.transaction('local') as tx:
+        tx.execute("DELETE FROM platform_entities WHERE tenant_id='local'")
+    client = TestClient(app)
+    item = client.post('/api/visits', json={'source':'recording', 'visited_at':'2026-10-31', 'text':'Original note'}).json()
+    with store.transaction('local', write=False) as tx:
+        old = tx.get('local', 'visit', item['id'])
+    original = tmp_path/'visit-audio'/old['transcript_file']
+    replacement = original.with_name(uuid4().hex + '.transcript')
+    replacement.write_text(json.dumps({'text':'Updated note'}))
+    entered, release, writing, finished = (threading.Event() for _ in range(4))
+    read_text = Path.read_text
+
+    def paused_read(path, *args, **kwargs):
+        if path == original:
+            entered.set()
+            assert release.wait(5)
+        return read_text(path, *args, **kwargs)
+
+    def replace():
+        writing.set()
+        with store.transaction('local') as tx:
+            tx.update('local', 'visit', item['id'], {**old, 'transcript_file':replacement.name}, old['version'])
+        original.unlink()
+        finished.set()
+
+    monkeypatch.setattr(Path, 'read_text', paused_read)
+    with ThreadPoolExecutor(2) as executor:
+        reader = executor.submit(client.get, '/api/visits' if listing else '/api/visits/'+item['id'])
+        try:
+            assert entered.wait(5)
+            writer = executor.submit(replace)
+            assert writing.wait(5)
+            assert not finished.wait(.1)
+        finally:
+            release.set()
+        response = reader.result(timeout=5)
+        writer.result(timeout=5)
+    assert response.status_code == 200, response.text
+    assert (response.json()[0] if listing else response.json())['text'] == 'Original note'
+    assert client.get('/api/visits/'+item['id']).json()['text'] == 'Updated note'
+
+
 def test_audio_permission_and_retention_is_not_extended(tmp_path, monkeypatch):
     app, router, store = make_app(tmp_path)
     monkeypatch.setattr('medvisit.visits.api.verify_audio', lambda path, kind: 30.0)
