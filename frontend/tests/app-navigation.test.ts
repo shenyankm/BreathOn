@@ -6,7 +6,7 @@ import ts from 'typescript'
 
 type Node = { type: string; props: any }
 const jsx = (type: string, props: any): Node => ({ type, props })
-const exports: { AppHome?: (props: { inSession: boolean; username?: string }) => Node; AppNavigation?: (props: { page: string; inSession: boolean }) => Node } = {}
+const exports: { AppNavigation?: (props: { page: string; inSession: boolean }) => Node } = {}
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/components/app-navigation.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText, {
@@ -32,25 +32,26 @@ function navigation(page: string, inSession = false) {
   return { tree, links: find(tree, 'a') }
 }
 
-test('the default main page exposes learning, products, practice, history and avatar', () => {
-  const tree = exports.AppHome!({ inSession: false, username: '代表' })
-  const links = find(tree, 'a')
-  assert.deepEqual(links.map(link => link.props.href), ['#library', '#products', '#practice', '#records', '#me'])
-  assert.deepEqual(links.slice(0, 4).map(textOf), ['资料空间', '公司产品', '开始练习', '练习记录'])
-  assert.equal(find(tree, 'Button').filter(node => node.props['aria-label'] === '进入我的').length, 1)
+test('bottom navigation has exactly three accessible icon-only entries', () => {
+  const { tree, links } = navigation('home')
+  assert.deepEqual(links.map(link => link.props.href), ['#practice', '#library', '#me'])
+  assert.deepEqual(links.map(link => link.props['aria-label']), ['练习', '资料库', '我的'])
+  assert.deepEqual(links.map(textOf), ['', '', ''])
+  assert.equal(find(tree, 'nav')[0].props['aria-label'], '主导航')
+  for (const icon of ['Play', 'BookOpen', 'UserRound']) assert.equal(find(tree, icon)[0].props['aria-hidden'], 'true')
 })
 
-test('an active practice is reachable from the main page without starting another', () => {
-  const tree = exports.AppHome!({ inSession: true })
-  assert.equal(find(tree, 'a')[2].props.href, '#start')
+test('nested pages keep their parent navigation entry selected', () => {
+  for (const [page, label] of Object.entries({ home: '练习', practice: '练习', start: '练习', library: '资料库', products: '资料库', me: '我的', records: '我的', visits: '我的' })) {
+    const selected = navigation(page).links.filter(link => link.props['aria-current'] === 'page')
+    assert.equal(selected.length, 1)
+    assert.equal(selected[0].props['aria-label'], label)
+  }
 })
 
-test('content pages return to the main page and keep a live practice reachable', () => {
-  for (const page of ['practice', 'library', 'products', 'records', 'visits', 'me', 'start']) {
-    const { tree, links } = navigation(page, true)
-    assert.equal(links[0].props.href, '#home')
-    assert.equal(find(tree, 'Sheet').length, 0)
-    if (page !== 'start') assert.ok(links.some(link => link.props.href === '#start'))
-    assert.equal(links.some(link => /admin|workspace|settings/.test(link.props.href)), false)
+test('practice entry resumes an active session from any page', () => {
+  for (const page of ['home', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits']) {
+    assert.equal(navigation(page, true).links[0].props.href, '#start')
+    assert.equal(navigation(page).links[0].props.href, '#practice')
   }
 })

@@ -45,6 +45,7 @@ function component(file: string, name: string, api: Api) {
     require(module: string) {
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
+      if (module === '@/lib/practice-images') return { drugImage: () => undefined, doctorIllustration: '/doctor-illustration.png' }
       if (module === '@/lib/platform-api') return { api }
       if (module === '@/lib/catalog-types') return { stages }
       if (module === '@/lib/training-setup') return { presetFor, recommendedScenario, trainingPresets }
@@ -123,9 +124,10 @@ test('free practice starts with published drugs and enables matching doctors aft
   })
   app.render()
   let view = await app.flush()
-  assert.equal(find(view, 'Tabs')[0].props.value, 'free')
+  assert.equal(find(view, 'Tabs').length, 0)
+  assert.equal(app.calls.includes('/catalog/scenario'), false)
   const options = find(view, 'SelectItem').map(node => node.props.value)
-  for (const id of ['drug-a', 'drug-b', 'scene-a']) assert.ok(options.includes(id), id)
+  for (const id of ['drug-a', 'drug-b', 'doctor-a', 'doctor-b']) assert.ok(options.includes(id), id)
   for (const id of ['draft-drug', 'retired-doctor', 'draft-scene']) assert.ok(!options.includes(id), id)
   assert.deepEqual(plain(app.value), { scenario_id: '', stage: 'full' })
   assert.equal(app.readiness.at(-1), false)
@@ -203,23 +205,13 @@ for (const result of ['resolve', 'reject'] as const) {
   })
 }
 
-test('switching to a scored scene removes free overrides and invalidates its pending preview immediately', async () => {
-  let finishFree!: (value: unknown) => void
-  const app = picker(path => path.startsWith('/practice/preview') ? new Promise(resolve => { finishFree = resolve }) : Promise.resolve(scenePreview))
-  app.render()
-  await app.flush()
-  app.choose('练习药品', 'drug-b')
-  app.choose('模拟医生', 'doctor-b')
-  await app.flush()
-  find(app.render(), 'Tabs')[0].props.onValueChange('scenario')
-  assert.deepEqual(plain(app.value), { scenario_id: 'scene-a', stage: 'full' })
-  const before = [...app.readiness]
-  finishFree(freeContext('drug-b', 'doctor-b'))
-  await settle()
-  assert.deepEqual(app.readiness, before)
-  await app.flush()
-  assert.ok(app.calls.some(path => path.startsWith('/scenarios/scene-a/preview?')))
-  assert.equal(app.readiness.at(-1), true)
+test('new practice exposes only free pairing with no scored scenario selector', async () => {
+  const app = picker()
+  app.render(); const view = await app.flush()
+  assert.equal(find(view, 'Tabs').length, 0)
+  assert.equal(find(view, 'Select').length, 2)
+  assert.doesNotMatch(textOf(view), /评分场景|自由练习 · 不评分|本次训练场景/)
+  assert.equal(app.calls.includes('/catalog/scenario'), false)
 })
 
 test('empty published choices keep free practice unavailable and direct the user to an administrator', async () => {
@@ -298,11 +290,15 @@ test('practice choices stay in the app owner when the home page is unmounted for
   const before = component('pages/practice-home.tsx', 'PracticeHome', async () => [])
   const view = before.render(props())
   find(view, 'ScenarioPicker')[0].props.onChange(next)
-  find(view, 'Select')[0].props.onValueChange('combat')
+  const modeButtons = find(view, 'Button').filter(node => ['辅助练习', '实战练习'].includes(textOf(node)))
+  assert.deepEqual(modeButtons.map(textOf), ['辅助练习', '实战练习'])
+  assert.equal(modeButtons[0].props['aria-pressed'], true)
+  modeButtons[1].props.onClick()
   const after = component('pages/practice-home.tsx', 'PracticeHome', async () => [])
   const returned = after.render(props())
   assert.deepEqual(plain(find(returned, 'ScenarioPicker')[0].props.value), next)
-  assert.equal(find(returned, 'Select')[0].props.value, 'combat')
+  assert.equal(find(returned, 'Button').find(node => textOf(node) === '实战练习')!.props['aria-pressed'], true)
+  assert.equal(find(returned, 'Button').find(node => textOf(node) === '辅助练习')!.props['aria-pressed'], false)
 })
 
 test('choosing a drug filters doctors and changing drugs clears only an incompatible doctor', async () => {
@@ -344,4 +340,32 @@ test('a drug with no matching published doctors shows an empty state and cannot 
   assert.equal(app.readiness.at(-1), false)
   assert.match(textOf(view), /暂无科室对口的已发布医生/)
   assert.ok(find(view, 'Select').some(node => node.props.disabled && find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === '模拟医生')))
+})
+
+
+test('doctor-first selection filters drugs and previews only a compatible pair', async () => {
+  const app = picker(async path => { const q = new URLSearchParams(path.split('?')[1]); return freeContext(q.get('drug_id')!, q.get('doctor_id')!) }, undefined,
+    { drugs: [{ ...drugs[0], practice_departments: ['内分泌科'] }, { ...drugs[1], practice_departments: ['心内科'] }], doctors, scenes })
+  app.render(); let view = await app.flush()
+  assert.ok(find(view, 'Select').some(node => !node.props.disabled && find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === '模拟医生')))
+  app.choose('模拟医生', 'doctor-b'); view = await app.flush()
+  assert.equal(app.readiness.at(-1), false)
+  assert.equal(app.calls.filter(path => path.startsWith('/practice/preview')).length, 0)
+  const drugSelect = find(view, 'Select').find(node => find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === '练习药品'))!
+  assert.deepEqual(find(drugSelect, 'SelectItem').map(node => node.props.value), ['drug-b'])
+  app.choose('练习药品', 'drug-b'); view = await app.flush()
+  assert.equal(app.value.doctor_id, 'doctor-b')
+  assert.equal(app.readiness.at(-1), true)
+  assert.ok(find(view, 'AvatarImage').some(node => node.props.alt === '统一医生模拟插图，非本人照片'))
+  app.choose('模拟医生', 'doctor-a'); await app.flush()
+  assert.equal(app.value.drug_id, undefined)
+  assert.equal(app.readiness.at(-1), false)
+})
+
+test('a doctor with no matching drug can be selected first and shows a recoverable empty state', async () => {
+  const app = picker(undefined, {scenario_id:'', stage:'full', doctor_id:'doctor-b'}, {drugs:[{...drugs[0], practice_departments:['内分泌科']}], doctors, scenes})
+  app.render(); const view = await app.flush()
+  assert.match(textOf(view), /该医生暂无科室对口的已发布药品/)
+  assert.equal(app.readiness.at(-1), false)
+  assert.ok(find(view, 'Button').some(node => textOf(node) === '清除选择'))
 })
