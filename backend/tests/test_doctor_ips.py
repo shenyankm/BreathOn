@@ -77,3 +77,44 @@ def test_seed_file_matches_the_model():
     assert [d['profile']['ip_profile']['ip_key'] for d in data['doctors']] == KEYS
     for row in data['doctors']:
         Doctor.model_validate(row['profile'])
+
+
+def published_drug(client):
+    drug = client.post('/api/catalog/drug', json={'name': '玛仕度肽注射液', 'brand': '信尔美', 'ownership': 'company'}).json()
+    return client.post(f"/api/catalog/drug/{drug['id']}/publish", json={'version': drug['version']}).json()
+
+
+def test_context_carries_the_ip_style_and_the_chosen_focus(tmp_path):
+    with TestClient(create_app(settings(tmp_path))) as client:
+        store, user = client.app.state.platform, client.app.state.local_user
+        blood = next(r for r in ips(client) if r['ip_profile']['ip_key'] == 'blood')
+        context = prepare_free_context(store, user, published_drug(client)['id'], blood['id'], 'evidence')
+        assert context['focus'] == {'key': 'evidence', 'label': '质疑证据', 'goal': context['focus']['goal']}
+        assert context['doctor']['ip_profile']['style'] == '文献探讨型' and context['doctor']['ip_profile']['modules']
+        plain = prepare_free_context(store, user, published_drug(client)['id'], blood['id'])
+        assert 'focus' not in plain
+        with pytest.raises(HTTPException) as exc:
+            prepare_free_context(store, user, published_drug(client)['id'], blood['id'], 'bogus')
+        assert exc.value.status_code == 422
+
+
+def test_a_real_doctor_context_has_no_ip_block(tmp_path):
+    with TestClient(create_app(settings(tmp_path))) as client:
+        store, user = client.app.state.platform, client.app.state.local_user
+        real = client.get('/api/catalog/doctor/li-xiaoying').json()
+        context = prepare_free_context(store, user, published_drug(client)['id'], real['id'], 'first')
+        assert 'ip_profile' not in context['doctor'] and context['focus']['label'] == '首次拜访'
+
+
+def test_the_doctor_prompt_marks_the_style_as_fictional_and_not_a_medical_fact(tmp_path):
+    from medvisit.platform.training import doctor_instructions, opening
+    with TestClient(create_app(settings(tmp_path))) as client:
+        store, user = client.app.state.platform, client.app.state.local_user
+        endocrine = next(r for r in ips(client) if r['ip_profile']['ip_key'] == 'endocrine')
+        context = prepare_free_context(store, user, published_drug(client)['id'], endocrine['id'], 'next')
+    prompt = doctor_instructions(free_context=context)
+    assert '案例分享型' in prompt and '不代表任何真实医生' in prompt and '不作医学事实' in prompt
+    assert '推进下一步' in prompt
+    assert opening(free_context=context) == context['doctor']['opening']
+    without_focus = {k: v for k, v in context.items() if k != 'focus'}
+    assert '玛仕度肽' in opening(free_context=without_focus)

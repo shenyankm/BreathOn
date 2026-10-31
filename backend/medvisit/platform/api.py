@@ -280,8 +280,9 @@ def platform_router(store, settings, records):
         return item
 
     @router.get('/practice/preview')
-    def practice_preview(drug_id: str = Query(min_length=1, max_length=80), doctor_id: str = Query(min_length=1, max_length=80), user=Depends(current_user)):
-        return prepare_free_context(store, user, drug_id, doctor_id)
+    def practice_preview(drug_id: str = Query(min_length=1, max_length=80), doctor_id: str = Query(min_length=1, max_length=80),
+                         focus: str | None = Query(default=None, max_length=20), user=Depends(current_user)):
+        return prepare_free_context(store, user, drug_id, doctor_id, focus)
 
     @router.get('/scenarios/{item_id}/preview')
     def scenario_preview(item_id: str, stage: str = 'full', user=Depends(current_user)):

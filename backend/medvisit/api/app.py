@@ -330,7 +330,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if scenario_id or client.query_params.get('remediation_id'):
                     raise HTTPException(422, '已发布场景和针对性重练不能更换绑定的药品或医生。')
                 free_context = await asyncio.to_thread(prepare_free_context, platform, user,
-                    client.query_params.get('drug_id'), client.query_params.get('doctor_id'))
+                    client.query_params.get('drug_id'), client.query_params.get('doctor_id'), client.query_params.get('focus'))
             except HTTPException as exc:
                 await send_client({'type':'error', 'code':'invalid_practice', 'message':exc.detail})
                 await client.close(code=1008)
