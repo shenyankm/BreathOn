@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/index.css'
 import './styles/breathon.css'
+import './styles/bp.css'
 import App from './App'
 import { AuthGate } from './components/auth-gate'
 

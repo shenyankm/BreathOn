@@ -103,6 +103,7 @@ export function useVoiceSession() {
       if (!selection?.scenario_id && !selection?.remediation_id) {
         if (selection?.drug_id) url.searchParams.set('drug_id', selection.drug_id)
         if (selection?.doctor_id) url.searchParams.set('doctor_id', selection.doctor_id)
+        if (selection?.focus) url.searchParams.set('focus', selection.focus)
       }
       url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const ws = new WebSocket(url)

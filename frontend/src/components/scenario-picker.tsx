@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Label } from '@/components/ui/label'
 
-export type TrainingChoice = {scenario_id:string;stage:string;drug_id?:string;doctor_id?:string;remediation_id?:string;experience?:'practice'|'combat';mode?:'assisted'|'independent'}
+export type TrainingChoice = {scenario_id:string;stage:string;drug_id?:string;doctor_id?:string;focus?:'first'|'evidence'|'next';remediation_id?:string;experience?:'practice'|'combat';mode?:'assisted'|'independent'}
 export type StartTraining = (choice:TrainingChoice)=>void
 function matches(drug: ManagedDrug | undefined, doctor: Doctor | undefined) {
   return Boolean(doctor && drug?.practice_departments?.includes(doctor.practice_department ?? doctor.specialty))

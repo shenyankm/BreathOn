@@ -44,20 +44,11 @@ private val APP_BACK_SCRIPT = """
       location.replace('#' + page);
       return true;
     }
-    if (['records', 'visits'].includes(page)) {
-      location.replace('#me');
-      return true;
-    }
-    if (['library', 'products', 'scenarios'].includes(page)) {
-      location.replace('#training');
-      return true;
-    }
-    if (page === 'start') {
-      location.replace('#practice');
-      return true;
-    }
-    if (['doctors', 'training', 'practice', 'me'].includes(page)) {
-      location.replace('#home');
+    // The app publishes where "back" goes from the current screen (frontend/src/bp/route.ts backTarget), so the
+    // native handler and the screens can never disagree. Empty means home: let the app move to the background.
+    const target = document.documentElement.dataset.bpBack;
+    if (target) {
+      location.replace(target);
       return true;
     }
     return false;

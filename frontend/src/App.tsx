@@ -19,15 +19,13 @@ import { restoreScrollPosition } from '@/lib/scroll-position'
 import { animatePageTransition } from '@/lib/page-transition'
 import { useVoiceSession } from '@/hooks/use-voice-session'
 import { useTrainingPreference } from '@/hooks/use-training-preference'
-import { PracticeHome } from '@/pages/practice-home'
-import { HomePage } from '@/pages/home-page'
-import { TrainingPage } from '@/pages/training-page'
-import { MePage } from '@/pages/me-page'
 import { api } from '@/lib/platform-api'
 import { PracticeStage } from '@/components/practice-stage'
-import { AppNavigation } from '@/components/app-navigation'
 import { presetFor, trainingPresets, type TrainingPreset } from '@/lib/training-setup'
-const ScenariosPage = lazy(() => import('@/pages/scenarios-page').then(module => ({ default: module.ScenariosPage })))
+import { BpProvider } from '@/bp/data'
+import { BpShell } from '@/bp/shell'
+import type { Route } from '@/bp/route'
+import { parseRoute } from '@/bp/route'
 const LibraryPage = lazy(() => import('@/pages/library-page').then(module => ({ default: module.LibraryPage })))
 const RecordsPage = lazy(() => import('@/pages/records-page').then(module => ({ default: module.RecordsPage })))
 const VisitsPage = lazy(() => import('@/pages/visits-page').then(module => ({ default: module.VisitsPage })))
@@ -44,7 +42,8 @@ type DoctorProfile = {
 
 function App({ onLogout, username }: { onLogout?: () => void; username?: string; role?: 'admin' | 'representative' }) {
   const voice = useVoiceSession()
-  const [page, setPage] = useState(() => ['home', 'doctors', 'training', 'scenarios', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'home')
+  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash))
+  const page: string = route.page
   const { preset: preferredPreset, selectPreset, storageError } = useTrainingPreference(username)
   const preferredSource = preferredPreset.experience
   const preferredMode = preferredPreset.mode
@@ -53,7 +52,6 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
   const pageScrollRef = useRef<HTMLDivElement>(null)
   const currentPage = useRef(page)
   const scrollPositions = useRef(new Map<string, number>())
-  const [openedLibraries, setOpenedLibraries] = useState(() => new Set(['library', 'products', 'doctors'].includes(page) ? [page] : []))
 
   useLayoutEffect(() => {
     const viewport = pageScrollRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
@@ -65,14 +63,12 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
 
   useEffect(() => {
     function changePage() {
-      const target = window.location.hash.slice(1).split('?')[0]
-      const nextPage = ['home', 'doctors', 'training', 'scenarios', 'practice', 'start', 'library', 'products', 'me', 'records', 'visits'].includes(target) ? target : 'home'
-      if (nextPage === currentPage.current) return
+      const next = parseRoute(window.location.hash)
+      if (next.page === currentPage.current) { setRoute(next); return }
       const viewport = pageScrollRef.current?.querySelector('[data-slot="scroll-area-viewport"]')
       scrollPositions.current.set(currentPage.current, viewport?.scrollTop ?? 0)
-      currentPage.current = nextPage
-      if (['library', 'products', 'doctors'].includes(nextPage)) setOpenedLibraries(previous => new Set([...previous, nextPage]))
-      setPage(nextPage)
+      currentPage.current = next.page
+      setRoute(next)
     }
     window.addEventListener('hashchange', changePage)
     return () => window.removeEventListener('hashchange', changePage)
@@ -219,21 +215,19 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
         </ScrollArea>
       </DialogContent></Dialog>{canRestart && <Button variant="outline" size="lg" className="rounded-full" onClick={openSetup}><RotateCcw />重新开始</Button>}{canRetrySave && <Button variant="outline" size="lg" className="rounded-full" disabled={voice.retryingSave} onClick={voice.retrySave}><RotateCcw />{voice.retryingSave ? '保存中…' : '重试保存'}</Button>}</div>
 
-  return <div className={`breathon-app flex h-svh flex-col pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5rem+env(safe-area-inset-bottom))]'}`}>
-    <AppNavigation page={page} inSession={inSession || unsaved}/>
+  const sessionLine = voice.status === 'idle' ? null : { text: `${unsaved ? '对话尚未保存' : callStatus} · ${formatTime(seconds)}` }
+  const pageContent = <BpShell route={route} username={username} onLogout={onLogout} logoutDisabled={inSession || unsaved}
+    sessionLine={sessionLine} sessionActive={inSession || unsaved} preferredPreset={preferredPreset} onPreset={selectPreset}
+    onStart={(choice: TrainingChoice, preset: TrainingPreset) => startPractice(choice, preset)}
+    records={<Suspense fallback={<LoadingBlock label="正在加载复盘记录…" />}><RecordsPage onStart={choice=>{if(inSession){window.location.hash='start';return}setNextTraining(choice);setTrainingReady(false);setNextMode(choice.mode??preferredMode);setNextSource(choice.experience??'practice');setSetup(true);window.location.hash='start'}} /></Suspense>}
+    visits={<Suspense fallback={<LoadingBlock label="正在加载拜访日记…" />}><VisitsPage key={username} account={username} /></Suspense>}
+    library={<Suspense fallback={<LoadingBlock label="正在加载学习资料…" />}><LibraryPage companyOnly onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining({scenario_id:'',stage:'full',...choice});window.location.hash='coach' }} /></Suspense>}
+    inSession={inSession} />
+  return <BpProvider account={username}><div className={`bp bp-ambient flex h-svh flex-col pt-[env(safe-area-inset-top)] ${page === 'start' ? 'pb-[env(safe-area-inset-bottom)]' : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'}`}>
     <ScrollArea ref={pageScrollRef} className="min-h-0 min-w-0 flex-1 [&>[data-slot=scroll-area-viewport]>div]:block!">
-    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[960px] px-4 py-5 outline-none sm:px-6 sm:py-6">
+    <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[560px] px-5 py-3 outline-none">
       {storageError && <Alert className="mb-4"><Info /><AlertTitle>本机存储提示</AlertTitle><AlertDescription>{storageError}</AlertDescription></Alert>}
-      {['visits', 'records'].includes(page) && <Button asChild variant="ghost" className="mb-4 px-2"><a href="#me"><ArrowLeft />返回我的</a></Button>}
-      {['library', 'products', 'scenarios'].includes(page) && <Button asChild variant="ghost" className="mb-4 px-2"><a href="#training"><ArrowLeft />返回训练</a></Button>}
-      {page === 'home' && <HomePage username={username} sessionStatus={voice.status === 'idle' ? '' : unsaved ? '对话尚未保存' : callStatus} seconds={seconds} />}
-      {page === 'training' && <TrainingPage />}
-      {page === 'scenarios' && <Suspense fallback={<LoadingBlock label="正在加载训练场景…" />}><ScenariosPage onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining(choice);window.location.hash='practice' }} /></Suspense>}
-      {page === 'me' && <MePage username={username} onLogout={onLogout} logoutDisabled={inSession || unsaved}/>}
-      {(page === 'practice' || page === 'start' && voice.status === 'idle' && !setup) && <PracticeHome initialChoice={nextTraining} initialPreset={preferredPreset} sessionState={voice.analysisStatus==='thinking'?'thinking':active?'active':connecting?'connecting':''} seconds={seconds} onStart={startPractice} onChoiceChange={setNextTraining} onPresetChange={selectPreset}/>}
-      {[...openedLibraries].map(libraryPage => <div key={libraryPage} hidden={page !== libraryPage}><Suspense fallback={<LoadingBlock label="正在加载学习资料…" />}><LibraryPage companyOnly={libraryPage === 'products'} doctorsOnly={libraryPage === 'doctors'} onPractice={choice => { if(inSession){window.location.hash='start';return} setNextTraining({scenario_id:'',stage:'full',...choice});window.location.hash='practice' }} /></Suspense></div>)}
-      {page === 'visits' && <Suspense fallback={<LoadingBlock label="正在加载拜访日记…" />}><VisitsPage key={username} account={username} /></Suspense>}
-      {page === 'records' && <Suspense fallback={<LoadingBlock label="正在加载复盘记录…" />}><RecordsPage onStart={choice=>{if(inSession){window.location.hash='start';return}setNextTraining(choice);setTrainingReady(false);setNextMode(choice.mode??preferredMode);setNextSource(choice.experience??'practice');setSetup(true);window.location.hash='start'}} /></Suspense>}
+      {page !== 'start' && pageContent}
       {voice.status !== 'idle' && <section hidden={page !== 'start'} className={page !== 'start' ? 'hidden' : undefined}>
       {practice && <div className="mb-3 flex items-center justify-between gap-2"><Button asChild variant="ghost" className="size-12 shrink-0 rounded-full" aria-label="返回练习配置"><a href="#practice"><ArrowLeft aria-hidden="true" /></a></Button>{sessionActions}</div>}
       {practice && voice.error && <Alert className="mb-5" role="alert"><Info /><AlertTitle>语音提示</AlertTitle><AlertDescription>{voice.error}</AlertDescription></Alert>}
@@ -246,7 +240,7 @@ function App({ onLogout, username }: { onLogout?: () => void; username?: string;
     </main>
     <Dialog open={setup} onOpenChange={setSetup}><DialogContent className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col overflow-hidden"><DialogHeader className="shrink-0"><DialogTitle>开始新的演练</DialogTitle><DialogDescription>{unsaved?'本次对话尚未确认保存。重新开始会清空本页对话，请先确认已保留需要的内容。':nextTraining.remediation_id?'沿用原场景、环节和演练方式。':'确认场景与演练方式。'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 flex-1"><div className="space-y-3 py-4 pr-4">{!nextTraining.remediation_id&&<><span id="training-preset-label" className="text-sm font-medium">演练方式</span><div role="group" aria-labelledby="training-preset-label" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(preset=><Button key={preset.id} type="button" variant={presetFor(nextSource,nextMode).id===preset.id?'default':'ghost'} aria-pressed={presetFor(nextSource,nextMode).id===preset.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={()=>{setNextSource(preset.experience);setNextMode(preset.mode)}}>{preset.label}</Button>)}</div></>}{nextTraining.remediation_id&&<p className="text-sm leading-7">本次方式：{nextSource==='combat'?'实战练习':nextMode==='assisted'?'辅助练习':'历史练习（无实时辅助）'}</p>}<ScenarioPicker value={nextTraining} onChange={setNextTraining} onReady={setTrainingReady} /></div></ScrollArea><DialogFooter className="shrink-0"><Button variant="outline" onClick={() => setSetup(false)}>取消</Button><Button disabled={!trainingReady||inSession} onClick={restart}>开始演练<ArrowRight /></Button></DialogFooter></DialogContent></Dialog>
     <Dialog open={review} onOpenChange={setReview}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>演练复盘</DialogTitle><DialogDescription>{assisted ? '实时辅助' : '结束后复盘'} · {formatTime(seconds)} · {practice ? '练习模式' : '实战模式'}</DialogDescription></DialogHeader><ScrollArea className="min-h-0 [&>[data-slot=scroll-area-viewport]]:max-h-[55vh]"><div className="space-y-5 py-2 pr-4"><Alert><CircleHelp /><AlertTitle>{!voice.coach?.superseded && voice.coach?.assessment?.total != null ? '训练评价' : voice.freeContext ? '沟通反馈 · 不评分' : '本次未形成总分'}</AlertTitle><AlertDescription>评价仅覆盖可观察且有依据的内容，医学判断仍需专业复核。</AlertDescription></Alert>{source !== 'combat' && voice.coach && (voice.coach.superseded || !voice.coach.assessment ? <CoachAnalysis coach={voice.coach} review /> : voice.coach.assessment && <AssessmentView assessment={voice.coach.assessment} />)}{source === 'combat' && <section aria-live="polite"><h2 className="mb-4 font-medium">AI 复盘</h2>{voice.analysisStatus === 'thinking' ? <p role="status" className="text-sm text-muted-foreground">正在等待最终转录并整理复盘，请稍候…</p> : voice.coach ? <CoachAnalysis coach={voice.coach} review /> : <p className="text-sm text-muted-foreground">{voice.analysisStatus === 'no_speech' ? '本次没有可分析的学员发言。' : '本次复盘未完成。已保存的对话可从练习记录查看；无需重复录入原话。'}</p>}</section>}<div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm"><div><p className="text-muted-foreground">学员发言</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.filter(message => message.role === 'trainee').length}<span className="text-sm text-muted-foreground"> 次</span></p></div><div><p className="text-muted-foreground">对话记录</p><p className="mt-2 text-xl font-medium tabular-nums">{messages.length}<span className="text-sm text-muted-foreground"> 条</span></p></div></div><p className="text-sm text-muted-foreground">{voice.saved ? <a className="underline underline-offset-4" href={`#records?session=${voice.sessionId}`} onClick={()=>setReview(false)}>查看完整复盘与原话</a> : '对话尚未确认保存，可返回本页查看。'}</p></div></ScrollArea><DialogFooter><Button variant="outline" onClick={() => setReview(false)}><ArrowLeft />返回演练</Button>{canRetrySave && <Button disabled={voice.retryingSave} onClick={voice.retrySave}>{voice.retryingSave ? '保存中…' : '重试保存'}</Button>}</DialogFooter></DialogContent></Dialog>
-  </ScrollArea></div>
+  </ScrollArea></div></BpProvider>
 }
 
 export default App
