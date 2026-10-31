@@ -50,7 +50,10 @@ function CatalogPage({ kind }: { kind: Kind }) {
   async function select(id:string) {
     detailRequest.current?.abort();const controller=new AbortController();detailRequest.current=controller
     setSelection(id);setItem(undefined);setDoctorDraft(undefined);setPreview(undefined);setError('');setNotice('')
-    try{setItem(await api<CatalogRecord>(`/catalog/${kind}/${id}`,{signal:controller.signal}))}catch(cause){if(!controller.signal.aborted)setError(failure(cause))}
+    try{
+      const row=await api<CatalogRecord>(`/catalog/${kind}/${id}`,{signal:controller.signal})
+      if(!controller.signal.aborted){listChanges.current.add(row.id);setItem(row);setRows(rows=>[row,...rows.filter(item=>item.id!==row.id)])}
+    }catch(cause){if(!controller.signal.aborted)setError(failure(cause))}
   }
   async function mutate(path:string,body?:object,method='POST') {
     setBusy(true);setError('');setNotice('')

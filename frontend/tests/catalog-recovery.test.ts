@@ -477,3 +477,14 @@ test('candidate fallback opens the saved role without starting another search', 
   assert.deepEqual(calls,['/research/jobs/research-1/doctor-draft'])
   assert.deepEqual(opened,['saved-role'])
 })
+
+test('opening a newly confirmed candidate adds it to the doctor list', async () => {
+  const draft={...doctorDraft,id:'candidate',version:1,status:'draft',updated_at:'2026-10-31'}
+  const app=page('platform-page.tsx','CatalogPage',async path=>path==='/catalog/doctor/candidate'?draft:[])
+  app.render({kind:'doctor'});await settle()
+  find(app.render({kind:'doctor'}),'DoctorGenerator')[0].props.onOpen('candidate')
+  await settle()
+  const tree=app.render({kind:'doctor'})
+  assert.equal(find(tree,'DoctorForm')[0].props.item.id,'candidate')
+  assert.equal(find(tree,'button').length,1)
+})
