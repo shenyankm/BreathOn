@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ArrowRight, Mic } from 'lucide-react'
+import { ArrowRight, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScenarioPicker, type TrainingChoice } from '@/components/scenario-picker'
 import { formatTime } from '@/lib/session'
@@ -23,9 +24,8 @@ export function PracticeHome({ initialChoice, initialPreset, sessionState, secon
       <CardContent className="grid items-start gap-4 px-0 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6">
         <section className="min-w-0" aria-label="选择演练内容"><ScenarioPicker value={choice} onChange={onChoiceChange} onReady={setReady} /></section>
         <section aria-label="准备开始" className="min-w-0 space-y-3 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-          <div className="space-y-1.5"><span id="practice-preset-label" className="text-sm font-medium">演练方式</span><div role="group" aria-labelledby="practice-preset-label" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(option => <Button key={option.id} type="button" variant={preset.id === option.id ? 'default' : 'ghost'} aria-pressed={preset.id === option.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={() => onPresetChange(option)}>{option.label}</Button>)}</div><p className="text-xs leading-5 text-muted-foreground">{preset.description}</p></div>
+          <div className="space-y-1.5"><div role="group" aria-label="演练方式" className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">{trainingPresets.map(option => <Button key={option.id} type="button" variant={preset.id === option.id ? 'default' : 'ghost'} aria-pressed={preset.id === option.id} className="h-12 min-w-0 rounded-xl px-2 motion-reduce:transition-none" onClick={() => onPresetChange(option)}>{option.label}</Button>)}</div><Alert role="status" aria-live="polite" className="mt-3 rounded-2xl border-0 bg-muted/50 px-4 py-3"><Info aria-hidden="true" className="size-4 text-muted-foreground"/><AlertDescription className="text-sm leading-6 text-foreground/80">{preset.description}</AlertDescription></Alert></div>
           <Button className="h-12 w-full" disabled={!ready} onClick={() => onStart(choice, preset)}>开始练习<ArrowRight /></Button>
-          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Mic className="mt-1 size-3.5 shrink-0" aria-hidden="true" />需麦克风权限 · 请勿输入真实患者信息。</p>
         </section>
       </CardContent>
     </Card>}

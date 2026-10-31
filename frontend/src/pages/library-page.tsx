@@ -89,7 +89,7 @@ export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) 
   const count: Record<string, number | null> = { drugs: drugs.loading || drugs.error ? null : drugs.data.length, medical: null, skills: 1, doctors: doctors.loading || doctors.error ? null : doctors.data.length, policies: policies.loading || policies.error ? null : policies.data.length }
 
   return <div className="min-w-0 space-y-4 sm:space-y-6">
-    <header className="space-y-1.5"><h1 className="text-2xl font-semibold tracking-tight">{companyOnly ? '公司产品' : '资料库'}</h1></header>
+    <h1 className="sr-only">{companyOnly ? '公司产品' : '资料库'}</h1>
     <Tabs value={category} onValueChange={setCategory} className="min-w-0 gap-4 sm:gap-6">
       <TabsList hidden={companyOnly} className={`${companyOnly ? 'hidden!' : ''} grid h-auto! w-full grid-cols-5 items-stretch gap-1 rounded-2xl p-1`} aria-label="文档分类">
         {modules.map(module => <TabsTrigger key={module.id} value={module.id} aria-label={module.name} className="h-auto min-h-16 min-w-0 flex-col gap-1.5 rounded-xl px-1 py-2 text-xs sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm">
@@ -118,7 +118,7 @@ export function LibraryPage({ companyOnly = false }: { companyOnly?: boolean }) 
     </Tabs>
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
       <DialogContent showCloseButton={false} onCloseAutoFocus={event => { event.preventDefault(); openerRef.current?.focus() }} className="inset-0 left-0 top-0 flex h-svh max-h-svh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[85svh] sm:w-full sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:ring-1">
-        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:px-6 sm:pt-4">
+        <DialogHeader className="shrink-0 border-b px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 sm:pt-4">
           <DialogClose asChild><Button variant="ghost" className="-ml-2 min-h-11 self-start"><ArrowLeft aria-hidden="true" />返回资料</Button></DialogClose>
           <DialogTitle className="text-lg leading-7">{selected?.name}</DialogTitle>
           <DialogDescription className="leading-6">具体适用范围和风险请核对来源原文。</DialogDescription>

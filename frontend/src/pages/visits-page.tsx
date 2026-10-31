@@ -201,7 +201,7 @@ export function VisitsPage() {
     </section>
     <Dialog open={view.kind !== 'list'} onOpenChange={open => { if (!open) returnToList() }}>
       <DialogContent showCloseButton={false} className="inset-0 top-0 left-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none bg-background p-0 sm:max-w-none">
-        <DialogHeader className="shrink-0 gap-3 border-b bg-background px-4 pb-4 pt-3 sm:px-6">
+        <DialogHeader className="shrink-0 gap-3 border-b bg-background px-4 py-4 sm:px-6">
           <Button className="-ml-3 h-11 self-start" variant="ghost" disabled={busy} onClick={returnToList}><ArrowLeft />返回日记列表</Button>
           <DialogTitle className="text-xl font-semibold">{view.kind === 'new' ? '新建日记' : '拜访记录'}</DialogTitle>
           <DialogDescription className="sr-only">{view.kind === 'new' ? '填写访后观察及拜访信息' : '查看原文、脱敏内容及审核状态'}</DialogDescription>
