@@ -67,3 +67,25 @@ sudo journalctl -u caddy --since '15 minutes ago' --no-pager
 重置密码时，用交互命令生成新哈希，安全修改 `backend.env` 中对应账号的哈希后重启 `medvisit-coach.service`；不要把原密码或哈希写入命令历史、Git 或 CI 日志。模型密钥也只在主机配置中维护。
 
 源码与管理页面均在暂停 API 前完成 gzip 接收；Android 原生工程与用户页面不进入服务器发布包。旧 `deploy/server-deploy.sh`、Dockerfile 和整栈 Compose 配置仅供旧版本恢复参考，不属于当前生产 CD。
+
+## 确认一次发布成功
+
+推送完成只代表远端已接收代码；`production` 成功还可能是过时提交被跳过。应依次核对：
+
+1. 记录目标提交完整 SHA，确认它在远端 `main`；按该 SHA 找到本次 CI，检查五个任务均成功。
+2. 打开 `production` 的「Deploy production after all checks」日志，确认实际输出 `Deployed native release <目标完整 SHA>`，不能只看作业绿色状态。
+3. 只读检查公开服务：`/api/live`、`/api/ready` 均为 200；`/api/auth/session` 显示登录已开启；不带 Cookie 的管理业务接口为 401；`/app` 为 410，`/_android/index.html` 为 404。不要把账号、Cookie 或私有业务数据输出到验收日志。
+4. 有服务器运维权限时，核对 `current` 链接、systemd 状态及最近日志。发生回退或健康失败时，先保留失败日志并按[运维说明](operations.md)排查，不以重跑成功掩盖版本不一致。
+
+仓库根目录可使用以下只读命令定位本次流水线：
+
+```sh
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+gh run list --branch main --limit 5 --json databaseId,headSha,status,conclusion,url
+gh run view <运行编号> --json status,conclusion,jobs
+gh run view <运行编号> --log
+curl --fail --silent --show-error https://openwook.cloud/api/ready
+```
+
+APK 工件从同一 SHA 的 CI 获取，名称为 `BreathOn-android-arm64-debug-<commit>`。生产服务器不分发 Android 页面，用户须安装新版 APK；debug 工件用于验收，正式分发需要发布签名。App 更新与服务部署应分别记录，不因服务器健康就宣称客户端已更新。

@@ -220,7 +220,7 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
           # Native releases contain Python source and the tested, prebuilt admin assets.
-          git archive --format=tar.gz HEAD -- backend/medvisit backend/migrations backend/pyproject.toml backend/uv.lock deploy LICENSE THIRD_PARTY_NOTICES.md > "$payload/source.tar"
+          git archive --format=tar.gz HEAD -- backend/medvisit backend/migrations backend/pyproject.toml backend/uv.lock deploy LICENSE > "$payload/source.tar"
           tar -czf "$payload/web.tar.gz" -C frontend/dist .
           python - "$payload/source.tar" <<'PYCODE'
           import sys

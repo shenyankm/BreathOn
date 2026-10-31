@@ -1,5 +1,7 @@
 # 训练闭环交付与验收
 
+> 历史验收／设计记录：只描述文中日期与版本，不作为当前入口、功能清单或生产状态。现行指南见[文档索引](README.md)。其中忽略目录下的日志、截图和报告属于本机证据，干净克隆不一定包含。
+
 验收日期：2026-10-29。本轮完成 P0 核心闭环及 P1 增强。按用户最新指示，P2 企业权限、批量任务、排行榜、认证、CRM 和数字人不实现。保留单用户本机模式、已有历史记录及此前的根目录 assets 删除，不恢复本地假演示。
 
 - [x] 官方来源训练基线与七维量表。
@@ -40,16 +42,16 @@
 
 ## 验收证据
 
-本地原始结果保存在被 Git 忽略的 `backend/data/validation/`；密钥不进入报告。下表保留核心闭环首次交付时的结果，汇总索引为 [delivery-summary.json](../backend/data/validation/delivery-summary.json)；后续页面简化的回归结果单独记录在下一节。
+本地原始结果保存在被 Git 忽略的 `backend/data/validation/`；密钥不进入报告。下表保留核心闭环首次交付时的结果，汇总索引为 delivery-summary.json（本机证据：`backend/data/validation/delivery-summary.json`）；后续页面简化的回归结果单独记录在下一节。
 
 | 验收 | 结果与证据 |
 | --- | --- |
-| 后端回归 | **248 项通过、无跳过**，包含真实临时 PostgreSQL 与 SQLite；[JUnit 记录](../backend/data/validation/pytest-final.xml) |
+| 后端回归 | **248 项通过、无跳过**，包含真实临时 PostgreSQL 与 SQLite；JUnit 记录（本机证据：`backend/data/validation/pytest-final.xml`） |
 | 前端 | **11 项通过**，TypeScript/Vite 生产构建通过；lint 仅保留原有 badge/button/tabs 的 3 条 Fast Refresh 提示 |
-| 模型闭环 | [主流程报告](../backend/data/validation/delivery-live-20261029-071918.json)中的四类生成、真实复盘、同条件重练、案例提炼/导出/导入/复用、独立模板草稿及练习语音均通过 |
-| 实战语音 | [实战复验报告](../backend/data/validation/delivery-live-20261029-072445.json)通过，耗时 26.96 秒，转录、真实医生回复、最终复盘及保存均完成；原完整运行因脚本假定两路转录顺序而超时，失败记录保留 |
+| 模型闭环 | 主流程报告（本机证据：`backend/data/validation/delivery-live-20261029-071918.json`）中的四类生成、真实复盘、同条件重练、案例提炼/导出/导入/复用、独立模板草稿及练习语音均通过 |
+| 实战语音 | 实战复验报告（本机证据：`backend/data/validation/delivery-live-20261029-072445.json`）通过，耗时 26.96 秒，转录、真实医生回复、最终复盘及保存均完成；原完整运行因脚本假定两路转录顺序而超时，失败记录保留 |
 | 浏览器交互 | 原生 Chrome 实际完成键盘提交生成、加载提示、编辑保存、发布、案例编辑确认、JSON 下载与文件导入、案例进入生成页、模板导出导入及未发布依赖的错误提示 |
-| 响应式 | [生成](../backend/data/validation/ui/generator/report.json)、[案例](../backend/data/validation/ui/cases/report.json)、[计价](../backend/data/validation/ui/pricing/report.json)、[统计](../backend/data/validation/ui/progress/report.json)均检查 1440/768/390 宽度，0 FAIL；配置和案例仅保留主从面板自然高度不同的提示 |
+| 响应式 | 生成（本机证据：`backend/data/validation/ui/generator/report.json`）、案例（本机证据：`backend/data/validation/ui/cases/report.json`）、计价（本机证据：`backend/data/validation/ui/pricing/report.json`）、统计（本机证据：`backend/data/validation/ui/progress/report.json`）均检查 1440/768/390 宽度，0 FAIL；配置和案例仅保留主从面板自然高度不同的提示 |
 
 四类场景生成分别耗时 5.368、5.282、5.366、5.167 秒；均为真实服务结果，生成内容保留为可核对草稿。练习语音闭环耗时 41.91 秒。语音测试将实际 TTS 输出转换为 16 kHz PCM，按 20 ms 实时帧送入真实 ASR/语音对话服务，再经过真实模型复盘并保存；没有使用替身服务。实际语音演练使用固定首访基线，其他情境和难度组合由生成验收及行为规则测试覆盖。
 
@@ -73,10 +75,10 @@
 
 | 检查 | 本次结果 |
 | --- | --- |
-| 后端回归 | **256 项通过、无跳过**，包含临时 PostgreSQL 和 SQLite；新增重练方式继承、文件/PostgreSQL 记录摘要与旧记录兼容测试，[JUnit 记录](../backend/data/validation/ux-backend.xml) |
+| 后端回归 | **256 项通过、无跳过**，包含临时 PostgreSQL 和 SQLite；新增重练方式继承、文件/PostgreSQL 记录摘要与旧记录兼容测试，JUnit 记录（本机证据：`backend/data/validation/ux-backend.xml`） |
 | 前端 | **17 项通过**，新增推荐场景、三种演练方式、政策分类与联合筛选测试；生产构建通过，lint 仅原有 3 条 Fast Refresh 提示，主包略超 500 kB 的构建体积提示保留 |
 | 原生 Chrome | 推荐场景自动选中；键盘切换演练方式；切换自由练习不会被自动改回；记录与管理导航正常；390×844 手机入口主按钮可见，菜单点击后关闭 |
-| 响应式 | [入口](../backend/data/validation/ux/home/report.json)、[复盘](../backend/data/validation/ux/records/report.json)、[管理](../backend/data/validation/ux/workspace/report.json)、[设置](../backend/data/validation/ux/settings/report.json)均检查 1440/768/390 宽度，**0 FAIL**；截图逐一查看 |
+| 响应式 | 入口（本机证据：`backend/data/validation/ux/home/report.json`）、复盘（本机证据：`backend/data/validation/ux/records/report.json`）、管理（本机证据：`backend/data/validation/ux/workspace/report.json`）、设置（本机证据：`backend/data/validation/ux/settings/report.json`）均检查 1440/768/390 宽度，**0 FAIL**；截图逐一查看 |
 
 政策筛选在原生 Chrome 验证市级 + 医保联合筛选得到 2 份文档、区县级空状态和清除恢复 16 份；另检查 768 和 390 宽度的筛选排版。本次仅整理既有政策的分类，没有重新核验政策正文时效或新增区县级政策。
 
@@ -116,9 +118,9 @@ API_TARGET=http://127.0.0.1:8001 npm --prefix frontend run dev -- --host 127.0.0
 
 2026-10-29 后续按明确追加需求实现三个独立 AgentScope 检索助手，配置专属 Skill 与项目内 STDIO MCP，支持公开搜索、原文 HTML 阅读副本、PDF/Word 原件、版本保留和显式每日追踪。药品页面按信达生物官网补齐全部 20 款上市产品，特殊资料和图片类型分别标明。范围与来源见[检索助手说明](research-agents.md)和[药品资料库](drug-library.md)，不改变既有训练资料的审核状态，也不引入 P2 功能。
 
-最新完整回归为后端 **299 项通过、无跳过**（含独立临时 PostgreSQL 与 SQLite），前端 **20 项通过**；TypeScript/Vite 生产构建通过，lint 仅原有 3 条 Fast Refresh 提示，资料库拆分后主包不再触发 500 kB 提示。后端 Docker 镜像实际构建，非 root、无网络环境中验证了 DOC 转换、真实 STDIO MCP 连接、工具清单及私网来源拒绝。最新 [JUnit](../backend/data/validation/research-final-backend.xml) 与此前验收分别保留。
+最新完整回归为后端 **299 项通过、无跳过**（含独立临时 PostgreSQL 与 SQLite），前端 **20 项通过**；TypeScript/Vite 生产构建通过，lint 仅原有 3 条 Fast Refresh 提示，资料库拆分后主包不再触发 500 kB 提示。后端 Docker 镜像实际构建，非 root、无网络环境中验证了 DOC 转换、真实 STDIO MCP 连接、工具清单及私网来源拒绝。最新 JUnit（本机证据：`backend/data/validation/research-final-backend.xml`） 与此前验收分别保留。
 
-真实模型、搜索与原文归档的[最新报告](../backend/data/validation/research-live-r6/summary.json)中，三个助手均取得带引用结果，合计归档 7 份来源；部分来源访问或解析失败，任务状态保持部分完成。模型结果未经过医学、法律或医生资质审核。界面使用该轮真实结果的独立数据库核对历史、HTML 阅读和追踪开关，最后暂停验收主题；主应用历史未写入验收内容，未重复调用语音或真人麦克风。
+真实模型、搜索与原文归档的最新报告（本机证据：`backend/data/validation/research-live-r6/summary.json`）中，三个助手均取得带引用结果，合计归档 7 份来源；部分来源访问或解析失败，任务状态保持部分完成。模型结果未经过医学、法律或医生资质审核。界面使用该轮真实结果的独立数据库核对历史、HTML 阅读和追踪开关，最后暂停验收主题；主应用历史未写入验收内容，未重复调用语音或真人麦克风。
 
 药品页面与检索结果页面分别检查 1440/768/390 宽度，均为 **0 FAIL**；各保留一项长清单需要滚动的提示。图片完整显示、卡片与按钮对齐，手机首张药品卡片的操作可见。服务设置继续只允许手动刷新，页面验收没有触发真实服务可用性探测。
 
@@ -133,16 +135,16 @@ API_TARGET=http://127.0.0.1:8001 npm --prefix frontend run dev -- --host 127.0.0
 
 | 检查 | 本轮结果 |
 | --- | --- |
-| 后端完整回归 | **403 项通过、无跳过**，含真实独立 PostgreSQL、SQLite，新增修正成功、再次无效、格式错误、服务失败与未知用量计价覆盖；[JUnit](../backend/data/validation/feature-check-backend-fixed.xml) |
+| 后端完整回归 | **403 项通过、无跳过**，含真实独立 PostgreSQL、SQLite，新增修正成功、再次无效、格式错误、服务失败与未知用量计价覆盖；JUnit（本机证据：`backend/data/validation/feature-check-backend-fixed.xml`） |
 | 前端 | **20 项通过**，TypeScript/Vite 生产构建通过；lint 无错误，仅保留 3 条既有 Fast Refresh 提示 |
-| 真实训练闭环 | 四类场景生成、真实复盘、同条件重练、案例提炼/导入导出/复用、场景模板导入导出、用量费用均通过；[成功报告](../backend/data/validation/delivery-live-20261029-151633.json)，[首次引文校验失败报告](../backend/data/validation/delivery-live-20261029-151231.json)保留 |
+| 真实训练闭环 | 四类场景生成、真实复盘、同条件重练、案例提炼/导入导出/复用、场景模板导入导出、用量费用均通过；成功报告（本机证据：`backend/data/validation/delivery-live-20261029-151633.json`），首次引文校验失败报告（本机证据：`backend/data/validation/delivery-live-20261029-151231.json`）保留 |
 | 真实语音 | 练习约 42 秒、实战约 27 秒；转录、医生音频、最终复盘和保存均完成。输入为合成语音，未模拟上游服务 |
-| 三个检索助手 | 政策归档 2 份、医生 3 份、同类药品 3 份，均有引用结果；前两者部分完成，同类药品完成；[报告](../backend/data/validation/feature-check-research-20261029/summary.json) |
+| 三个检索助手 | 政策归档 2 份、医生 3 份、同类药品 3 份，均有引用结果；前两者部分完成，同类药品完成；报告（本机证据：`backend/data/validation/feature-check-research-20261029/summary.json`） |
 | 浏览器交互 | 演练方式切换、复盘读取、创建补练、医生创建/发布/覆盖保存、药品概述、政策空筛选/清除、检索提交/进度/原文 HTML、每日追踪开启/暂停、服务检测通过；五项服务均正常，验收追踪最终暂停 |
 | 手机页面 | 演练入口可开始，菜单跳转后关闭；检索及记录页无横向溢出。390×844 设备视口设置下，现有浏览器缩放对应约 355 CSS 像素 |
 | Docker | 独立 Compose 构建、三项服务健康、Nginx/API 就绪及存活、静态缓存、缺失资源 404、大请求体转发检查通过 |
 
-[补练列表修复截图](../backend/data/validation/feature-check-ui/retraining-fixed.png)、[手机记录页](../backend/data/validation/feature-check-ui/mobile-records.png)、[服务检测](../backend/data/validation/feature-check-ui/services.png)保留在本地忽略的验收目录。
+补练列表修复截图（本机证据：`backend/data/validation/feature-check-ui/retraining-fixed.png`）、手机记录页（本机证据：`backend/data/validation/feature-check-ui/mobile-records.png`）、服务检测（本机证据：`backend/data/validation/feature-check-ui/services.png`）保留在本地忽略的验收目录。
 
 仍未验证真人麦克风、外放回声、真人听感、长期连续运行、医学专家审核或全部外部资料链接的可达性。网站 403、动态页面及扫描件解析限制仍会产生“部分完成”；没有绕过访问限制或放宽资料校验。每日到期调度通过自动化测试覆盖，本轮没有等待真实 24 小时。
 
@@ -152,15 +154,15 @@ API_TARGET=http://127.0.0.1:8001 npm --prefix frontend run dev -- --host 127.0.0
 
 | 检查 | 结果与证据 |
 | --- | --- |
-| 三模式交叉 | 辅助练习、独立练习、实战各连续 **4 轮**，全部完成转录、医生音频、最终复盘与保存；辅助提示逐轮绑定当前学员原话和医生消息，独立/实战不泄露实时提示；静音/恢复确认通过。[报告](../backend/data/validation/multiturn-20261029/summary.json) |
-| 真实浏览器 | 合成音频进入实际浏览器采集链路，连续 **4 轮**收到并显示不同的实时提示；分析期间显示上一轮建议，完成后显示本轮建议；切换学习资料再返回保持通话，结束后复盘保存成功。[事件](../backend/data/validation/multiturn-20261029/browser-events.json)、[界面](../backend/data/validation/multiturn-20261029/browser-round4.png) |
-| 修复后重跑 | 辅助模式再连续 **4 轮**，配对、音频、最终复盘、保存全部通过。[报告](../backend/data/validation/multiturn-fixed-20261029/summary.json) |
-| 修正提示界面 | 另一次真实浏览器单轮提示到达后，注入明确标记的受控失效/恢复事件，确认旧正文及评分立即隐藏、出现“提示待更新”，恢复事件后重新显示；这是前端事件回归，不是自然发生的 ASR 修正。[截图](../backend/data/validation/multiturn-fixed-20261029/invalidated-hint.png) |
-| 自动化回归 | 后端 **407 项通过、无跳过**（含独立 PostgreSQL），前端 **20 项通过**，生产构建通过；lint 仅既有 3 条 Fast Refresh 警告。[JUnit](../backend/data/validation/multiturn-backend.xml) |
+| 三模式交叉 | 辅助练习、独立练习、实战各连续 **4 轮**，全部完成转录、医生音频、最终复盘与保存；辅助提示逐轮绑定当前学员原话和医生消息，独立/实战不泄露实时提示；静音/恢复确认通过。报告（本机证据：`backend/data/validation/multiturn-20261029/summary.json`） |
+| 真实浏览器 | 合成音频进入实际浏览器采集链路，连续 **4 轮**收到并显示不同的实时提示；分析期间显示上一轮建议，完成后显示本轮建议；切换学习资料再返回保持通话，结束后复盘保存成功。事件（本机证据：`backend/data/validation/multiturn-20261029/browser-events.json`）、界面（本机证据：`backend/data/validation/multiturn-20261029/browser-round4.png`） |
+| 修复后重跑 | 辅助模式再连续 **4 轮**，配对、音频、最终复盘、保存全部通过。报告（本机证据：`backend/data/validation/multiturn-fixed-20261029/summary.json`） |
+| 修正提示界面 | 另一次真实浏览器单轮提示到达后，注入明确标记的受控失效/恢复事件，确认旧正文及评分立即隐藏、出现“提示待更新”，恢复事件后重新显示；这是前端事件回归，不是自然发生的 ASR 修正。截图（本机证据：`backend/data/validation/multiturn-fixed-20261029/invalidated-hint.png`） |
+| 自动化回归 | 后端 **407 项通过、无跳过**（含独立 PostgreSQL），前端 **20 项通过**，生产构建通过；lint 仅既有 3 条 Fast Refresh 警告。JUnit（本机证据：`backend/data/validation/multiturn-backend.xml`） |
 
 交叉代码检查复现并修复：ASR 对同一片段修正文案后，旧提示仍被当作当前提示且不重新生成；较早片段仍未定稿时可能提前分析；发送修正转录期间旧模型结果可能抢先写入。现在立即使依赖旧原话的提示失效，保留已送达医生原话，等待转录定稿后重新生成，并在异步发送前使旧请求失效。新增 4 个确定性回归用例覆盖这些路径。
 
-独立内容复核发现旧提示偶尔把开场、澄清和收尾统称为重复回答。首次补充跨句核对约束后，analysis 已区分各轮，但第四轮 fluency 仍误称“四句都在讲原则”。继续限定 fluency 的分析范围后，用同一真实四轮转录和相同版本资料进行两次真实模型回放，均未再把开场算入后续三次未答复；结果保留于[回放报告](../backend/data/validation/multiturn-fixed-20261029/real-transcript-replay.json)。模型仍会作主观概括，措辞及评分没有全面质量保证。首组三模式测试中，练习的最终转录到医生/教练文字耗时约 **5.9–16.2 秒**，并非即时返回。
+独立内容复核发现旧提示偶尔把开场、澄清和收尾统称为重复回答。首次补充跨句核对约束后，analysis 已区分各轮，但第四轮 fluency 仍误称“四句都在讲原则”。继续限定 fluency 的分析范围后，用同一真实四轮转录和相同版本资料进行两次真实模型回放，均未再把开场算入后续三次未答复；结果保留于回放报告（本机证据：`backend/data/validation/multiturn-fixed-20261029/real-transcript-replay.json`）。模型仍会作主观概括，措辞及评分没有全面质量保证。首组三模式测试中，练习的最终转录到医生/教练文字耗时约 **5.9–16.2 秒**，并非即时返回。
 
 新增可重复运行的 `backend/tools/live_multiturn.py`，使用 `--live --output data/validation/<目录>` 显式启动，默认覆盖三种模式，需先启动独立的 `tools.acceptance_app`。每种模式单独保留事件和失败详情；新一轮验收应使用新目录。验收数据标记为 validation_only，不进入日常训练历史。期间外部 stash 应用产生的记录页冲突已合并，保留新文案与补练刷新修复，并重新完成前端验证。
 

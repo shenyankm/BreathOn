@@ -56,7 +56,7 @@
 
 静态验证应包括Skill Creator校验、引用文件存在性和AgentScope真实加载；这些只证明结构可用。独立前向测试使用合成文本，实际完成拜访、证据解释与合规请求，不修改线上服务。它不能替代医学/合规人员评审，也不能证明DeepSeek会稳定遵循。
 
-创建时三个技能通过 `quick_validate.py`、引用文件检查和 `LocalSkillLoader` 实际加载。独立测试完成6个请求，第4题初答将HR泛称“风险比模型中的相对效应指标”，虽随后纠正，仍有术语混淆风险；据此在循证技能及练习中补入HR/RR/OR的中英文含义。[初轮完整记录](../backend/data/validation/medical-rep-skills-forward-test-20261027.md)保留原始回答。接入后的真实DeepSeek验证及修复另见 [指导效果验证](coaching-live-validation.md)。
+创建时三个技能通过 `quick_validate.py`、引用文件检查和 `LocalSkillLoader` 实际加载。独立测试完成6个请求，第4题初答将HR泛称“风险比模型中的相对效应指标”，虽随后纠正，仍有术语混淆风险；据此在循证技能及练习中补入HR/RR/OR的中英文含义。初轮完整记录（本机证据：`backend/data/validation/medical-rep-skills-forward-test-20261027.md`）保留原始回答。接入后的真实DeepSeek验证及修复另见 [指导效果验证](coaching-live-validation.md)。
 
 模型上下文配置仍为 `context_size=1_000_000`；转录字符预算不随模型容量自动放宽。后端测试覆盖实际传给Agent的上下文容量、技能分流、结构化输入、输出字段及取消关闭等行为；测试状态和未验证范围见指导效果验证。
 

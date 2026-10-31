@@ -25,9 +25,9 @@ React + Tauri 2 Android App（用户端，页面内置 APK）
           └─ storage/：PostgreSQL（Docker）或 JSON（本地兼容）
 ```
 
-Android 是唯一用户端，底部导航为「首页、医生、训练、教练、我的」，拜访日记和复盘记录属于「我的」。新增页面只复用现有 `/api/catalog/{scenario,drug,doctor}`、`/api/realtime` 等接口，没有新的后端依赖。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
+Android 是唯一用户端，底部导航为「首页、训练、教练、我的」，拜访日记和复盘记录属于「我的」。页面复用目录、`/api/curriculum`、个人设置、健康观察及 `/api/realtime` 等接口。医生页面从首页或训练进入。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
 
-`main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；模型与客户端均关闭自动重试，由现有会话层处理重试和取消。
+`main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；SDK 自动重试关闭；应用层只对指定可恢复错误重试一次，具体边界见[Agent 可靠性](agent-reliability.md)。
 
 医生/教练通过 AgentScope `LocalSkillLoader` 加载 `backend/medvisit/agents/skills/humanizer/SKILL.md`，在各自的请求中注入完整写作规则。使用 embedded mode，只润色中文措辞；引用原话、医学证据约束、风险提示和 JSON 格式优先，草稿不对外输出。技能随 `medvisit/` 打包进后端发布源码，无额外工具调用，也不在运行时下载。原版来自 [blader/humanizer](https://github.com/blader/humanizer/tree/8c307f367c91bd974002f10f2be2965d642c13df)，版本 3.1.0，固定提交 `8c307f367c91bd974002f10f2be2965d642c13df`，保留 MIT 许可证。完整规则会增加每次请求的输入 token；更新时同时替换技能和许可证并运行后端测试。
 
@@ -59,7 +59,7 @@ DeepSeek 适配器显式设置 `context_size=1_000_000`，覆盖通用 OpenAI �
 
 记录页集中创建、启动和查看重练。`/remediations/{id}/next`返回明确的`remediation_id`，WebSocket据此锁定原场景、环节和关注维度，并把新记录与原记录关联。只有完整、引用校验通过的演练标记重练完成；前后比较采用同量表指纹、模型与评价版本的原始AI分数，不能比较的项目明确留空。
 
-课程、分配任务、考核次数、认证、榜单/徽章/目标、团队统计和独立资料助手均已删除对应模型、接口与前端页面，不保留功能开关。通用平台存储不做破坏性迁移，历史实体和原始会话保留；旧课程启动参数明确拒绝。
+当前提供版本化 L1–L4 学习课程、个人计划、完成记录和基于真实数据的工作区训练指标；它们不恢复旧的课程分配、考核次数、证书、排行榜或成绩审批模型。旧课程启动参数仍拒绝，旧实体和原始会话保留。内容发布审核与历史成绩审批是不同流程，现有功能边界见[功能范围](platform-completion.md)。
 
 ## 医生训练角色
 
@@ -165,7 +165,6 @@ Web 入口独立加载 `styles/admin.css`，沿用 `breathon-complete/admin` 的
 
 用户画像用于描述医药代表、医生、健康管理用户三类目标人群的任务、需求和规划指标，不是账号档案，也不表示已采集个人健康数据。管理员通过 `/api/catalog/audience` 创建和编辑，复用目录存储、工作区隔离、审计和 `version` 乐观锁；以内部草稿保存，不向代表端发布。无预填业务画像、虚构指标或数据库结构迁移；部署此功能需同时更新前后端。
 
-验证：前端 195 项测试、后端 30 项定向测试（本地文件 / SQLite）通过；Web 和 Android 前端构建通过。隔离临时后端的浏览器验收覆盖画像创建、编辑及重载持久化、九个主入口、训练管理旧链接与浏览器后退，以及 375 / 768 / 1440px 无水平溢出。未触碰生产数据、调用付费模型或发布线上版本。
 
 ### 管理功能补齐
 

@@ -85,7 +85,7 @@ run 60 python3 -c '
 import gzip, pathlib, sys, tarfile
 stage, release = map(pathlib.Path, sys.argv[1:])
 for filename, destination, allowed, maximum in (
-    ("source.tar", release, {"backend", "deploy", "LICENSE", "THIRD_PARTY_NOTICES.md"}, 64*1024*1024),
+    ("source.tar", release, {"backend", "deploy", "LICENSE"}, 64*1024*1024),
     ("web.tar.gz", release/"frontend/dist", {"index.html", "assets", "licenses", "favicon.svg"}, 32*1024*1024),
 ):
     destination.mkdir(parents=True, exist_ok=True)

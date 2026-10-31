@@ -1,5 +1,7 @@
 # 性能与稳定性审查 · 2026-10-29
 
+> 历史验收／设计记录：只描述文中日期与版本，不作为当前入口、功能清单或生产状态。现行指南见[文档索引](README.md)。其中忽略目录下的日志、截图和报告属于本机证据，干净克隆不一定包含。
+
 本次完成 17 轮独立的「问题定位 → 最小修复 → 验证」，覆盖 API 生命周期、SQLite/JSON/PostgreSQL 存储路径、实时语音、浏览器音频、资料检索、场景生成、校准和备份。独立模块并行实施，最后统一检查调用方、差异和全量测试。起点为 `318668c`；已有 14 个本地提交未改写，没有增加依赖或修改真实演练数据。
 
 基线：后端 322 项通过、85 项 PostgreSQL 相关测试跳过；前端 20 项通过。本次另外启动隔离的临时 PostgreSQL 17 运行集成测试。
@@ -36,7 +38,7 @@
 
 | 检查 | 结果 |
 | --- | --- |
-| 后端 pytest，真实临时 PostgreSQL 17 | **450 passed，0 skipped，44.48 秒**；[本机 JUnit 记录](../backend/data/validation/optimization-20261029/backend.xml) |
+| 后端 pytest，真实临时 PostgreSQL 17 | **450 passed，0 skipped，44.48 秒**；本机 JUnit 记录（本机证据：`backend/data/validation/optimization-20261029/backend.xml`） |
 | `npm test` | **24 passed** |
 | `npm run build` | TypeScript 与 Vite 生产构建通过 |
 | `npm run lint` | 通过，保留 3 条既有 UI Fast Refresh 警告 |

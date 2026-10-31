@@ -1,5 +1,7 @@
 # Android UI review — 2026-10-31
 
+> 历史验收／设计记录：只描述文中日期与版本，不作为当前入口、功能清单或生产状态。现行指南见[文档索引](README.md)。其中忽略目录下的日志、截图和报告属于本机证据，干净克隆不一定包含。
+
 The existing BREATHON mobile prototype remains the visual reference. This pass follows [Impeccable](https://github.com/pbakaus/impeccable)'s audit and polish guidance, preserving the gradient background and card layout. Legacy login, library, records, visit forms and dialogs now share the prototype's cream surfaces, warm-orange primary actions, teal secondary actions and rounded controls. Headings retain the orange hue with stronger contrast. Android-only styles do not change the Web theme.
 
 ## Fixed

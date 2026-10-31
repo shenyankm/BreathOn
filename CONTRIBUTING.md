@@ -24,7 +24,19 @@ uv sync --directory backend --locked
 cp -n backend/.env.example backend/.env
 ```
 
-按 [README](README.md) 配置本地环境，不覆盖已有 `.env`。分别启动后端和 Web 管理后台：
+编辑 `backend/.env`，不覆盖已有配置。默认模型、音色和资源要求以[环境变量模板](backend/.env.example)为准。
+
+| 用途 | 配置 |
+| --- | --- |
+| 两种模式的语音识别与 AI 分析 | `SEEDASR_API_KEY`、`DEEPSEEK_API_KEY` |
+| 辅助练习的医生朗读 | `DOUBAO_TTS_API_KEY` |
+| 实战练习的语音对话 | `DOUBAO_API_KEY` |
+
+密钥仅由后端读取，不使用 `VITE_` 前缀，不提交 `.env`。未配置服务密钥时仍可浏览后台，语音演练需相应服务权限；修改密钥后重启后端。
+
+Web 本机开发可免登录，Android 始终要求启用账号登录。使用 `uv run --directory backend python -m medvisit.api.auth` 交互生成密码哈希，配置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`；多账号使用 `LOGIN_USERS_JSON` 与 `ADMIN_USERS_JSON`。完整认证规则见[账号登录](docs/server-deployment.md#账号登录)。
+
+分别启动后端和 Web 管理后台：
 
 ```sh
 # 终端 1
@@ -70,4 +82,4 @@ npm run test:api
 
 PR 说明问题、最终行为、影响平台、实际验证与已知风险。涉及数据结构或部署方式时写明迁移和回退步骤，不勾选未执行的检查，也不把未完成的人工验收写成已通过。
 
-原创代码与文档按 [MIT License](LICENSE) 贡献；第三方材料的边界见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+原创代码与文档按 [MIT License](LICENSE) 贡献；第三方代码保留组件自带的许可证与版权声明；图片、字体和医学文献按各自许可处理，不属于本项目的 MIT 再授权。
