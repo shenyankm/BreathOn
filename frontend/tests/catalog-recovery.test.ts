@@ -512,7 +512,7 @@ test('library loads only visited catalogs and reuses already loaded categories',
   app.render(); await settle()
   let tree = app.render()
   assert.deepEqual(calls, ['/catalog/drug'])
-  assert.deepEqual(find(tree, 'TabsTrigger').map(node => node.props.value), ['drugs', 'skills', 'doctors', 'policies'])
+  assert.deepEqual(find(tree, 'TabsTrigger').map(node => node.props.value), ['drugs', 'doctors'])
   assert.equal(find(tree, 'TabsContent').some(node => node.props.value === 'medical'), false)
   find(tree, 'Tabs')[0].props.onValueChange('doctors')
   app.render(); await settle(); tree = app.render()

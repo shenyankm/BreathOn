@@ -1,34 +1,24 @@
 import { doctorLabel } from '@/lib/doctor-label'
 import { memo, useEffect, useRef, useState } from 'react'
-import { AlertCircle, ArrowLeft, BookOpen, ChevronRight, ExternalLink, GraduationCap, Hospital, Info, Landmark, RotateCcw, Search } from 'lucide-react'
+import { AlertCircle, ArrowLeft, BookOpen, ChevronRight, ExternalLink, Hospital, Info, RotateCcw, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/platform-api'
 
 type Drug = { id: string; status: string; name: string; brand: string; aliases: string[]; ownership: 'company' | 'competitor' | 'unknown'; category: string; diseases: string[]; mechanism: string; dosage_form: string; regions: string[]; indications: string[]; overview: string; source_url: string; company: string; manufacturer: string }
-type Policy = { id: string; status: string; usable: boolean; title: string; version_label: string; scope: string; source_url: string; issuer: string; document_number: string; level: string; jurisdiction: string; effective_date: string | null; end_date: string | null; legal_status: string; asset_id?: string | null }
 type Doctor = { id: string; status: string; name: string; display_name?: string; specialty: string; hospital?: string; professional_title?: string; background_type: string; public_facts: string; focus: string; training_style: string; sources: string[] }
 type LibraryDocument = { name: string; content: string; url?: string; doctor?: Doctor }
 type LoadState<T> = { data: T[]; loading: boolean; error: string }
 
-const skillDocument: LibraryDocument = {
-  name: '优秀医药代表必备知识与技能',
-  url: 'https://www.yutumed.com/a/21',
-  content: '优秀医药代表必备知识与技能\n来源：钰兔科技 · 发布日期：2022-02-24\n\n知识准备：了解行业、疾病与药品，以及公司制度。\n\n技能训练：职业礼仪、时间安排、信息整理与专业拜访。\n\n阅读方向：从访前准备、倾听提问、回应问题，到访后复盘，梳理自己的练习目标。\n\n本页为阅读导览，完整内容请查看原文。外部培训资料不作为现行政策依据。',
-}
 const modules = [
   { id: 'drugs', mobileName: '药品', name: '药品文档', icon: BookOpen },
-  { id: 'skills', mobileName: '技能', name: '医药代表技能', icon: GraduationCap },
   { id: 'doctors', mobileName: '医生', name: '医生医院文档', icon: Hospital },
-  { id: 'policies', mobileName: '政策', name: '政策文档', icon: Landmark },
 ]
 const emptyState = <T,>(): LoadState<T> => ({ data: [], loading: true, error: '' })
 const ownershipLabels = { company: '本公司产品', competitor: '竞品', unknown: '归属待核实' }
@@ -47,10 +37,7 @@ export const LibraryPage = memo(function LibraryPage({ companyOnly = false }: { 
   const [category, setCategory] = useState('drugs')
   const [drugSearch, setDrugSearch] = useState('')
   const [drugOwnership, setDrugOwnership] = useState('all')
-  const [policyLevel, setPolicyLevel] = useState('all')
-  const [policyArea, setPolicyArea] = useState('all')
   const [drugs, setDrugs] = useState<LoadState<Drug>>(emptyState)
-  const [policies, setPolicies] = useState<LoadState<Policy>>(emptyState)
   const [doctors, setDoctors] = useState<LoadState<Doctor>>(emptyState)
   const [retry, setRetry] = useState(0)
   const [selected, setSelected] = useState<LibraryDocument | null>(null)
@@ -68,29 +55,25 @@ export const LibraryPage = memo(function LibraryPage({ companyOnly = false }: { 
     }
     // Admins can see drafts through the catalog API; the representative library never displays them.
     if ((companyOnly || category === 'drugs') && drugs.loading) load<Drug>('/catalog/drug', setDrugs, row => row.status === 'published')
-    if (category === 'policies' && policies.loading) load<Policy>('/catalog/policy', setPolicies, row => row.status === 'approved' && row.usable === true)
     if (category === 'doctors' && doctors.loading) load<Doctor>('/catalog/doctor', setDoctors, row => row.status === 'published')
     return () => controller.abort()
-  }, [category, companyOnly, retry, drugs.loading, policies.loading, doctors.loading])
+  }, [category, companyOnly, retry, drugs.loading, doctors.loading])
 
   function openDocument(document: LibraryDocument, button: HTMLButtonElement) {
     openerRef.current = button
     setSelected(document)
     setPreviewOpen(true)
   }
-  const recheck = () => { setDrugs(emptyState()); setPolicies(emptyState()); setDoctors(emptyState()); setRetry(value => value + 1) }
+  const recheck = () => { setDrugs(emptyState()); setDoctors(emptyState()); setRetry(value => value + 1) }
   const query = drugSearch.trim().toLocaleLowerCase()
   const filteredDrugs = drugs.data.filter(drug => (companyOnly ? drug.ownership === 'company' : drugOwnership === 'all' || drug.ownership === drugOwnership) &&
     (!query || [drug.name, drug.brand, ...drug.aliases, drug.category, drug.mechanism, ...drug.diseases].some(value => value.toLocaleLowerCase().includes(query))))
-  const filteredPolicies = policies.data.filter(policy => (policyLevel === 'all' || policy.level === policyLevel) && (policyArea === 'all' || policy.jurisdiction === policyArea))
-  const levels = [...new Set(policies.data.map(policy => policy.level).filter(Boolean))].sort()
-  const areas = [...new Set(policies.data.map(policy => policy.jurisdiction).filter(Boolean))].sort()
-  const count: Record<string, number | null> = { drugs: drugs.loading || drugs.error ? null : drugs.data.length, skills: 1, doctors: doctors.loading || doctors.error ? null : doctors.data.length, policies: policies.loading || policies.error ? null : policies.data.length }
+  const count: Record<string, number | null> = { drugs: drugs.loading || drugs.error ? null : drugs.data.length, doctors: doctors.loading || doctors.error ? null : doctors.data.length }
 
   return <div className="min-w-0 space-y-4 sm:space-y-6">
     <h1 className="sr-only">{companyOnly ? '公司产品' : '资料库'}</h1>
     <Tabs value={category} onValueChange={setCategory} className="min-w-0 gap-4 sm:gap-6">
-      <TabsList hidden={companyOnly} className={`${companyOnly ? 'hidden!' : ''} grid h-auto! w-full grid-cols-4 items-stretch gap-1 rounded-2xl p-1`} aria-label="文档分类">
+      <TabsList hidden={companyOnly} className={`${companyOnly ? 'hidden!' : ''} grid h-auto! w-full grid-cols-2 items-stretch gap-1 rounded-2xl p-1`} aria-label="文档分类">
         {modules.map(module => <TabsTrigger key={module.id} value={module.id} aria-label={module.name} className="h-auto min-h-16 min-w-0 flex-col gap-1.5 rounded-xl px-1 py-2 text-xs sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm">
           <module.icon aria-hidden="true" className="size-5 sm:size-4" />
           <span className="sm:hidden">{module.mobileName}</span>
@@ -101,18 +84,11 @@ export const LibraryPage = memo(function LibraryPage({ companyOnly = false }: { 
       <TabsContent value="drugs"><section className="space-y-4 sm:space-y-5" aria-label="药品文档资料">
         <header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">药品文档</h2></header>
         <LoadNotice state={drugs} retry={recheck} label="药品" />
-        {!drugs.loading && !drugs.error && <><div className="space-y-1"><label htmlFor="drug-search" className="sr-only">搜索药品、疾病或机制</label><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="drug-search" className="h-11 bg-card pl-9" value={drugSearch} onChange={event => setDrugSearch(event.target.value)} placeholder="搜索药品、别名或疾病" /></div><Accordion type="single" collapsible className={companyOnly ? 'hidden' : 'rounded-none border-0'}><AccordionItem value="drug-filters"><AccordionTrigger className="min-h-11 px-0 py-2 font-normal">产品归属：{drugOwnership === 'all' ? '全部归属' : ownershipLabels[drugOwnership as keyof typeof ownershipLabels]}</AccordionTrigger><AccordionContent><div className="space-y-2"><label htmlFor="drug-ownership" className="text-sm font-medium">产品归属</label><Select value={drugOwnership} onValueChange={setDrugOwnership}><SelectTrigger id="drug-ownership" className="h-11 w-full sm:max-w-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部归属</SelectItem><SelectItem value="company">本公司产品</SelectItem><SelectItem value="competitor">竞品</SelectItem><SelectItem value="unknown">归属待核实</SelectItem></SelectContent></Select></div></AccordionContent></AccordionItem></Accordion></div>
+        {!drugs.loading && !drugs.error && <><div className="space-y-3"><label htmlFor="drug-search" className="sr-only">搜索药品、疾病或机制</label><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input id="drug-search" className="h-11 bg-card pl-9" value={drugSearch} onChange={event => setDrugSearch(event.target.value)} placeholder="搜索药品、别名或疾病" /></div>{!companyOnly && <div role="group" aria-label="产品归属" className="grid grid-cols-4 gap-1 rounded-2xl bg-muted/70 p-1">{[['all', '全部'], ['company', '本公司'], ['competitor', '竞品'], ['unknown', '待核实']].map(([value, label]) => <Button key={value} type="button" variant="ghost" aria-label={value === 'all' ? '全部产品' : ownershipLabels[value as keyof typeof ownershipLabels]} aria-pressed={drugOwnership === value} onClick={() => setDrugOwnership(value)} className={`h-11 min-w-0 rounded-xl px-2 text-sm font-normal ${drugOwnership === value ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground hover:text-foreground'}`}>{label}</Button>)}</div>}</div>
           <p role="status" className="text-sm text-muted-foreground">显示 {filteredDrugs.length} / {companyOnly ? drugs.data.filter(drug => drug.ownership === 'company').length : drugs.data.length} 个产品</p>
           {filteredDrugs.length ? <div className="grid items-start gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">{filteredDrugs.map(drug => <Card key={drug.id} className="[--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]"><CardContent className="flex min-w-0 flex-1 flex-col items-start gap-4"><div><p className="mb-2 text-xs text-muted-foreground">{ownershipLabels[drug.ownership] ?? '归属待核实'} · {drug.category || '治疗领域待补充'}</p><CardTitle className="break-words text-base leading-7"><h3>{drug.name}</h3></CardTitle><CardDescription className="mt-1">{drug.brand || '商品名未提供'}</CardDescription></div><p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{drug.overview || '暂无产品概述。'}</p><dl className="space-y-1 text-sm leading-6"><div><dt className="inline font-medium">机制：</dt><dd className="inline">{drug.mechanism || '待补充'}</dd></div><div><dt className="inline font-medium">疾病：</dt><dd className="inline">{drug.diseases.join('、') || '待补充'}</dd></div></dl><div className="mt-auto flex flex-wrap gap-2"><Button variant="outline" size="sm" className="min-h-11" onClick={event => openDocument({ name: drug.name, content: [`${drug.brand || drug.name} · ${ownershipLabels[drug.ownership] ?? '归属待核实'}`, drug.overview || '暂无产品概述。', `治疗领域：${drug.category || '待补充'}\n机制：${drug.mechanism || '待补充'}\n剂型：${drug.dosage_form || '待补充'}\n地区：${drug.regions.join('、') || '待补充'}\n适应症：${drug.indications.join('、') || '待补充'}`, `相关企业：${drug.company || '待补充'}\n生产企业：${drug.manufacturer || '待补充'}`].join('\n\n'), url: publicLink(drug.source_url) }, event.currentTarget)}>阅读概述</Button>{publicLink(drug.source_url) && <Button asChild variant="outline" size="sm" className="min-h-11"><a href={publicLink(drug.source_url)} target="_blank" rel="noreferrer">查看来源<ExternalLink aria-hidden="true" /></a></Button>}</div></CardContent></Card>)}</div> : <p className="rounded-xl border px-5 py-8 text-sm text-muted-foreground">{drugs.data.length ? '当前筛选下暂无产品，请调整筛选条件。' : '暂无已发布产品，请联系管理员。'}</p>}</>}
       </section></TabsContent>
-      <TabsContent value="policies"><section className="space-y-4 sm:space-y-5" aria-label="政策文档资料">
-        <header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">政策文档</h2><p className="text-sm leading-6 text-muted-foreground sm:mt-2">适用范围以原文及机构要求为准。</p></header>
-        <LoadNotice state={policies} retry={recheck} label="政策" />
-        {!policies.loading && !policies.error && <><Accordion type="single" collapsible className="bg-card"><AccordionItem value="policy-filters"><AccordionTrigger className="min-h-11 px-4 py-3 font-normal">筛选政策 · {policyLevel === 'all' ? '全部层级' : policyLevel} · {policyArea === 'all' ? '全部范围' : policyArea}</AccordionTrigger><AccordionContent><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><label htmlFor="policy-level" className="text-sm font-medium">发布层级</label><Select value={policyLevel} onValueChange={setPolicyLevel}><SelectTrigger id="policy-level" className="h-11 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部层级</SelectItem>{levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}</SelectContent></Select></div><div className="space-y-2"><label htmlFor="policy-area" className="text-sm font-medium">适用地域或机构</label><Select value={policyArea} onValueChange={setPolicyArea}><SelectTrigger id="policy-area" className="h-11 w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部范围</SelectItem>{areas.map(area => <SelectItem key={area} value={area}>{area}</SelectItem>)}</SelectContent></Select></div></div></AccordionContent></AccordionItem></Accordion><p role="status" className="text-sm text-muted-foreground">显示 {filteredPolicies.length} / {policies.data.length} 份文档</p>
-          {filteredPolicies.length ? <div className="grid items-start gap-6 lg:grid-cols-2">{filteredPolicies.map(policy => <Card key={policy.id} className="[--card-spacing:--spacing(4)] sm:[--card-spacing:--spacing(6)]"><CardContent className="flex min-w-0 flex-1 flex-col items-start gap-4"><div><p className="mb-2 text-sm text-muted-foreground">{policy.level || '层级待核对'} · {policy.jurisdiction || '地域待核对'}</p><CardTitle className="break-words text-base leading-7"><h3>{policy.title}</h3></CardTitle></div><dl className="space-y-1.5 text-sm leading-6"><div><dt className="inline font-medium">发布机关：</dt><dd className="inline">{policy.issuer || '待核对'}</dd></div><div><dt className="inline font-medium">文号：</dt><dd className="inline">{policy.document_number || '待核对'}</dd></div><div><dt className="inline font-medium">施行日期：</dt><dd className="inline">{policy.effective_date || '待核对'}</dd></div><div><dt className="inline font-medium">适用范围：</dt><dd className="inline">{policy.scope || '待核对'}</dd></div><div><dt className="inline font-medium">版本：</dt><dd className="inline">{policy.version_label}</dd></div></dl><div className="mt-auto flex flex-wrap gap-2">{publicLink(policy.source_url) && <Button asChild variant="outline" size="sm" className="min-h-11"><a href={publicLink(policy.source_url)} target="_blank" rel="noreferrer">查看原文<ExternalLink aria-hidden="true" /></a></Button>}{policy.asset_id && <Button asChild variant="outline" size="sm" className="min-h-11"><a href={`/api/catalog/policy/${encodeURIComponent(policy.id)}/file`} target="_blank" rel="noreferrer">查看归档文件</a></Button>}</div></CardContent></Card>)}</div> : <p className="rounded-xl border px-5 py-8 text-sm text-muted-foreground">{policies.data.length ? '当前筛选下暂无政策，请调整筛选条件。' : '暂无可用政策，请联系管理员。'}</p>}</>}
-      </section></TabsContent>
       <TabsContent value="doctors"><section className="space-y-4 sm:space-y-5" aria-label="医生资料"><header><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">医生医院文档</h2><Alert className="border-primary/20 bg-muted/60 p-4 sm:mt-3"><Info aria-hidden="true" className="size-5 text-foreground" /><AlertTitle className="text-base font-semibold">AI 模拟角色，非医生本人</AlertTitle><AlertDescription className="text-sm leading-6 text-foreground/80">仅用于沟通训练，不代表医生本人的观点、诊疗意见或产品推荐。</AlertDescription></Alert></header><LoadNotice state={doctors} retry={recheck} label="医生资料" />{!doctors.loading && !doctors.error && (doctors.data.length ? <div className="grid items-start gap-4 sm:grid-cols-2 sm:gap-6">{doctors.data.map(doctor => <Card key={doctor.id} className="gap-0 overflow-hidden py-0"><Button variant="ghost" className="h-auto min-h-28 w-full justify-between gap-3 rounded-xl px-4 py-5 text-left whitespace-normal sm:px-6" aria-label={`查看${doctorLabel(doctor.display_name || doctor.name)}的资料`} onClick={event => openDocument({ name: doctorLabel(doctor.display_name || doctor.name), content: '', doctor }, event.currentTarget)}><span className="min-w-0 space-y-2"><span className="block break-words text-base font-medium">{doctorLabel(doctor.display_name || doctor.name)}</span><span className="block text-sm leading-6 font-normal text-muted-foreground">{[doctor.hospital, doctor.specialty, doctor.professional_title].filter(Boolean).join(' · ')}</span></span><ChevronRight aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" /></Button></Card>)}</div> : <p className="rounded-xl border px-5 py-8 text-sm text-muted-foreground">暂无已发布医生资料，请联系管理员。</p>)}</section></TabsContent>
-      <TabsContent value="skills"><section className="space-y-4 sm:space-y-5" aria-label="医药代表技能资料"><h2 className="sr-only sm:not-sr-only sm:text-lg sm:font-semibold">医药代表技能</h2><div className="grid items-start gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3"><Card><CardContent className="space-y-4"><div><CardTitle className="break-words text-base leading-7"><h3>{skillDocument.name}</h3></CardTitle><CardDescription className="mt-2 leading-6">钰兔科技 · 2022-02-24 · 外部培训参考</CardDescription></div><p className="text-sm leading-7 text-muted-foreground">知识准备、职业礼仪、时间管理与专业拜访。</p><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" className="min-h-11" onClick={event => openDocument(skillDocument, event.currentTarget)}>阅读概述</Button><Button asChild variant="outline" size="sm" className="min-h-11"><a href={skillDocument.url} target="_blank" rel="noreferrer">详细文档</a></Button></div></CardContent></Card></div></section></TabsContent>
     </Tabs>
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
       <DialogContent fullscreen showCloseButton={false} onCloseAutoFocus={event => { event.preventDefault(); openerRef.current?.focus({ preventScroll: true }) }} className="inset-0 left-0 top-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[85svh] sm:w-full sm:max-w-3xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:ring-1">
