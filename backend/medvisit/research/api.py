@@ -1,6 +1,5 @@
 from typing import Literal
 from uuid import UUID
-import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, Response
@@ -44,7 +43,7 @@ def research_router(service):
 
     @router.post('/policy-file', status_code=201)
     async def policy_file(request: Request, title: str):
-        return await asyncio.to_thread(service.policy_file, title, await request.body())
+        return await service.import_policy_file(title, await request.body())
 
     @router.get('/policy-file/{item_id}/original')
     def policy_file_original(item_id: UUID):

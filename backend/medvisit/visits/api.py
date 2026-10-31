@@ -21,6 +21,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..core.identity import current_role
+from ..core.tasks import work as thread_work
 from ..platform.store import now
 from ..platform.models import content_usable
 from ..agents.web_search import public_url
@@ -110,19 +111,7 @@ def visits_router(store, settings, current_user):
     lifecycle = asyncio.Lock()
     closing = False
 
-    async def work(function, *args):
-        worker = asyncio.create_task(asyncio.to_thread(function, *args))
-        cancelled = False
-        # Keep lifecycle guards until the transaction and private-file cleanup finish.
-        while not worker.done():
-            try:
-                await asyncio.shield(worker)
-            except asyncio.CancelledError:
-                cancelled = True
-        result = worker.result()
-        if cancelled:
-            raise asyncio.CancelledError
-        return result
+    work = thread_work
 
     def has_private_text(item):
         return item.get('source') == 'recording' or item.get('private_audio', False)

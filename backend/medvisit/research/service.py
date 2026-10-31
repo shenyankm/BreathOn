@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+from ..core.tasks import drain, work
 from ..platform.store import now
 from ..platform.models import Doctor, Policy
 from ..platform.pdf_extract import extract_pdf
@@ -35,6 +36,7 @@ class ResearchService:
         self.scheduler = None
         self._lifecycle = asyncio.Lock()
         self._closing = False
+        self._shutdown_task = None
 
     @property
     def workspace(self):
@@ -188,6 +190,12 @@ class ResearchService:
             tx.audit(self.workspace, user['id'], 'policy.research_draft', 'policy', item['id'], {'job_id':job_id})
             return item
 
+    async def import_policy_file(self, title, data):
+        async with self._lifecycle:
+            if self._closing:
+                raise HTTPException(503, '服务正在停止，请稍后重试。')
+            return await work(self.policy_file, title, data)
+
     def policy_file(self, title, data):
         if len(data) > 20_000_000:
             raise HTTPException(413, '原文超过20MB。')
@@ -263,13 +271,7 @@ class ResearchService:
                     cancelled = True
             job = creating.result()
             if cancelled:
-                interrupting = asyncio.create_task(asyncio.to_thread(self._interrupt, job))
-                while not interrupting.done():
-                    try:
-                        await asyncio.shield(interrupting)
-                    except asyncio.CancelledError:
-                        pass
-                interrupting.result()
+                await work(self._interrupt, job)
                 raise asyncio.CancelledError
             task = asyncio.create_task(self._run(job))
             self.tasks.add(task)
@@ -285,30 +287,25 @@ class ResearchService:
 
     async def cancel(self, job_id):
         async with self._lifecycle:
-            job = await asyncio.to_thread(self.get_job, job_id)
+            if self._closing:
+                raise HTTPException(503, '服务正在停止，请稍后重试。')
+            job = await work(self.get_job, job_id)
             task = self.job_tasks.get(job_id)
             if job['status'] == 'running':
                 if task:
                     task.cancel()
                     await asyncio.gather(task, return_exceptions=True)
-                job = await asyncio.to_thread(self.get_job, job_id)
+                job = await work(self.get_job, job_id)
                 if job['status'] == 'running':
-                    interrupting = asyncio.create_task(asyncio.to_thread(self._interrupt, job))
-                    cancelled = False
-                    while not interrupting.done():
-                        try:
-                            await asyncio.shield(interrupting)
-                        except asyncio.CancelledError:
-                            cancelled = True
-                    interrupting.result()
-                    if cancelled:
-                        raise asyncio.CancelledError
-            return await asyncio.to_thread(self.get_job, job_id)
+                    await work(self._interrupt, job)
+            return await work(self.get_job, job_id)
 
     async def _run(self, job):
         result, usage, error, interrupted = None, {}, '', False
         job_dir = self.base / 'jobs' / job['id']
         try:
+            if self._closing:
+                raise asyncio.CancelledError
             result, usage = await run_agent(self.settings, job['kind'], job['query'], self.archives, job_dir, job['seed_urls'])
         except asyncio.CancelledError:
             interrupted, error = True, '本次检索已停止，已归档的原件保留。'
@@ -337,15 +334,8 @@ class ResearchService:
                 except OSError:
                     logger.error('research_result_checkpoint_failed job_id=%s', job['id'])
             self._finish(job, result, usage, error, interrupted, captured)
-        finalizing = asyncio.create_task(asyncio.to_thread(finish))
-        cancelled = False
-        while not finalizing.done():
-            try:
-                await asyncio.shield(finalizing)
-            except asyncio.CancelledError:
-                cancelled = True
-        finalizing.result()
-        if interrupted or cancelled:
+        await work(finish)
+        if interrupted:
             raise asyncio.CancelledError
 
     def _save_result(self, job, result, usage):
@@ -459,7 +449,11 @@ class ResearchService:
 
     async def check_due_watches(self):
         from .models import ResearchRequest
-        for watch in await asyncio.to_thread(self.list, 'research_watch'):
+        async with self._lifecycle:
+            if self._closing:
+                return
+            watches = await work(self.list, 'research_watch')
+        for watch in watches:
             if not watch['enabled'] or datetime.fromisoformat(watch['next_check_at']) > datetime.now(timezone.utc):
                 continue
             try:
@@ -467,7 +461,9 @@ class ResearchService:
             except HTTPException as exc:
                 if exc.status_code == 409:
                     return
-                await asyncio.to_thread(self._watch_error, watch['id'], str(exc.detail))
+                async with self._lifecycle:
+                    if not self._closing:
+                        await work(self._watch_error, watch['id'], str(exc.detail))
             return
 
     def _watch_error(self, watch_id, message):
@@ -478,37 +474,40 @@ class ResearchService:
                     'next_check_at':(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()}, watch['version'])
 
     async def start_scheduler(self):
-        await asyncio.to_thread(self.recover)
+        async with self._lifecycle:
+            if self._closing or (self.scheduler and not self.scheduler.done()):
+                return
+            await work(self.recover)
 
         async def poll():
             while True:
                 await asyncio.sleep(30)
                 try:
                     async with self._lifecycle:
-                        await asyncio.to_thread(self.recover)
+                        if self._closing:
+                            return
+                        await work(self.recover)
                     await self.check_due_watches()
                 except Exception as exc:
                     # A storage outage must not stop future checks or trigger a retry storm.
                     logger.error('research_watch_check_failed error_type=%s', type(exc).__name__)
+                    if asyncio.current_task().cancelling():
+                        raise asyncio.CancelledError
                     continue
 
         self.scheduler = asyncio.create_task(poll())
 
     async def close(self):
+        self._closing = True
+        if self._shutdown_task is None:
+            self._shutdown_task = asyncio.create_task(self._close())
+        await drain(self._shutdown_task)
+
+    async def _close(self):
         async with self._lifecycle:
-            self._closing = True
             tasks = [*self.tasks, *([self.scheduler] if self.scheduler else [])]
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             # A task cancelled before its first step never enters _run's cancellation handler.
-            recovering = asyncio.create_task(asyncio.to_thread(self.recover))
-            cancelled = False
-            while not recovering.done():
-                try:
-                    await asyncio.shield(recovering)
-                except asyncio.CancelledError:
-                    cancelled = True
-            recovering.result()
-            if cancelled:
-                raise asyncio.CancelledError
+            await work(self.recover)

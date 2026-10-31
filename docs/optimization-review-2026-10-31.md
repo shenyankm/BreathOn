@@ -405,3 +405,42 @@ uv run --directory backend --locked python data/validation/optimization-20261031
 uv run --directory backend --locked python data/validation/optimization-20261031/private_cleanup_resource_probe.py paired
 uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py private-cleanup
 ```
+
+第十五项最终交付：提交 `1b2d18af8980c01037c61d5ad7b2fabe5b378796` 的分支 CI [41148984987](https://github.com/shenyankm/BreathOn/actions/runs/41148984987) 四项通过，main CI [41149721364](https://github.com/shenyankm/BreathOn/actions/runs/41149721364) 五项通过。生产部署日志确认该完整 SHA，随后外部 live/ready 均返回精确的正常响应（单次健康检查，不作为延迟分布）；临时分支已正常删除，仅 main 保留，原 stash 未动。完整回执为 `transcript-reference-acceptance.json` 和 `private-cleanup-main-production-job.json`。
+
+## 16. 研究存储工作与重复关闭的生命周期
+
+在第十五项 main 上复查发现：研究启动恢复、取消读取、定时恢复、追踪列表/错误写入和政策原件导入使用的线程，会在调用协程取消后继续访问数据库。关闭调用在等待生命周期锁时被取消，也会提前释放应用关闭流程；两个关闭调用还会各做一次恢复。真实隔离 PG 与应用 lifespan 的十一个阶段各三次，共 **33/33** 次观察到先关闭连接池、后结束工作，全部出现 `PoolClosed`；包括实际 DOCX 转换与 ASGI 导入请求取消。线程由 Event 暂停在真实操作之前，不将其描述为真实网络故障；文件/资料均为合成夹具，外部收费请求为零。
+
+修改前已在 `research-worker-lifecycle-acceptance.json` 固定范围、故障顺序、正常延迟/资源门槛及回退方式。复用 visits 已验收的线程收尾模式，将其提取为小型标准库工具；保留 `visit_work` 绑定及原有调用方。研究读取、恢复和导入在原生命周期锁内等待实际工作完成，追踪检查在调用 `start` 前释放锁，避免重入。所有关闭调用共同等待唯一的关闭任务，包含锁获取、任务收尾和最终恢复，保留原始失败结果。新任务/导入在关闭开始后返回 503；已经排队但未调用模型的任务仍以中断状态收尾。原件、检查点、用量、审核边界、每日追踪规则及数据库结构不变。
+
+预设标准要求：33 个同输入故障案例全部先结束工作、再关闭连接池；原始错误在重复取消后仍可见；重复关闭不重复恢复，失败不能变成成功；不增加模型提交；真实 PG 资源耗尽及恢复时事件循环心跳最大间隔小于 0.5 秒、故障检查最多 17 秒。正常接口使用 SQLite/PG 各三组交替顺序的旧/新独立进程，每进程每接口 10 次预热、30 次热测，即每存储/接口/版本 **n=90**。p50/p95 不得同时退化超过 15% 和 5 ms，退出后实际 PG 连接为零，重复调用的任务、FD、池等待者不能增长。回退为 revert 本项提交，无迁移或手动生产数据操作。
+
+实际结果：相同 33 个故障案例全部变为先收尾再关闭，**0** 次提前关闭、**0** 次 `PoolClosed`；并发关闭恢复次数由 2 降为 1。新增最小行为回归在旧代码上 **21 failed、9.60 秒**；修复后连同两个真实 PG 耗尽/恢复检查，**23 passed、13.60 秒**。PG 检查借走全部四条连接，实际等待既有 5 秒池超时；重复取消仍等待工作并保留 `PoolTimeout`，释放连接后取消正常恢复，失败关闭保持同一错误，新建应用实例恢复持久化孤立任务。心跳门槛通过；这些检查不调用模型，也不将模拟模型结果当作真实模型验收。政策导入的线程错误按既有 HTTP 契约转换为脱敏 500 并记录错误类型；强化测试曾误期待异常直接穿过中间件，该失败日志保留，已改为验证实际 HTTP 契约，线程顺序和错误可见性标准没有放宽。
+
+配对实际回环 HTTP 结果（毫秒，汇总 p50 / p95）：
+
+| 存储与接口 | 修改前 | 修改后 |
+| --- | --- | --- |
+| SQLite 研究状态 | 1.269 / 1.514 | 1.262 / 1.580 |
+| SQLite 取消已完成任务 | 0.958 / 1.171 | 1.036 / 1.252 |
+| PG 研究状态 | 1.955 / 2.194 | 1.964 / 2.298 |
+| PG 取消已完成任务 | 1.462 / 1.614 | 1.547 / 1.821 |
+
+保留全部样本和波动于 `research-normal-paired.json`：旧/新 SQLite 冷启动范围 693–709 / 671–715 ms，PG 739–771 / 713–733 ms，不能据此声称启动加速。热测单次全范围 SQLite 状态 1.160–1.690 / 1.166–1.838、取消 0.882–1.551 / 0.925–1.637；PG 状态 1.839–2.614 / 1.876–2.716、取消 1.353–2.406 / 1.451–2.215 ms。十二个服务进程均正常退出；SQLite FD 13→13、PG 14→14，任务均 5→5，无池等待者，池连接全部可用，退出后 PG 连接为零。载荷、类型、404 和来源拒绝回归通过；此负载为本机免登录，账号/角色隔离另由原生集成验收。收益为稳定关闭与错误恢复，取消读取增加约 0.08 ms p50 / 0.08–0.21 ms p95，不声称性能或 RSS 改善。
+
+完整 `npm run test:api -- -q` 带真实隔离 PG 得 **1027 passed、0 skipped、121.61 秒**，已覆盖上述相关回归。`npm test` **100 passed、0 skipped**，lint 通过（原有三条 Fast Refresh 警告），Web 与 Android 资源构建通过；没有修改前端/原生树，实际 APK 与安装流程沿用相同树此前验收，每个新 SHA 的远程 CI 仍重新编译 ARM64 APK。全量测试和探针全部退出后，实际 Caddy/Uvicorn 进程重启、PG 停机/恢复、Cookie/角色/私有账号隔离集成通过，新建库已删除（`research-worker-native-result.json/log`）。代码和验收资料 diff 已审查，当前提交的远程 CI、main 合并和生产确认尚待执行，回执复用 `research-worker-lifecycle-acceptance.json`。
+
+原始证据复用忽略目录 `backend/data/validation/optimization-20261031/`，包括 `research-worker-fault-comparison.json`、`research-worker-faults-final.log` 和配对 JSON；线程工具/研究/路由源码 SHA256 已保存并与正式回归版本核对。没有添加依赖、配置、模型重试或输出缓存。真实麦克风/扬声器仍因用户暂无真机未执行，后续有效候选和三轮最终复查仍待完成，不能宣称整个 goal 完成。
+
+```sh
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- tests/test_research_lifecycle.py tests/test_research_service.py tests/test_research_word.py tests/test_runtime.py tests/test_visits.py -q
+TEST_DATABASE_URL="$OPT_DISPOSABLE_DATABASE_URL" npm run test:api -- -q
+npm test
+npm run lint
+npm run build
+npm run build:android
+uv run --directory backend --locked python data/validation/optimization-20261031/research_normal_probe.py paired
+uv run --directory backend --locked python data/validation/optimization-20261031/research_policy_owner_probe.py after
+uv run --directory backend --locked python data/validation/optimization-20261031/raw_audio_native_probe.py research-worker
+```
