@@ -32,8 +32,9 @@ class Transaction:
         item = json.loads(row[0]) if row else None
         return item if item is not None and private_entry_visible(kind, item) else None
 
-    def list(self, tenant, kind):
-        rows = self.execute('SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC, id',
+    def list(self, tenant, kind, *, include_pages=True):
+        column = 'document' if include_pages else "(document::jsonb - 'pages')::text" if self.postgres else "json_remove(document, '$.pages')"
+        rows = self.execute(f'SELECT {column} FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC, id',
                             (tenant, kind)).fetchall()
         return [item for row in rows if private_entry_visible(kind, item := json.loads(row[0]))]
 

@@ -88,7 +88,7 @@ function CatalogPage({ kind }: { kind: Kind }) {
     {label:'医生角色',tab:'doctor',ready:bindings.doctors.some(row=>row.status==='published')},
     {label:'评分标准',tab:'rubric',ready:bindings.rubrics.some(row=>row.status==='published')},
   ].filter(step=>!step.ready)
-  return <div className="space-y-5">
+  return <div className="@container/catalog space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{kindLabels[kind]}</h2><p className="mt-1 text-sm text-muted-foreground">{loading?'读取中':`${rows.length} 项`}</p></div><Button variant={kind==='scenario'?'outline':'default'} disabled={busy} onClick={()=>{detailRequest.current?.abort();setItem(undefined);setDoctorDraft(undefined);setSelection(null);setError('');setNotice('')}}>{kind==='scenario'?'手动创建场景':`添加${kindLabels[kind]}`}</Button></div>
     {kind==='doctor'&&selection===undefined&&<DoctorGenerator onOpen={id=>void select(id)} onGenerated={(id,fields)=>{detailRequest.current?.abort();setDoctorDraft({id,fields});setItem(undefined);setSelection(null);setError('');setNotice('请核对公开事实与来源，并调整训练设定；保存草稿后再发布。')}}/>}
     {kind==='scenario'&&bindingsLoaded&&missingPreparation.length>0&&<section className="space-y-2 pl-4 text-sm" aria-label="场景准备提示"><p className="font-medium">生成场景前，还需要准备</p><div className="flex flex-wrap gap-4">{missingPreparation.map(step=><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`#workspace?tab=${step.tab}`} key={step.tab}>{step.label}<span aria-hidden="true" className="ml-1">→</span></a>)}</div></section>}
@@ -97,14 +97,14 @@ function CatalogPage({ kind }: { kind: Kind }) {
     {notice&&<p role="status" className="text-sm">{notice}</p>}
     {error&&!deleteOpen&&<Alert variant="destructive" role="alert"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="ghost" size="sm" onClick={()=>{setLoading(true);setError('');setItem(undefined);setSelection(undefined);setRefresh(v=>v+1)}}>刷新数据</Button></AlertDescription></Alert>}
     {/* 240px doctor list (280px otherwise) + 24px gutter + editor = full canvas width. */}
-    <div className={`grid items-start gap-6 ${kind === "doctor" ? "lg:grid-cols-[240px_minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
-      <Card role="region" aria-label={`${kindLabels[kind]}列表`} className={`gap-0 overflow-hidden py-0 ${kind === "doctor" ? "lg:sticky lg:top-6" : ""} ${selection !== undefined ? "hidden lg:block" : ""}`}>
+    <div className={`grid items-start gap-6 ${kind === "doctor" ? "@min-[48rem]/catalog:grid-cols-[240px_minmax(0,1fr)]" : "@min-[48rem]/catalog:grid-cols-[280px_minmax(0,1fr)]"}`}>
+      <Card role="region" aria-label={`${kindLabels[kind]}列表`} className={`gap-0 overflow-hidden py-0 ${kind === "doctor" ? "@min-[48rem]/catalog:sticky @min-[48rem]/catalog:top-6" : ""} ${selection !== undefined ? "hidden @min-[48rem]/catalog:block" : ""}`}>
         <CardHeader ><CardTitle >{kindLabels[kind]}列表</CardTitle></CardHeader>
         <CardContent >{loading?<Item role="status" className="p-5"><Spinner aria-hidden="true" /><ItemContent><ItemDescription>{"正在加载…"}</ItemDescription></ItemContent></Item>:rows.length===0?<p className="p-5 text-sm leading-6 text-muted-foreground">暂无{kindLabels[kind]}</p>:<ul className="max-h-[65vh] overflow-auto">{rows.map(row=><li key={row.id} ><Button variant="ghost" disabled={busy} aria-current={selection===row.id?'true':undefined} className={`h-auto w-full flex-col items-start justify-start gap-1 whitespace-normal px-4 py-4 text-left ${selection === row.id ? "" : ""}`} onClick={()=>void select(row.id)}><span className="block break-words text-sm font-medium">{titleOf(row)}</span><span className="block text-xs leading-5 text-muted-foreground">{statusLabels[row.status]??row.status}{'version_label'in row?` · ${row.version_label}`:''}</span></Button></li>)}</ul>}</CardContent>
       </Card>
-      <Card className={`min-w-0 gap-0 py-0 ${selection === undefined ? "hidden lg:block" : ""}`}><CardContent >
+      <Card className={`min-w-0 gap-0 py-0 ${selection === undefined ? "hidden @min-[48rem]/catalog:block" : ""}`}><CardContent >
         {selection===undefined?<div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center"><h3 className="text-sm font-medium">请选择{kindLabels[kind]}</h3></div>:<>
-          <Button className={`mb-4 ${kind === "doctor" ? "" : "lg:hidden"}`} variant="ghost" onClick={()=>{setSelection(undefined);setItem(undefined);setDoctorDraft(undefined)}}>返回列表</Button>
+          <Button className={`mb-4 ${kind === "doctor" ? "" : "@min-[48rem]/catalog:hidden"}`} variant="ghost" onClick={()=>{setSelection(undefined);setItem(undefined);setDoctorDraft(undefined)}}>返回列表</Button>
           {selection!==null&&!item?<p role="status" className="text-sm text-muted-foreground">正在读取详情…</p>:<>
             <div className={`mb-6 flex flex-wrap items-center justify-between gap-3 ${kind === "doctor" ? " pb-5" : ""}`}>
               <div className="space-y-1"><h3 className="text-base font-medium">{item?titleOf(item):`新建${kindLabels[kind]}`}</h3></div>

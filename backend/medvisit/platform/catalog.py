@@ -133,7 +133,8 @@ class Catalog:
 
     def list(self, user, kind):
         with self.store.transaction(user['workspace'], write=False) as tx:
-            rows = [row for row in tx.list(user['workspace'], kind) if row.get('status') != 'deleted']
+            rows = tx.list(user['workspace'], kind, include_pages=False) if kind in ('content', 'policy') else tx.list(user['workspace'], kind)
+            rows = [row for row in rows if row.get('status') != 'deleted']
         if kind in ('content', 'policy'):
             usable = policy_usable if kind == 'policy' else content_usable
             return [{**{k: v for k,v in r.items() if k != 'pages'}, 'usable':usable(r)} for r in rows]

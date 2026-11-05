@@ -359,3 +359,22 @@ test('stop remains saving until server acknowledgement even without training con
   assert.equal(app.render().saving, false)
   assert.equal(app.render().saved, true)
 })
+
+test('an early doctor turn is followed by coaching without duplicating text or accepting an old session', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({type:'ready', session_id:'one'})
+  const message = {id:'d1', role:'doctor', text:'请核对研究人群。', final:true}
+  ws.receive({type:'practice_turn', message, coach:null})
+  assert.equal(app.render().messages.length, 1)
+  assert.equal(app.render().coach, null)
+  const coach = {based_on:'u1', doctor_id:'d1', focus:'核对原文'}
+  ws.receive({type:'coaching', coach})
+  assert.equal(app.render().coach.focus, coach.focus)
+  assert.equal(app.render().messages.length, 1)
+  await app.render().start('assisted', 'practice')
+  ws.receive({type:'coaching', coach})
+  assert.equal(app.render().coach, null)
+  assert.equal(app.render().messages.length, 0)
+})

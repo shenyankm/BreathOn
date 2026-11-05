@@ -51,3 +51,19 @@ def test_approval_keeps_first_receipt_when_legacy_identifiers_and_pages_repeat(t
     approvals = corpus.approval_snapshot(data)
     first = corpus.approved_sources()[0]
     assert approvals[('test-source', 1)]['document_sha256'] == first['sha256']
+
+
+async def test_revocation_checks_skip_storage_when_no_assertion_has_approved_evidence():
+    from copy import deepcopy
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from medvisit.knowledge.verify import MedicalVerifier
+    corpus = Mock()
+    corpus.load.side_effect = AssertionError('No approved judgments need a corpus lookup')
+    verifier = MedicalVerifier(SimpleNamespace(), corpus)
+    checks = [{'status':status, 'statements':[]} for status in ('checking','insufficient','not_medical','unavailable')]
+    original = deepcopy(checks)
+    await verifier.invalidate_revoked(checks)
+    await verifier.invalidate_revoked([])
+    assert checks == original
+    corpus.load.assert_not_called()

@@ -165,14 +165,15 @@ class MedicalVerifier:
         return result
 
     async def invalidate_revoked(self, checks):
+        checks = [row for row in checks if row.get('status') in ('supported', 'contradicted')]
+        if not checks:
+            return
         try:
             data = await asyncio.to_thread(self.corpus.load)
             approvals = await asyncio.to_thread(self.corpus.approval_snapshot, data)
         except Exception:
             data, approvals = {'version':None}, {}
         for row in checks:
-            if row.get('status') not in ('supported', 'contradicted'):
-                continue
             citations = [c for statement in row.get('statements', []) for c in statement.get('citations', [])]
             valid = row.get('corpus_version') == data['version'] and bool(citations)
             for citation in citations:

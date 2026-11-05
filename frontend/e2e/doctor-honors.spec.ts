@@ -27,6 +27,7 @@ test('doctor honors can be edited, saved, displayed and removed', async ({ page 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   }
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+  expect((await form.getByLabel('医生姓名').boundingBox())!.width).toBeGreaterThan(200)
   await page.screenshot({ path:'test-results/doctor-honors-large-text.png', fullPage:true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.evaluate(() => { document.documentElement.style.fontSize = '' })
@@ -40,6 +41,7 @@ test('doctor honors can be edited, saved, displayed and removed', async ({ page 
   await page.goto('/admin#admin?section=doctor')
   await page.getByRole('button', { name:new RegExp(doctor.name) }).click()
   const detail = page.getByRole('region', { name:'医生画像详情' })
+  await expect.poll(() => page.locator('img[src*="doctor-illustration.webp"]').first().evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(1254)
   await expect(detail.getByText('合成教学奖', { exact:true })).toBeVisible()
   await expect(detail.getByRole('link', { name:'核对荣誉来源' })).toHaveAttribute('href', 'https://example.org/honor')
   await page.goto(`/admin#workspace?tab=doctor&doctor=${doctor.id}`)

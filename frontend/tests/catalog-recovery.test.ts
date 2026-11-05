@@ -103,6 +103,20 @@ test('catalogue avoids serialization for empty searches and reuses unchanged fil
   assert.equal(listRows(app.render({ kind:'drug' })).length, 0)
 })
 
+test('policy catalogue loads independently without requesting unrelated training content', async () => {
+  const requests: string[] = []
+  const app = page('admin-page.tsx', 'Catalogue', async path => {
+    requests.push(path)
+    if (path !== '/catalog/policy') throw new Error('Training content is unavailable')
+    return [{id:'policy', title:'有效政策', status:'approved', updated_at:'2026-11-05', version:1}]
+  })
+  app.render({kind:'policy'})
+  await settle()
+  const view = app.render({kind:'policy'})
+  assert.deepEqual(requests, ['/catalog/policy'])
+  assert.ok(JSON.stringify(view).includes('有效政策'))
+})
+
 test('saved case responses remain usable when the next list request would fail', async () => {
   const original = { id: 'case-1', version: 1, status: 'draft', title: 'Original', quotes: [], origin_verified: false }
   let reads = 0

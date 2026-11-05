@@ -7,6 +7,8 @@ from uuid import uuid4
 from medvisit.platform.cases import Cases
 from medvisit.platform.progress import estimate_cost, personal_progress
 from medvisit.storage.records import SessionRecord, activity_record
+from test_platform import client
+from test_storage import database_url
 
 
 def test_pricing_indexes_rates_once_and_keeps_first_matching_snapshot():
@@ -70,3 +72,27 @@ def test_progress_batches_detail_reads_and_skips_missing_or_old_records():
     records.get.assert_not_called()
     assert records.get_many.call_count == 5
     assert all(len(call.args[0]) <= 50 for call in records.get_many.call_args_list)
+
+
+def test_catalogue_summaries_do_not_decode_pages_or_change_full_details(client):
+    from unittest.mock import patch
+    from medvisit.platform import store as module
+    store = client.app.state.platform
+    workspace = client.app.state.local_user['workspace']
+    pages = [{'number':i, 'text':'完整合成资料。' * 1000} for i in range(1, 11)]
+    for kind in ('content', 'policy'):
+        with store.transaction(workspace) as tx:
+            current = tx.create(workspace, kind, {'title':'仅测列表投影', 'status':'approved',
+                'legal_status':'effective', 'pages':pages, 'version_label':'v1', 'scope':'合成测试', 'source_url':''})
+            tx.create('other-workspace', kind, {**current, 'title':'其他工作区不得返回'})
+        with patch.object(module.json, 'loads', wraps=module.json.loads) as decode:
+            response = client.get('/api/catalog/'+kind)
+        assert response.status_code == 200
+        assert all('完整合成资料' not in str(call.args[0]) for call in decode.call_args_list)
+        rows = response.json()
+        summary = next(row for row in rows if row['id'] == current['id'])
+        assert summary == {**{key:value for key,value in current.items() if key != 'pages'}, 'usable':True}
+        assert not any(row['title'] == '其他工作区不得返回' for row in rows)
+        assert client.get(f'/api/catalog/{kind}/{current["id"]}').json()['pages'] == pages
+        with store.transaction(workspace, write=False) as tx:
+            assert next(row for row in tx.list(workspace, kind) if row['id'] == current['id'])['pages'] == pages

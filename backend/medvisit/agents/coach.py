@@ -158,7 +158,7 @@ def build_agents(model, doctor_model, web, settings, *, prompt, skill_parts, tra
     return agents
 
 
-async def run_agents(agents, record: str, coach_record: str, *, coach_deadline: float | None = None) -> list:
+async def run_agents(agents, record: str, coach_record: str, *, coach_deadline: float | None = None, on_doctor_reply=None) -> list:
     """Run coach and doctor concurrently on the same record and return one outcome per agent (reply or exception).
 
     The caller decides what a failure means: a live turn can still deliver the doctor without the coach, but a review
@@ -167,7 +167,12 @@ async def run_agents(agents, record: str, coach_record: str, *, coach_deadline: 
     async def run(index, agent):
         text = coach_record if index == 0 else record
         async with asyncio.timeout(coach_deadline if index == 0 else None):
-            return await agent.reply(Msg(name="practice_record", role="user", content=[TextBlock(text=text)]))
+            reply = await agent.reply(Msg(name="practice_record", role="user", content=[TextBlock(text=text)]))
+            if index == 1 and on_doctor_reply is not None:
+                usage = {'prompt_tokens':reply.usage.input_tokens, 'completion_tokens':reply.usage.output_tokens,
+                    'total_tokens':reply.usage.input_tokens + reply.usage.output_tokens} if reply.usage else {}
+                await on_doctor_reply(parse_doctor_reply(json.loads(reply.get_text_content() or "")), usage)
+            return reply
 
     replies = await asyncio.gather(*[run(index, agent) for index, agent in enumerate(agents)], return_exceptions=True)
     if asyncio.current_task().cancelling():
@@ -235,7 +240,7 @@ def summarise_usage(replies, web, settings, started, repair_usage_unknown) -> di
     totals = {"prompt_tokens": sum(item.input_tokens for item in usage),
               "completion_tokens": sum(item.output_tokens for item in usage),
               "total_tokens": sum(item.input_tokens + item.output_tokens for item in usage)} if usage else {}
-    if repair_usage_unknown:
+    if repair_usage_unknown or any(reply.usage is None for reply in replies):
         totals['incomplete'] = True
     if sum(web.calls.values()):
         totals.update(search_requests=web.calls["search"], fetch_requests=web.calls["fetch"])
@@ -252,7 +257,7 @@ def degraded_coach(kind: str) -> dict:
             "degraded": kind}
 
 
-async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=(), free_context=None, reference_context=None, scoring_enabled=True) -> tuple[dict, dict]:
+async def generate_reply(settings, messages: list[dict], *, speak=True, interactions=(), training=None, medical_checks=(), free_context=None, reference_context=None, scoring_enabled=True, on_doctor_reply=None) -> tuple[dict, dict]:
     started = monotonic()
     history, visible, selected, remaining = _visible_history(messages, speak)
     skill_parts = await _load_skills(visible, speak)
@@ -276,7 +281,8 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
                 **({'free_context': free_context} if free_context else {})}, ensure_ascii=False)
             coach_record = json.dumps({**json.loads(record), 'reference_context': reference_context}, ensure_ascii=False) if reference_context else record
             # A live coach that overruns is dropped so the doctor still answers; a review has no such fallback.
-            replies = await run_agents(agents, record, coach_record, coach_deadline=turn_budget - 10 if speak else None)
+            replies = await run_agents(agents, record, coach_record, coach_deadline=turn_budget - 10 if speak else None,
+                on_doctor_reply=on_doctor_reply if speak else None)
             doctor_reply = None
             if speak:
                 if isinstance(replies[1], BaseException):
@@ -289,6 +295,7 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
             if coach_failure is not None:
                 kind = record_failure("coach_degraded", coach_failure)
                 result = {"doctor_reply": "", "coach": degraded_coach(kind)}
+                repair_usage_unknown = True
                 replies = [replies[1]]
             else:
                 try:
@@ -306,7 +313,7 @@ async def generate_reply(settings, messages: list[dict], *, speak=True, interact
                         raise
                     kind = record_failure("coach_degraded", exc)
                     result = {"doctor_reply": "", "coach": degraded_coach(kind)}
-                    replies = [replies[1]]
+                    repair_usage_unknown |= isinstance(exc, (APIError, TimeoutError))
             if not scoring_enabled:
                 result['coach'].pop('assessment', None)
             if speak:

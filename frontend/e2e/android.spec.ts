@@ -6,7 +6,21 @@ import path from 'node:path'
 test('installed Android app: practice, records, settings, native Back, SQLite preferences and logout', async () => {
   test.skip(!process.env.E2E_ANDROID_CDP, 'Provide a forwarded debug WebView CDP endpoint')
   test.setTimeout(process.env.E2E_LIVE==='1'?600_000:180_000)
+  if(process.env.E2E_ADB) {
+    const adb=process.env.E2E_ADB,serial=process.env.E2E_SERIAL??'emulator-5554'
+    // Android kills the process on permission revocation; do it before attaching CDP.
+    execFileSync(adb,['-s',serial,'shell','pm','clear-permission-flags','cloud.openwook.medvisit.debug','android.permission.RECORD_AUDIO','user-set','user-fixed'])
+    execFileSync(adb,['-s',serial,'shell','pm','revoke','cloud.openwook.medvisit.debug','android.permission.RECORD_AUDIO'])
+    execFileSync(adb,['-s',serial,'shell','am','start','-W','-n','cloud.openwook.medvisit.debug/cloud.openwook.medvisit.MainActivity'])
+    const pid=execFileSync(adb,['-s',serial,'shell','pidof','cloud.openwook.medvisit.debug']).toString().trim()
+    execFileSync(adb,['-s',serial,'forward',`tcp:${new URL(process.env.E2E_ANDROID_CDP!).port}`,`localabstract:webview_devtools_remote_${pid}`])
+    await expect.poll(async()=>{
+      try { return (await fetch(`${process.env.E2E_ANDROID_CDP}/json/version`, {signal:AbortSignal.timeout(1000)})).ok }
+      catch { return false }
+    },{timeout:15_000}).toBe(true)
+  }
   const browser = await chromium.connectOverCDP(process.env.E2E_ANDROID_CDP!, { noDefaults: true })
+  await expect.poll(()=>browser.contexts().flatMap(context=>context.pages()).some(page=>page.url().startsWith('http://127.0.0.1:5187/_android/index.html'))).toBe(true)
   const page = browser.contexts()[0].pages().find(p => p.url().startsWith('http://127.0.0.1:5187/_android/index.html'))
   expect(page, 'Attach only to the isolated local acceptance APK').toBeTruthy()
   const errors: string[] = []; page!.on('pageerror', e => errors.push(e.message))
@@ -70,8 +84,10 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
     await expect(page!.getByRole('radio',{name:'辅助练习',exact:true})).toHaveAttribute('aria-checked','true')
     if(process.env.E2E_ADB) {
       const adb=process.env.E2E_ADB,serial=process.env.E2E_SERIAL??'emulator-5554'
-      execFileSync(adb,['-s',serial,'shell','pm','clear-permission-flags','cloud.openwook.medvisit.e2e','android.permission.RECORD_AUDIO','user-set','user-fixed'])
-      execFileSync(adb,['-s',serial,'shell','pm','revoke','cloud.openwook.medvisit.e2e','android.permission.RECORD_AUDIO'])
+      if(process.env.E2E_LIVE!=='1') {
+        // Reach the native permission prompt without configuring or calling paid providers.
+        await page!.route('**/api/health', route=>route.fulfill({json:{asr_configured:true,analysis_configured:true,tts_configured:true,voice_configured:true}}))
+      }
       await chooseDoctor()
       await page!.getByRole('button',{name:'开始练习',exact:true}).click()
       let target:number[]=[]
@@ -137,6 +153,8 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
       }
     }
     await page!.screenshot({path:test.info().outputPath('android.png'),fullPage:true})
+    if(process.env.E2E_ADB) await test.info().attach('native-frame',{body:execFileSync(process.env.E2E_ADB,
+      ['-s',process.env.E2E_SERIAL??'emulator-5554','exec-out','screencap','-p']),contentType:'image/png'})
     expect(errors).toEqual([])
     expect(userRequests.filter(path => ['/api/home','/api/curriculum','/api/me/settings','/api/me/review-queue','/api/health-observations','/api/progress'].includes(path))).toEqual([])
   } catch(error) {
@@ -144,9 +162,11 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
     throw error
   } finally {
     try {
-      const end=page!.getByRole('button',{name:'结束演练',exact:true})
-      if(await end.isVisible())await end.click()
-      await page!.evaluate(async()=>{const input=(window as any).__e2eInput;if(input&&input.state!=='closed')await input.close()})
-    } finally { await browser.close() }
+      if(!page!.isClosed()) {
+        const end=page!.getByRole('button',{name:'结束演练',exact:true})
+        if(await end.isVisible())await end.click()
+        await page!.evaluate(async()=>{const input=(window as any).__e2eInput;if(input&&input.state!=='closed')await input.close()})
+      }
+    } finally { if(browser.isConnected())await browser.close() }
   }
 })

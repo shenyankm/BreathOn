@@ -66,27 +66,27 @@ export function DoctorForm({ item, initial, busy, disabled, save }: Submit & { i
   return <form aria-label="医生资料" onSubmit={submit}><fieldset disabled={disabled || busy} className="min-w-0 space-y-6 [&_label]:min-w-0 [&_textarea]:font-normal [&_textarea]:leading-6">
     <section aria-labelledby="doctor-basic" className="space-y-4">
       <h4 id="doctor-basic" className="text-sm font-semibold">基本信息</h4>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
         <Field><FieldLabel htmlFor="name">{"医生姓名"}</FieldLabel><Input name="name" maxLength={60} type="text" required id="name" defaultValue={values?.name} /></Field>
         <Field><FieldLabel htmlFor="specialty">{"专科"}</FieldLabel><Input name="specialty" maxLength={80} type="text" required id="specialty" defaultValue={values?.specialty} /></Field><Field><FieldLabel htmlFor="hospital">{"医院"}</FieldLabel><Input name="hospital" required={false} maxLength={200} type="text" id="hospital" defaultValue={values?.hospital} /></Field><Field><FieldLabel htmlFor="professional_title">{"职称"}</FieldLabel><Input name="professional_title" required={false} maxLength={100} type="text" id="professional_title" defaultValue={values?.professional_title} /></Field>
-        <div className="min-w-0 sm:col-span-2 xl:col-span-1"><Field><FieldLabel htmlFor="doctor-background-type">{"背景类型"}</FieldLabel><Select name="background_type" defaultValue={values?.background_type ?? 'fictional'} disabled={disabled || busy}><SelectTrigger id="doctor-background-type" className="w-full min-h-11"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="fictional">虚构训练角色</SelectItem><SelectItem value="public">依据公开人物背景的训练模拟</SelectItem></SelectContent></Select></Field></div>
+        <div className="min-w-0"><Field><FieldLabel htmlFor="doctor-background-type">{"背景类型"}</FieldLabel><Select name="background_type" defaultValue={values?.background_type ?? 'fictional'} disabled={disabled || busy}><SelectTrigger id="doctor-background-type" className="w-full min-h-11"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="fictional">虚构训练角色</SelectItem><SelectItem value="public">依据公开人物背景的训练模拟</SelectItem></SelectContent></Select></Field></div>
       </div>
     </section>
-    <div className="grid gap-6 pt-6 xl:grid-cols-2 xl:gap-8">
+    <div className="grid gap-6 pt-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
       <section aria-labelledby="doctor-training" className="min-w-0 space-y-4">
         <h4 id="doctor-training" className="text-sm font-semibold">训练设定</h4>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
           <Field><FieldLabel className="grid w-full gap-2">{"训练患者人群"}<Textarea name="population" required maxLength={1000} defaultValue={values?.population} className="min-h-20" /></FieldLabel></Field>
           <Field><FieldLabel className="grid w-full gap-2">{"训练关注点"}<Textarea name="focus" required maxLength={1000} defaultValue={values?.focus} className="min-h-20" /></FieldLabel></Field>
           <Field><FieldLabel className="grid w-full gap-2">{"训练交流方式"}<Textarea name="training_style" required maxLength={1000} defaultValue={values?.training_style} className="min-h-20" /></FieldLabel></Field>
           <Field><FieldLabel htmlFor="doctor-mood">{"医生互动状态"}</FieldLabel><Select name="mood" defaultValue={values?.mood ?? 'neutral'} disabled={disabled || busy}><SelectTrigger id="doctor-mood" className="w-full min-h-11"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start"><SelectItem value="neutral">平和</SelectItem><SelectItem value="busy">时间紧张</SelectItem><SelectItem value="skeptical">对证据存疑</SelectItem><SelectItem value="friendly">愿意交流</SelectItem></SelectContent></Select></Field>
-          <div className="sm:col-span-2"><Field><FieldLabel className="grid w-full gap-2">{"开场白"}<Textarea name="opening" required maxLength={400} defaultValue={values?.opening} className="min-h-24" /></FieldLabel></Field></div>
+          <div className="col-span-full"><Field><FieldLabel className="grid w-full gap-2">{"开场白"}<Textarea name="opening" required maxLength={400} defaultValue={values?.opening} className="min-h-24" /></FieldLabel></Field></div>
         </div>
         <p className="text-xs leading-6 text-muted-foreground">互动状态、关注点与交流方式均为训练设计，不能作为真实人物的性格、处方偏好或产品背书。</p>
       </section>
       <section aria-labelledby="doctor-background" className="min-w-0 space-y-4">
         <div className="space-y-1"><h4 id="doctor-background" className="text-sm font-semibold">背景与来源</h4><p className="text-xs leading-6 text-muted-foreground">公开人物需填写专业事实及来源，虚构角色可留空。</p></div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
           <Field><FieldLabel className="grid w-full gap-2">{"公开专业事实"}<Textarea name="public_facts" defaultValue={values?.public_facts} maxLength={3000} className="min-h-28" /></FieldLabel></Field>
           <Field><FieldLabel className="grid w-full gap-2">{"事实来源链接（每行一条）"}<Textarea name="sources" defaultValue={values?.sources.join('\n')} maxLength={65000} className="min-h-28" /></FieldLabel></Field>
         </div>

@@ -1,5 +1,5 @@
 import { drugs } from './drugs'
-export { default as doctorIllustration } from '@/assets/practice/doctor-illustration.png'
+export { default as doctorIllustration } from '@/assets/practice/doctor-illustration.webp'
 
 const images = import.meta.glob<string>('../assets/library/innovent/*', { eager: true, query: '?url', import: 'default' })
 export function drugImage(drug: { name: string; brand: string } | undefined) {

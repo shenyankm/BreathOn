@@ -231,6 +231,8 @@ class PracticeDialogue:
             return
         await self.state("thinking")
         self.last_request = monotonic()
+        item_id = ""
+        early_usage = None
         try:
             # Snapshot before awaiting: ASR keeps running and may correct or extend the turn.
             history = [dict(m) for m in self.record.data["messages"] if self.combat or m["final"]]
@@ -250,17 +252,47 @@ class PracticeDialogue:
                 options['reference_context'] = reference
             if not await asyncio.to_thread(getattr(self.record, 'scoring_enabled', lambda: True)):
                 options['scoring_enabled'] = False
+
+            async def validate_current(reference_context):
+                await validate_snapshot(self.record, checks)
+                await validate_coaching_snapshot(self.record, reference_context)
+                if self.record.validate_training:
+                    try:
+                        await asyncio.to_thread(self.record.validate_training)
+                    except HTTPException as exc:
+                        raise BridgeError('training_material_changed', exc.detail) from exc
+
+            async def publish_doctor(text, usage):
+                nonlocal item_id, early_usage
+                early_usage = {'provider':'deepseek', 'model':self.settings.deepseek_model, **usage, 'incomplete':True}
+                self.record.data['usage'].append(early_usage)
+                # The doctor never receives the coach-only reference context.
+                await validate_current(None)
+                if revision != self.revision or self.stopping:
+                    return
+                item_id = f"practice-d-{uuid4()}"
+                self.record.transcript(item_id, "doctor", text, final=True)
+                await self.send_client({"type":"practice_turn", "message":{
+                    "id":item_id, "role":"doctor", "text":text, "final":True}, "coach":None})
+                if revision != self.revision or self.stopping:
+                    return
+                self.start_speech(text, item_id)
+                if getattr(self.record, 'checkpoint', None):
+                    await self.record.checkpoint.save()
+
+            if not self.combat:
+                options['on_doctor_reply'] = publish_doctor
             result, usage = await generate_reply(self.settings, history, speak=not self.combat, interactions=list(self.record.data["interaction_events"]), **options)
             if usage:
-                self.record.data["usage"].append({"provider": "deepseek", **usage})
-            await validate_snapshot(self.record, checks)
-            await validate_coaching_snapshot(self.record, reference)
-            if self.record.validate_training:
-                try:
-                    await asyncio.to_thread(self.record.validate_training)
-                except HTTPException as exc:
-                    raise BridgeError('training_material_changed', exc.detail) from exc
+                if early_usage is None:
+                    self.record.data["usage"].append({"provider": "deepseek", **usage})
+                else:
+                    early_usage.pop('incomplete', None)
+                    early_usage.update(usage)
+            await validate_current(reference)
         except (BridgeError, OSError, sqlite3.Error, DatabaseError) as exc:
+            if item_id:
+                await self.cancel_speech()
             if revision == self.revision and not self.stopping:
                 if self.combat:
                     self.record.data["analysis_status"] = "error"
@@ -270,8 +302,9 @@ class PracticeDialogue:
         if revision != self.revision or self.stopping:
             return
         self.responded.update(m["id"] for m in history if m["role"] == "trainee")
-        item_id = "" if self.combat else f"practice-d-{uuid4()}"
-        if not self.combat:
+        early_doctor = bool(item_id)
+        if not self.combat and not early_doctor:
+            item_id = f"practice-d-{uuid4()}"
             self.record.transcript(item_id, "doctor", result["doctor_reply"], final=True)
         if not await asyncio.to_thread(getattr(self.record, 'scoring_enabled', lambda: True)):
             result['coach'].pop('assessment', None)
@@ -286,13 +319,17 @@ class PracticeDialogue:
             await self.send_client({"type": "coaching", "coach": coaching})
             await self.state("listening")
             return
-        # Publish doctor and coach together so a new ASR correction cannot split the pair.
-        await self.send_client({"type": "practice_turn", "message": {
-            "id": item_id, "role": "doctor", "text": result["doctor_reply"], "final": True,
-        }, "coach": coaching if self.record.data["mode"] == "assisted" else None})
+        if early_doctor:
+            if self.record.data['mode'] == 'assisted':
+                await self.send_client({"type":"coaching", "coach":coaching})
+        else:
+            await self.send_client({"type": "practice_turn", "message": {
+                "id": item_id, "role": "doctor", "text": result["doctor_reply"], "final": True,
+            }, "coach": coaching if self.record.data["mode"] == "assisted" else None})
         if getattr(self.record, 'checkpoint', None):
             await self.record.checkpoint.save()
-        self.start_speech(result["doctor_reply"], item_id)
+        if not early_doctor and revision == self.revision and not self.stopping:
+            self.start_speech(result["doctor_reply"], item_id)
         await self.state("listening")
 
     async def retry(self):
