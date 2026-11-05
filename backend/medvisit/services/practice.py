@@ -137,9 +137,12 @@ class PracticeDialogue:
             if not changed:
                 self.revision += 1
             changed = True
-            self.record.transcript(item_id, "trainee", text, final=True)
-            stored = previous if previous is not None else self.record.data['messages'][-1]
-            stored["final"] = complete
+            if previous is None:
+                stored = dict(latest)
+                self.record.data['messages'].append(stored)
+            else:
+                stored = previous
+                stored.update(text=text, final=complete)
             stored["speech"] = self.speech.describe(start, utterance.get("end_time"))
             if isinstance(start, int) and isinstance(utterance.get("end_time"), int):
                 stored["speech"].update(start_ms=start, end_ms=utterance["end_time"])

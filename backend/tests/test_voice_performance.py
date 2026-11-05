@@ -53,3 +53,37 @@ async def test_corrected_snapshot_invalidates_each_coach_only_once(tmp_path):
     assert dialogue.responded == {f'practice-u-{index}' for index in range(first_correction)}
     assert record.data['messages'][-1]['text'] == f'修正 {count - 1}'
     assert dialogue.client.events[-1] == {'type': 'user_started', 'coaching_invalidated': True}
+
+
+async def test_asr_snapshot_reuses_message_index_for_corrections_and_appends(tmp_path):
+    class Messages(list):
+        visits = 0
+
+        def __iter__(self):
+            for message in super().__iter__():
+                self.visits += 1
+                yield message
+
+    record = SessionRecord('test', 'assisted')
+    dialogue = PracticeDialogue(Client(), settings(tmp_path), record)
+    dialogue.stopping = True
+    record.data['messages'] = messages = Messages(
+        {'id':f'practice-u-{i}', 'role':'trainee', 'text':f'原话 {i}', 'final':True,
+         'retained':'metadata'} for i in range(300)
+    )
+    original = list(messages)
+    messages.visits = 0
+    snapshot = {'utterances':[
+        {'text':f'修正 {i}', 'definite':i % 2 == 0} for i in range(400)
+    ]}
+    await dialogue.observe(snapshot, False)
+    assert messages.visits == 300
+    assert len(messages) == 400
+    assert all(messages[i] is original[i] and messages[i]['retained'] == 'metadata' for i in range(300))
+    assert [(m['id'], m['text'], m['final']) for m in messages] == [
+        (f'practice-u-{i}', f'修正 {i}', i % 2 == 0) for i in range(400)
+    ]
+    assert len([event for event in dialogue.client.events if event['type'] == 'transcript']) == 400
+    dialogue.client.events.clear()
+    await dialogue.observe(snapshot, False)
+    assert dialogue.client.events == []

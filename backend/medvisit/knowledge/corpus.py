@@ -118,10 +118,14 @@ class MedicalCorpus:
             for page in doc.get('pages', []):
                 matches[(f"platform-document-{doc['id']}", page['number'])] = receipt
         for source in data['sources']:
-            for receipt, pages in receipts.get(source.get('url'), []):
-                for page in source.get('pages', []):
-                    if pages.get(page['number']) == quotation_text(page['text']) and pages.get(page['number']):
-                        key = (source['id'], page['number'])
+            source_receipts = receipts.get(source.get('url'), [])
+            if not source_receipts:
+                continue
+            source_pages = [(page['number'], quotation_text(page['text'])) for page in source.get('pages', [])]
+            for receipt, pages in source_receipts:
+                for number, text in source_pages:
+                    if pages.get(number) == text and pages.get(number):
+                        key = (source['id'], number)
                         if key not in matches or (receipt['document_id'], receipt['document_version']) < (matches[key]['document_id'], matches[key]['document_version']):
                             matches[key] = receipt
         return matches
@@ -145,13 +149,11 @@ class MedicalCorpus:
         approvals = self.approval_snapshot(data) if approvals is None else approvals
         derived = self.approved_sources()
         sources_data = [*data['sources'], *derived]
-        derived_chunks = []
-        for source in derived:
-            for page in source['pages']:
-                for offset in range(0, len(page['text']), 1000):
-                    derived_chunks.append({'id':f"{source['id']}:p{page['number']}:{offset}",
-                        'source_id':source['id'], 'page':page['number'],
-                        'text':page['text'][max(0, offset-200):offset+1200]})
+        derived_chunks = ({'id':f"{source['id']}:p{page['number']}:{offset}",
+            'source_id':source['id'], 'page':page['number'],
+            'text':page['text'][max(0, offset-200):offset+1200]}
+            for source in derived for page in source['pages']
+            for offset in range(0, len(page['text']), 1000))
         query, background = compact(text), compact(context)
         explicit = [p['id'] for p in data['products'] if any(compact(alias) in query for alias in
             (p['id'], p['name'], p['brand'], *p.get('aliases', [])) if alias)]
