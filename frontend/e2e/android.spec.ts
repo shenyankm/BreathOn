@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-test('installed Android app: login, all routes, lessons, native Back, SQLite preferences and logout', async () => {
+test('installed Android app: practice, records, settings, native Back, SQLite preferences and logout', async () => {
   test.skip(!process.env.E2E_ANDROID_CDP, 'Provide a forwarded debug WebView CDP endpoint')
   test.setTimeout(process.env.E2E_LIVE==='1'?600_000:180_000)
   const browser = await chromium.connectOverCDP(process.env.E2E_ANDROID_CDP!, { noDefaults: true })
@@ -12,41 +12,50 @@ test('installed Android app: login, all routes, lessons, native Back, SQLite pre
   const errors: string[] = []; page!.on('pageerror', e => errors.push(e.message))
   try {
     // Reset only the two disposable accounts so repeated runs can verify isolation.
-    await page!.evaluate(async()=>{location.hash='home';for(const account of ['e2e-a','e2e-b'])await (window as any).__TAURI_INTERNALS__.invoke('save_training_preference',{account,experience:'practice'})})
+    await page!.evaluate(async()=>{location.hash='practice';for(const account of ['e2e-a','e2e-b'])await (window as any).__TAURI_INTERNALS__.invoke('save_training_preference',{account,experience:'practice'})})
     await page!.reload()
     await page!.locator('input[name="username"]').fill('e2e-a')
     await page!.locator('input[name="password"]').fill('local-e2e-only-password')
     await page!.getByRole('button', { name: '登录', exact: true }).click()
+    async function chooseDoctor() {
+      await page!.getByRole('combobox', { name: '模拟医生', exact: true }).click()
+      await page!.getByRole('option').first().click()
+      await expect(page!.getByRole('button', { name: '开始练习', exact: true })).toBeEnabled()
+    }
+    const userRequests: string[] = []
+    page!.on('request', request => { userRequests.push(new URL(request.url()).pathname) })
     const nav = page!.getByRole('navigation', { name: '主导航', exact: true })
     await expect(nav).toBeVisible()
-    for (const name of ['训练','教练','我的','首页']) {
+    await expect(page!.getByRole('heading', { name: '练习', exact: true })).toBeVisible()
+    await expect(nav.getByRole('link')).toHaveCount(3)
+    for (const name of ['记录','设置','练习']) {
       await nav.getByRole('link', { name, exact: true }).click()
       await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('aria-current','page')
-      await expect(page!.locator('section.screen.active').first()).toBeVisible()
+      await expect(page!.locator('main').getByRole('heading').first()).toBeVisible()
+      await page!.screenshot({path:test.info().outputPath(`android-${name}.png`)})
     }
-    const course=await page!.evaluate(async()=> (await (await fetch('/api/curriculum')).json()).levels.flatMap((l: any)=>l.lessons)[0])
-    for(const route of ['level/L1','level/L2','level/L3','level/L4',`lesson/${course.id}`,'doctors','pick','workspace','products','library','audiences','policies','audit','settings','records','visits']) {
+    await nav.getByRole('link', { name: '设置', exact: true }).click()
+    await expect(page!.getByRole('checkbox')).toHaveCount(0)
+    await expect(page!.getByRole('heading', { name: '默认练习方式' })).toBeVisible()
+    await page!.getByRole('radio',{name:'实战练习',exact:true}).click()
+    await nav.getByRole('link', { name: '练习', exact: true }).click()
+    await expect(page!.getByRole('radio',{name:'实战练习',exact:true})).toHaveAttribute('aria-checked','true')
+    for(const route of ['home','doctors','training','level/L1','lesson/old','scenarios','products','library','visits']) {
       await page!.evaluate(route => { location.hash=route },route)
-      await expect(page!.locator('main')).toBeVisible()
-      await expect(page!.getByText('正在加载页面…')).toHaveCount(0)
-      await expect(page!.locator('main [role="alert"]')).toHaveCount(0)
+      await expect(page!.getByRole('heading', { name: '练习', exact: true })).toBeVisible()
+      await expect(nav.getByRole('link',{name:'练习',exact:true})).toHaveAttribute('aria-current','page')
     }
-    await page!.evaluate(id=>{location.hash=`lesson/${id}`},course.id)
-    const completed=page!.getByRole('button',{name:'已完成 · 点击取消',exact:true})
-    if(await completed.isVisible()) await completed.click()
-    await page!.getByRole('button',{name:'标记完成',exact:true}).click()
-    await expect(completed).toBeVisible()
-    await page!.reload(); await expect(completed).toBeVisible()
+    await page!.evaluate(()=>{location.hash='records'})
     if(process.env.E2E_ADB) {
       execFileSync(process.env.E2E_ADB,['-s',process.env.E2E_SERIAL??'emulator-5554','shell','input','keyevent','4'])
-      await expect(page!).toHaveURL(new RegExp(`#level/${course.level}$`))
+      await expect(page!).toHaveURL(/#practice$/)
       await test.info().attach('native-ui-tree',{body:execFileSync(process.env.E2E_ADB,['-s',process.env.E2E_SERIAL??'emulator-5554','exec-out','uiautomator','dump','/dev/tty']),contentType:'text/xml'})
     }
-    await page!.evaluate(()=>{location.hash='coach'})
-    await page!.getByRole('button',{name:'实战练习',exact:true}).click()
-    await expect(page!.getByRole('button',{name:'实战练习',exact:true})).toHaveAttribute('aria-pressed','true')
+    await page!.evaluate(()=>{location.hash='practice'})
+    await page!.getByRole('radio',{name:'实战练习',exact:true}).click()
+    await expect(page!.getByRole('radio',{name:'实战练习',exact:true})).toHaveAttribute('aria-checked','true')
     await page!.reload()
-    await expect(page!.getByRole('button',{name:'实战练习',exact:true})).toHaveAttribute('aria-pressed','true')
+    await expect(page!.getByRole('radio',{name:'实战练习',exact:true})).toHaveAttribute('aria-checked','true')
     await page!.evaluate(()=>{location.hash='me'})
     await page!.getByRole('button',{name:'退出登录',exact:true}).click()
     await page!.getByRole('button',{name:'取消',exact:true}).click()
@@ -57,13 +66,14 @@ test('installed Android app: login, all routes, lessons, native Back, SQLite pre
     await page!.locator('input[name="password"]').fill('local-e2e-only-password')
     await page!.getByRole('button',{name:'登录',exact:true}).click()
     await expect(nav).toBeVisible()
-    await page!.evaluate(()=>{location.hash='coach'})
-    await expect(page!.getByRole('button',{name:'辅助练习',exact:true})).toHaveAttribute('aria-pressed','true')
+    await page!.evaluate(()=>{location.hash='practice'})
+    await expect(page!.getByRole('radio',{name:'辅助练习',exact:true})).toHaveAttribute('aria-checked','true')
     if(process.env.E2E_ADB) {
       const adb=process.env.E2E_ADB,serial=process.env.E2E_SERIAL??'emulator-5554'
       execFileSync(adb,['-s',serial,'shell','pm','clear-permission-flags','cloud.openwook.medvisit.e2e','android.permission.RECORD_AUDIO','user-set','user-fixed'])
       execFileSync(adb,['-s',serial,'shell','pm','revoke','cloud.openwook.medvisit.e2e','android.permission.RECORD_AUDIO'])
-      await page!.getByRole('button',{name:'开始本轮对话',exact:true}).click()
+      await chooseDoctor()
+      await page!.getByRole('button',{name:'开始练习',exact:true}).click()
       let target:number[]=[]
       await expect.poll(()=>{
         const xml=execFileSync(adb,['-s',serial,'exec-out','uiautomator','dump','/dev/tty']).toString()
@@ -74,16 +84,17 @@ test('installed Android app: login, all routes, lessons, native Back, SQLite pre
       },{timeout:20_000}).toBe(4)
       execFileSync(adb,['-s',serial,'shell','input','tap',String(Math.floor((target[0]+target[2])/2)),String(Math.floor((target[1]+target[3])/2))])
       await expect(page!.getByRole('alert').first()).toBeVisible()
-      await page!.evaluate(()=>{location.hash='coach'})
+      await page!.evaluate(()=>{location.hash='practice'})
       await page!.reload()
-      await expect(page!.getByRole('button',{name:'开始本轮对话',exact:true})).toBeEnabled()
+      await chooseDoctor()
     }
     if(process.env.E2E_LIVE==='1') {
       const audioPath=path.resolve('test-results/synthetic-input.pcm')
       if(!existsSync(audioPath))execFileSync('uv',['run','--directory','../backend','--locked','python','-m','tools.e2e_audio','--live','--output',audioPath],{timeout:60_000})
       const audio=readFileSync(audioPath).toString('base64')
       for(const mode of ['辅助练习','实战练习']) {
-        await page!.evaluate(()=>{location.hash='coach'});await page!.reload()
+        await page!.evaluate(()=>{location.hash='practice'});await page!.reload()
+        await chooseDoctor()
         // Only microphone input is a synthetic fixture. WebAudio, AudioWorklet, playback, WebSocket and providers are real.
         await page!.evaluate(audio=>{
           const w=window as any;w.__e2eEvents=[];w.__e2eAudioBytes=0
@@ -102,8 +113,8 @@ test('installed Android app: login, all routes, lessons, native Back, SQLite pre
             return destination.stream
           }
         },audio)
-        await page!.getByRole('button',{name:mode,exact:true}).click()
-        await page!.getByRole('button',{name:'开始本轮对话',exact:true}).click()
+        await page!.getByRole('radio',{name:mode,exact:true}).click()
+        await page!.getByRole('button',{name:'开始练习',exact:true}).click()
         await expect.poll(()=>page!.evaluate(()=> (window as any).__e2eEvents.some((e:any)=>e.type==='transcript'&&e.role==='trainee'&&e.final&&e.text.trim())),{timeout:90_000,intervals:[500]}).toBe(true)
         await expect.poll(()=>page!.evaluate(()=> (window as any).__e2eAudioBytes),{timeout:30_000}).toBeGreaterThan(0)
         await page!.getByRole('button',{name:'关闭医生声音',exact:true}).click()
@@ -127,6 +138,7 @@ test('installed Android app: login, all routes, lessons, native Back, SQLite pre
     }
     await page!.screenshot({path:test.info().outputPath('android.png'),fullPage:true})
     expect(errors).toEqual([])
+    expect(userRequests.filter(path => ['/api/home','/api/curriculum','/api/me/settings','/api/me/review-queue','/api/health-observations','/api/progress'].includes(path))).toEqual([])
   } catch(error) {
     await page!.screenshot({path:test.info().outputPath('android-failure.png'),fullPage:true}).then(body=>test.info().attach('android-failure',{body,contentType:'image/png'})).catch(()=>{})
     throw error

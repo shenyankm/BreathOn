@@ -69,7 +69,7 @@ def prepare_training(store, user, scenario_id, stage='full', *, preview=False):
             raise HTTPException(409, '场景药品或政策已失效，请选择有效版本。')
     return {'scenario': {**{key:scene[key] for key in ('id','title','product','disease','objective','duration_seconds','difficulty','stages','version')},
                          **{key:scene.get(key, default) for key, default in (('situation','first_visit'),('background',''),('opening',''),('objections',[]),('success_criteria',[]))}},
-            'doctor': {key:doctor[key] for key in ('id','version','name','display_name','specialty','background_type','public_facts','sources','population','focus','training_style','mood','opening')},
+            'doctor': {**{key:doctor[key] for key in ('id','version','name','display_name','specialty','background_type','public_facts','sources','population','focus','training_style','mood','opening')}, 'honors':doctor.get('honors', [])},
             'rubric': {**{key:rubric[key] for key in ('id','version','name','dimensions','calibration_status')},
                        'calibrated_model':rubric.get('calibrated_model'), 'calibrated_evaluator_version':rubric.get('calibrated_evaluator_version')},
             'stage':stage, 'as_of':now(), 'documents':documents, 'drugs':drugs, 'policies':policies}
@@ -96,7 +96,7 @@ def prepare_free_context(store, user, drug_id, doctor_id, focus=None):
         require_department_match(drug, doctor)
     context = {'drug': {key: drug.get(key) for key in ('id', 'version', 'name', 'brand')},
                'doctor': {key: doctor[key] for key in ('id', 'version', 'name', 'display_name', 'specialty',
-                   'background_type', 'public_facts', 'sources', 'population', 'focus', 'training_style', 'mood', 'opening')}}
+                   'background_type', 'public_facts', 'sources', 'population', 'focus', 'training_style', 'mood', 'opening')} | {'honors':doctor.get('honors', [])}}
     if doctor.get('ip_profile'):
         ip = doctor['ip_profile']
         context['doctor']['ip_profile'] = {key: ip.get(key) for key in ('ip_key', 'style', 'tags', 'entry', 'question', 'modules')}

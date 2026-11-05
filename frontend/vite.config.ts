@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
       const contains = (file: string) => modules.has(`${root}/${file}.tsx`)
       const required = mode === 'android' ? 'App' : 'admin-app'
       const forbidden = mode === 'android'
-        ? ['admin-app', 'pages/admin-page', 'pages/platform-page', 'pages/service-settings']
+        ? ['admin-app', 'pages/admin-page', 'pages/platform-page', 'pages/service-settings', 'pages/home-page', 'pages/training-page', 'pages/library-page', 'pages/scenarios-page', 'pages/visits-page', 'components/health-observations', 'components/training-progress']
         : ['App', 'pages/practice-home', 'pages/me-page', 'pages/records-page', 'pages/visits-page', 'pages/library-page']
       const unexpected = forbidden.filter(contains)
       if (!contains(required) || unexpected.length) {

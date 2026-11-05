@@ -59,12 +59,12 @@ test('anonymous and representative authorization boundaries use the real server'
 })
 
 test('real browser login, every admin section and training tool render without JS errors', async ({ page }) => {
-  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto('/admin')
   await page.locator('input[name="username"]').fill('e2e-admin')
   await page.locator('input[name="password"]').fill(password)
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '管理后台', exact: true })).toBeVisible()
+  await expect(page.locator('main').getByRole('heading', { name: '管理后台', exact: true })).toBeVisible()
   for (const section of ['drug','doctor','audiences','policy','training','review','records','settings']) {
     await page.goto(`/admin#admin?section=${section}`)
     await expect(page.locator('main')).toBeVisible()

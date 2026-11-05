@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown } from 'lucide-react'
-import { ScrollArea } from './ui/scroll-area'
-import { Button } from './ui/button'
 import { isNearBottom } from '@/lib/scroll-position'
 import type { VoiceMessage } from '@/lib/voice-events'
+import { ArrowDown } from 'lucide-react'
+import { useLayoutEffect,useRef,useState,type ReactNode } from 'react'
+import { Button } from './ui/button'
+import { ScrollArea } from './ui/scroll-area'
 
 export function TranscriptScrollArea({ messages, children }: { messages: VoiceMessage[]; children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null)
@@ -26,6 +26,6 @@ export function TranscriptScrollArea({ messages, children }: { messages: VoiceMe
       following.current = isNearBottom(event.target as HTMLElement)
       if (following.current) setUnread(false)
     }}>{children}</ScrollArea>
-    {unread && <Button className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-sm" onClick={jumpToLatest}><ArrowDown aria-hidden="true" />有新消息</Button>}
+    {unread && <Button className="absolute bottom-3 left-1/2 -translate-x-1/2 min-h-11" onClick={jumpToLatest}><ArrowDown aria-hidden="true" />有新消息</Button>}
   </div>
 }

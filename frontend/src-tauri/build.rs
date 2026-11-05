@@ -7,5 +7,5 @@ fn main() {
             "save_visit_draft",
         ]),
     ))
-    .expect("failed to build BreathOn");
+    .expect("failed to build EviSpeak");
 }

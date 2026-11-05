@@ -46,6 +46,7 @@ def candidate_draft(finding, result, archives):
     urls = []
     facts = []
     notes = []
+    honors = []
     for detail in finding['details']:
         key = (detail['source_id'], detail.get('source_version'))
         if key not in sources or not detail.get('quote'):
@@ -53,6 +54,8 @@ def candidate_draft(finding, result, archives):
         urls.append(sources[key])
         if detail['label'] == '同名或时效疑点':
             notes.append(detail['value'])
+        elif detail['label'] == '荣誉与奖项':
+            honors.append({**detail['honor'], 'source_url':sources[key], 'quote':detail['quote']})
         else:
             facts.append(f"{detail['label']}：{detail['value']}")
     notes = list(dict.fromkeys([*notes, *finding['caveats'], *result['further_checks']]))
@@ -62,6 +65,7 @@ def candidate_draft(finding, result, archives):
     return Doctor(
         name=values['姓名'], specialty=values['科室'], hospital=values['医院'],
         professional_title=values.get('专业职称', ''), background_type='public',
+        honors=honors,
         public_facts=public_facts, sources=list(dict.fromkeys(urls)),
         population=f"{values['科室']}相关学术沟通训练人群；具体疾病及人群由训练场景与已核对资料限定。",
         focus=values.get('专业方向', '确认临床需求、研究人群、证据局限与安全性。'),

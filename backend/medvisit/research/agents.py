@@ -18,7 +18,7 @@ from agentscope.tool import Toolkit
 
 from ..agents.coach import CoachModel, SKILL_ROOT
 from ..platform.store import now
-from .archive import read_source, write_private, evidence_blocks
+from .archive import read_source, write_private, evidence_blocks, normalized_text
 from .models import ResearchResult
 
 CONFIG = json.loads(Path(__file__).with_name('agents.json').read_text())
@@ -95,7 +95,7 @@ def validate_result(result, profile, root, captured):
         _, text = read_source(root, *key)
         for block in evidence_blocks(text, source['raw_sha256']):
             evidence[source['id'],block['id']] = (source,block['text'])
-    output = result.model_dump()
+    output = result.model_dump(exclude_none=True)
     for finding in output['findings']:
         for detail in finding['details']:
             if detail['label'] not in profile['fields']:
@@ -104,6 +104,13 @@ def validate_result(result, profile, root, captured):
             if key not in evidence or detail['evidence_id'] not in captured.get('evidence_seen',{}).get(detail['source_id'],[]):
                 raise EvidenceNotReturned('引文片段未由本次工具实际返回，未保存未经核对的事实结果。')
             source, quote = evidence[key]
+            if detail.get('honor'):
+                honor = detail['honor']
+                facts = [honor['name'], honor.get('organization', '')]
+                if honor.get('year') is not None:
+                    facts.append(str(honor['year']))
+                if any(normalized_text(str(fact)).casefold() not in normalized_text(quote).casefold() for fact in facts if fact):
+                    raise EvidenceNotReturned('荣誉名称、授予机构或年份未出现在引用原文中，请核对后重试。')
             hosts = profile.get('primary_hosts', [])
             host = urlsplit(source['resolved_url']).hostname or ''
             if hosts and not any(host == primary or host.endswith('.'+primary) for primary in hosts):

@@ -44,11 +44,8 @@ private val APP_BACK_SCRIPT = """
       location.replace('#' + page);
       return true;
     }
-    // The app publishes where "back" goes from the current screen (frontend/src/bp/route.ts backTarget), so the
-    // native handler and the screens can never disagree. Empty means home: let the app move to the background.
-    const target = document.documentElement.dataset.bpBack;
-    if (target) {
-      location.replace(target);
+    if (page && page !== 'practice') {
+      location.replace('#practice');
       return true;
     }
     return false;
@@ -66,7 +63,7 @@ class MainActivity : TauriActivity() {
   }
 
   private fun handleAppBack() {
-    if (BuildConfig.DEBUG) Log.d("BreathOnBack", "App handler received Back")
+    if (BuildConfig.DEBUG) Log.d("EviSpeakBack", "App handler received Back")
     val webView = appWebView
     if (webView == null) {
       moveTaskToBack(true)
@@ -78,7 +75,7 @@ class MainActivity : TauriActivity() {
       return
     }
     webView.evaluateJavascript(APP_BACK_SCRIPT) { handled ->
-      if (BuildConfig.DEBUG) Log.d("BreathOnBack", "Page handled Back: $handled")
+      if (BuildConfig.DEBUG) Log.d("EviSpeakBack", "Page handled Back: $handled")
       if (handled == "false") moveTaskToBack(true)
     }
   }
@@ -105,7 +102,7 @@ class MainActivity : TauriActivity() {
   override fun dispatchKeyEvent(event: KeyEvent): Boolean {
     // Consume Back before WebView can traverse its own browsing history.
     if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-      if (BuildConfig.DEBUG) Log.d("BreathOnBack", "Back key action: ${event.action}, canceled: ${event.isCanceled}")
+      if (BuildConfig.DEBUG) Log.d("EviSpeakBack", "Back key action: ${event.action}, canceled: ${event.isCanceled}")
       if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
         handleAppBack()
       }
@@ -130,10 +127,10 @@ class MainActivity : TauriActivity() {
       val delegate = WebViewCompat.getWebViewClient(webView)
       if (delegate !is RustWebViewClient) {
         if (attempts > 0) webView.postDelayed({ attach(attempts - 1) }, 16)
-        else Log.e("BreathOnAssets", "Tauri WebView client was not initialized")
+        else Log.e("EviSpeakAssets", "Tauri WebView client was not initialized")
         return
       }
-      if (BuildConfig.DEBUG) Log.d("BreathOnAssets", "Packaged UI client installed")
+      if (BuildConfig.DEBUG) Log.d("EviSpeakAssets", "Packaged UI client installed")
       ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
         val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
         val params = view.layoutParams
@@ -167,7 +164,7 @@ private class AndroidAssetsClient(
     } else url
     for (loader in loaders) {
       val response = loader.shouldInterceptRequest(assetUrl) ?: continue
-      if (BuildConfig.DEBUG) Log.d("BreathOnAssets", "APK asset: ${url.path}")
+      if (BuildConfig.DEBUG) Log.d("EviSpeakAssets", "APK asset: ${url.path}")
       return if (response.data != null) response else WebResourceResponse(
         "text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0))
       )

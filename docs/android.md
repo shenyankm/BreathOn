@@ -24,15 +24,11 @@ Python 后端、数据库和服务密钥不打入 APK。Manifest 保留 `RECORD_
 
 调试版额外允许 `localhost` 与 `127.0.0.1` 的 HTTP 同源地址，供 `adb reverse` 使用；发布版资源拦截只接受生产域名的 HTTPS。
 
-## BREATHON 界面与功能入口
+## 循言 EviSpeak 界面与功能入口
 
-Android 采用青绿、米白、柔黄背景，暖橙色主按钮、浅青色次按钮；主题仅由 Android 入口加载，不改变 Web 管理后台。底部为「首页 / 训练 / 教练 / 我的」。首页的课程进度和有效训练分数来自接口，暂无结果时不填示例数字。
+Android 使用官方 shadcn/ui `radix-luma` 组件与 neutral 主题，底部为「练习 / 记录 / 设置」。登录后直接选择药品、模拟医生和练习方式。记录保留对话、反馈和再练；设置仅提供账号、默认练习方式及退出登录。不展示首页统计、课程、独立医生/资料页、拜访日记、审核、健康观察或服务用量，也不预加载相关接口。
 
-L1–L4 展示已发布课程，个人计划与完成标记持久化。医生 IP 可从首页、L3 和教练进入；教练当前使用玛仕度肽目录和自由练习重点，不提供评分场景选择器，历史绑定场景的重练仍保留。完整用户操作见[使用手册](user-manual.md)。
-
-旧 `#practice` 映射到教练，`#scenarios` 映射到训练。原生返回先处理键盘和弹窗，再按 `frontend/src/bp/route.ts` 的 `backTarget` 返回上级；会话返回教练不等于结束演练。
-
-AVD 页面、交互和样式验收见[Android UI review](android-ui-review.md)；测试数量只代表报告对应版本，不替代新提交的 CI 或真机验收。
+页面资源内置 APK，Web 管理端不分发用户页面。旧用户页面链接回到练习页。原生返回先处理键盘和弹窗，再回到练习；返回不等于结束演练。界面精简不删除服务器历史数据。前后端共用 Luma 组件，保留安全区、触控尺寸、减少动态效果和保存失败等必要状态。
 
 ## 药品与医生科室匹配
 
@@ -104,7 +100,7 @@ adb -s emulator-5554 exec-out screencap -p > /tmp/breathon-avd.png
 adb -s emulator-5554 logcat -b crash -d
 ```
 
-验收首页、训练、教练、我的，以及医生详情、课程计划/完成、资料、记录、拜访表单、健康观察和弹窗。检查空数据、加载失败重试、辅助/实战切换、原生返回、键盘、窄屏与横屏。返回层级以 `frontend/src/bp/route.ts` 为准；活跃语音、复盘保存和前后台切换需要单独执行完整会话验收。普通浏览器访问 `/_android/index.html` 必须返回 404，APK 应能显示内置页面。仅在明确验收真实语音时开始录音或调用外部服务，服务状态刷新和语音调用可能产生用量。
+验收练习、记录和设置，以及旧链接回退、记录详情、重练和弹窗。检查空数据、加载失败重试、辅助/实战切换、原生返回、键盘、窄屏与横屏。返回层级以 `MainActivity.kt` 的 `APP_BACK_SCRIPT` 为准；活跃语音、复盘保存和前后台切换需要单独执行完整会话验收。普通浏览器访问 `/_android/index.html` 必须返回 404，APK 应能显示内置页面。仅在明确验收真实语音时开始录音或调用外部服务，服务状态刷新和语音调用可能产生用量。
 
 `android:dev` 也先构建用户资源，再启动本机 Vite 代理；其 `devUrl` 为 `http://localhost:5173/_android/index.html`。它不使用网页热更新，页面改动后仍需重新构建和安装。已有 5173 服务时不要直接停止他人的进程，应使用独立端口和覆盖配置。
 
@@ -122,7 +118,7 @@ adb -s emulator-5554 reverse --remove tcp:5176
 npm run android:build -- --debug --apk --target aarch64 --ci -- --locked
 ```
 
-GitHub Actions 的工件 `BreathOn-android-arm64-debug-<commit>` 中只上传可安装 APK，保留 14 天。它使用调试签名，用户页面来自 APK，默认连接真实服务器的 HTTPS API；安装后仍须使用服务器已有的合法账号登录。私钥、发布 keystore 和 CI 认证测试账号不会进入工件。Web 和 Android 两次构建都会检查实际模块图，阻止管理页面与用户页面交叉打包。
+GitHub Actions 的工件 `EviSpeak-android-arm64-debug-<commit>` 中只上传可安装 APK，保留 14 天。它使用调试签名，用户页面来自 APK，默认连接真实服务器的 HTTPS API；安装后仍须使用服务器已有的合法账号登录。私钥、发布 keystore 和 CI 认证测试账号不会进入工件。Web 和 Android 两次构建都会检查实际模块图，阻止管理页面与用户页面交叉打包。
 
 该编译任务是生产 CD 的前置条件，编译失败会阻止 Web 管理后台和后端部署。CI 不会自动安装到用户手机或发布应用商店，也不能代替 AVD 与真实设备的操作验收。
 

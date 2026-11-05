@@ -18,9 +18,9 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 
 `.github/workflows/ci.yml` 同时用于 Pull Request 和推送检查，分为五个任务：
 
-- `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入；管理页面上传为 `BreathOn-admin-dist-<commit>`，供同一次工作流的集成检查和发布下载。
+- `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入；管理页面上传为 `EviSpeak-admin-dist-<commit>`，供同一次工作流的集成检查和发布下载。
 - `backend`：运行完整 Python 测试与真实 PostgreSQL 回归，并要求测试报告中没有跳过项。
-- `android`：在固定的 Ubuntu 24.04 环境中使用 Node 24、JDK 25、Rust 1.98.1、SDK 37.0、Build-Tools 36.0.0 与 NDK 28.2.13676358，按 `Cargo.lock` 编译真正的 ARM64 debug APK。检查包内原生库、用户资源和签名文件边界后，上传 `BreathOn-android-arm64-debug-<commit>` 工件，保留 14 天；不上传私钥或发布 keystore。
+- `android`：在固定的 Ubuntu 24.04 环境中使用 Node 24、JDK 25、Rust 1.98.1、SDK 37.0、Build-Tools 36.0.0 与 NDK 28.2.13676358，按 `Cargo.lock` 编译真正的 ARM64 debug APK。检查包内原生库、用户资源和签名文件边界后，上传 `EviSpeak-android-arm64-debug-<commit>` 工件，保留 14 天；不上传私钥或发布 keystore。
 - `deployment`：等待以上三个任务全部成功，使用独立 PostgreSQL 容器、真实原生 Uvicorn 与经 SHA-256 校验的 Caddy 2.11.7，检查路由、缓存、上传边界、API 进程重启持久化和数据库断连恢复，再验证管理员和两个普通代表的 Cookie 登录、角色限制、记录隔离与退出后的旧 Cookie 撤销。测试结束清理子进程、临时数据和凭据，不构建或启动 API/Web 容器。
 - `production`：等待前面四个任务全部成功，仅在推送 `main` 时进入串行部署队列；读取 GitHub 当前 `main` 的 SHA，只有仍为最新提交时才执行原有 SSH 部署，过时提交跳过部署。
 
@@ -88,4 +88,4 @@ gh run view <运行编号> --log
 curl --fail --silent --show-error https://openwook.cloud/api/ready
 ```
 
-APK 工件从同一 SHA 的 CI 获取，名称为 `BreathOn-android-arm64-debug-<commit>`。生产服务器不分发 Android 页面，用户须安装新版 APK；debug 工件用于验收，正式分发需要发布签名。App 更新与服务部署应分别记录，不因服务器健康就宣称客户端已更新。
+APK 工件从同一 SHA 的 CI 获取，名称为 `EviSpeak-android-arm64-debug-<commit>`。生产服务器不分发 Android 页面，用户须安装新版 APK；debug 工件用于验收，正式分发需要发布签名。App 更新与服务部署应分别记录，不因服务器健康就宣称客户端已更新。

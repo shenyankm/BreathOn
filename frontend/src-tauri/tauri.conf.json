@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "BreathOn",
+  "productName": "EviSpeak",
   "version": "0.1.2",
   "identifier": "cloud.openwook.medvisit",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "BreathOn",
+        "title": "循言 EviSpeak",
         "width": 1024,
         "height": 768
       }

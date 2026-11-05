@@ -1,5 +1,5 @@
 [Unit]
-Description=BreathOn FastAPI server
+Description=EviSpeak FastAPI server
 Requires=docker.service
 After=network-online.target docker.service
 Wants=network-online.target

@@ -1,9 +1,9 @@
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Alert,AlertDescription,AlertTitle } from '@/components/ui/alert'
+import { Collapsible,CollapsibleContent,CollapsibleTrigger } from '@/components/ui/collapsible'
+import type { LiveCoach } from '@/lib/voice-events'
+import { Info } from 'lucide-react'
 import { memo } from 'react'
 import { AssessmentView } from './assessment-view'
-import { Info } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import type { LiveCoach } from '@/lib/voice-events'
 
 export const CoachAnalysis = memo(function CoachAnalysis({ coach, review = false, expanded = false }: { coach: LiveCoach; review?: boolean; expanded?: boolean }) {
   if (coach.superseded) return <p role="status" className="text-sm text-muted-foreground">转录已修正，这条提示已失效，请以更新后的建议或最终复盘为准。</p>

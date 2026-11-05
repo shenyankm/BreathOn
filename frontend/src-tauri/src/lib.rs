@@ -102,7 +102,7 @@ pub fn run() {
             save_visit_draft
         ])
         .run(tauri::generate_context!())
-        .expect("error while running BreathOn");
+        .expect("error while running EviSpeak");
 }
 
 #[cfg(test)]

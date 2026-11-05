@@ -74,27 +74,27 @@ test('record detail retry recovers without leaving the dialog; late old record c
   assert.equal(text(app.render()).includes('old · doctor'), false)
 })
 
-test('review read recovers and repeated save retains form on failure then unlocks', async () => {
+test('feedback read recovers and repeated retrain retains form on failure then unlocks', async () => {
   let failRead = true, writes = 0, rejectWrite!: (error: Error) => void, resets = 0
   const app = mount('components/review-panel.tsx', 'ReviewPanel', async (path, options) => {
     if (options?.method) { writes++; return new Promise((_resolve, reject) => { rejectWrite = reject }) }
     if (failRead) throw new Error('read offline')
     return path.endsWith('/reviews') ? { reviews: [], responses: [] } : []
-  }, { record: { id: 'one', messages: [] } })
+  }, { record: { id: 'one', messages: [], training: { stage: 'full', scenario: { stages: [] }, rubric: { dimensions: [] }, documents: [] } } })
   app.render(); await settle()
   failRead = false; button(app.render(), '重新读取点评').props.onClick()
   app.render(); await settle()
   let tree = app.render()
   assert.equal(text(tree).includes('read offline'), false)
   const form = nodes(tree, 'form')[0]
-  const event = { preventDefault() {}, currentTarget: { comment: '保留点评', reset() { resets++ } } }
+  const event = { preventDefault() {}, currentTarget: { stage: 'full', note: '保留补练说明', reset() { resets++ } } }
   form.props.onSubmit(event); form.props.onSubmit(event)
   assert.equal(writes, 1)
   assert.equal(nodes(app.render(), 'fieldset')[0].props.disabled, true)
   rejectWrite(new Error('write failed')); await settle()
   tree = app.render()
   assert.equal(resets, 0)
-  assert.equal(button(tree, '保存点评').props.disabled, false)
+  assert.equal(button(tree, '生成补练任务').props.disabled, false)
   assert.ok(text(tree).includes('write failed'))
 })
 

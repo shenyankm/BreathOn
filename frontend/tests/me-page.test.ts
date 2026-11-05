@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 
 type Node = { type: string; props: any }
-type Props = { username?: string; onLogout?: () => void; logoutDisabled?: boolean }
+type Props = { username?: string; onLogout?: () => void; logoutDisabled?: boolean; onPresetChange?: (preset: any) => void }
 
 function render(props: Props = {}) {
   const exports: { MePage?: (props: Props) => Node } = {}
@@ -16,13 +16,14 @@ function render(props: Props = {}) {
   }).outputText, {
     exports,
     require(module: string) {
-      if (module === 'react') return { memo: (component: unknown) => component }
+      if (module === 'react') return { memo: (component: unknown) => component, useState: (initial: unknown) => [initial, () => {}] }
+      if (module === '@/lib/training-setup') return { trainingPresets: [{ id: 'coached', label: '辅助练习' }, { id: 'combat', label: '实战练习' }] }
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       assert.ok(module === 'lucide-react' || module.startsWith('@/components/'), module)
       return new Proxy({}, { get: (_, key) => String(key) })
     },
   })
-  return exports.MePage!(props)
+  return exports.MePage!({ preset: { id: 'coached' }, onPresetChange() {}, ...props } as Props)
 }
 
 function find(node: any, type: string): Node[] {
@@ -37,18 +38,20 @@ function textOf(node: any): string {
   return node && typeof node === 'object' ? textOf(node.props?.children) : ''
 }
 
-test('the account page shows the complete username and links to visit diaries and practice reviews', () => {
+test('settings only shows the account, persisted practice mode and logout', () => {
   const username = '一位姓名很长的测试代表·姓名显示应保持完整'
   const view = render({ username })
   assert.ok(textOf(view).includes(username))
-  const links = find(view, 'a')
-  const visits = links.find(node => node.props.href === '#visits')
-  const records = links.find(node => node.props.href === '#records')
-  assert.ok(visits)
-  assert.ok(records)
-  assert.ok(textOf(visits).includes('拜访记录'))
-  assert.ok(textOf(records).includes('练习记录'))
-  assert.equal(links.filter(node => /\/admin|#workspace|#settings/.test(node.props.href)).length, 0)
+  assert.ok(textOf(view).includes('默认练习方式'))
+  assert.equal(find(view, 'a').length, 0)
+  assert.equal(find(view, 'Checkbox').length, 0)
+  assert.equal(find(view, 'HealthObservations').length, 0)
+  assert.equal(textOf(view).includes('审核'), false)
+  const chosen: any[] = []
+  const mode = find(render({ onPresetChange: preset => chosen.push(preset) }), 'ToggleGroup')[0]
+  mode.props.onValueChange('combat')
+  mode.props.onValueChange('')
+  assert.deepEqual(chosen.map(value => value.id), ['combat'])
 })
 
 test('an account without a username has an honest fallback and no unavailable logout action', () => {

@@ -161,8 +161,8 @@ class Catalog:
             if research:
                 data.update(research_evidence=research.get('doctor_evidence', []),
                     identity_confirmed_by=user['id'], identity_confirmed_at=now(),
-                    research_evidence_review_required=any(data.get(key) != research['doctor_draft'].get(key)
-                        for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources')))
+                    research_evidence_review_required=any(data.get(key) != research['doctor_draft'].get(key, [] if key == 'honors' else None)
+                        for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources', 'honors')))
             if kind in ('content', 'policy') and data.get('asset_id'):
                 require_item(tx, user['workspace'], 'asset', data['asset_id'])
             if kind == 'drug':
@@ -190,7 +190,9 @@ class Catalog:
             if kind == 'doctor':
                 data['display_name'] = data['name'] + '（训练模拟）'
                 data['research_job_id'] = old.get('research_job_id')
-                if old.get('research_evidence') and any(old.get(key) != data.get(key) for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources')):
+                if 'honors' not in body.model_fields_set:
+                    data['honors'] = old.get('honors', [])
+                if old.get('research_evidence') and any(old.get(key, [] if key == 'honors' else None) != data.get(key) for key in ('name', 'hospital', 'professional_title', 'specialty', 'public_facts', 'sources', 'honors')):
                     data['research_evidence_review_required'] = True
             if kind == 'scenario':
                 self.validate_bindings(tx, user['workspace'], data, publishing=False)

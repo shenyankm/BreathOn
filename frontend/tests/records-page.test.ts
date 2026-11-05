@@ -5,7 +5,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-test('records defer progress work until first expansion and retain it on reopen', () => {
+test('records focus on practice history and omit service usage statistics', () => {
   const slots: unknown[] = []
   let cursor = 0
   const react = {
@@ -38,13 +38,8 @@ test('records defer progress work until first expansion and retain it on reopen'
     if (Array.isArray(node)) return node.flatMap(child => find(child, type))
     return [...(node.type === type ? [node] : []), ...find(node.props?.children, type)]
   }
-  let page = render()
+  const page = render()
   assert.equal(find(page, 'TrainingProgress').length, 0)
-  const section = find(page, 'Accordion')[0]
-  section.props.onValueChange('progress')
-  page = render()
-  assert.equal(find(page, 'TrainingProgress').length, 1)
-  find(page, 'Accordion')[0].props.onValueChange('')
-  page = render()
-  assert.equal(find(page, 'TrainingProgress').length, 1)
+  assert.equal(find(page, 'Accordion').length, 0)
+  assert.equal(find(page, 'RetrainingList').length, 1)
 })

@@ -237,11 +237,30 @@ class IPProfile(Input):
     modules: list[tuple[str, str]] = Field(default_factory=list, max_length=8)
 
 
+class HonorDetails(Input):
+    name: str = Field(min_length=1, max_length=200)
+    organization: str = Field(default='', max_length=200)
+    year: int | None = Field(default=None, strict=True, ge=1000, le=9999)
+
+
+class DoctorHonor(HonorDetails):
+    source_url: str = Field(min_length=1, max_length=8192)
+    quote: str = Field(min_length=1, max_length=2000)
+
+    @field_validator('source_url')
+    @classmethod
+    def public_source(cls, value):
+        if not public_url(value):
+            raise ValueError('荣誉来源必须为公开 HTTP(S) 链接')
+        return value
+
+
 class Doctor(Input):
     name: str = Field(min_length=1, max_length=60)
     specialty: str = Field(min_length=1, max_length=80)
     hospital: str = Field(default='', max_length=200)
     professional_title: str = Field(default='', max_length=100)
+    honors: list[DoctorHonor] = Field(default_factory=list, max_length=20)
     background_type: Literal['fictional', 'public'] = 'fictional'
     public_facts: str = Field(default='', max_length=3000)
     sources: list[str] = Field(default_factory=list, max_length=8)

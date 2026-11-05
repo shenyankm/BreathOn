@@ -44,7 +44,7 @@ def build_server(settings, root: Path, job_dir: Path, seeds=()):
         async with client:
             yield {}
 
-    server = MCPServer('BreathOn public research', lifespan=lifespan)
+    server = MCPServer('EviSpeak public research', lifespan=lifespan)
 
     @server.tool()
     async def search_public(query: str) -> dict:

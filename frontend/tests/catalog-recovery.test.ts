@@ -285,17 +285,17 @@ test('generated doctor form requires explicit review and preserves source fields
   const app = page('../components/catalog-forms.tsx', 'DoctorForm', async () => {})
   const props = { initial: doctorDraft, busy: false, disabled: false, save: (body: any) => saves.push(body) }
   let view = app.render(props)
-  assert.equal(find(view, 'Field').find(field => field.props.name === 'name').props.value, doctorDraft.name)
+  assert.equal(find(view, 'Input').find(field => field.props.name === 'name').props.defaultValue, doctorDraft.name)
   assert.equal(find(view, 'Textarea').find(field => field.props.name === 'public_facts').props.defaultValue, doctorDraft.public_facts)
   const submit = () => find(view, 'form')[0].props.onSubmit({ preventDefault() {}, currentTarget: { ...doctorDraft, sources: doctorDraft.sources.join('\n') } })
   submit()
   assert.equal(saves.length, 0)
-  assert.equal(find(view, 'Button')[0].props.disabled, true)
+  assert.equal(find(view, 'Button').find(button => button.props.type === 'submit').props.disabled, true)
   find(view, 'Checkbox')[0].props.onCheckedChange(true)
   view = app.render(props)
-  assert.equal(find(view, 'Button')[0].props.disabled, false)
+  assert.equal(find(view, 'Button').find(button => button.props.type === 'submit').props.disabled, false)
   submit()
-  assert.deepEqual(JSON.parse(JSON.stringify(saves[0])), doctorDraft)
+  assert.deepEqual(JSON.parse(JSON.stringify(saves[0])), {...doctorDraft, honors:[]})
 })
 
 test('doctor generation starts only on submit and polling exposes the draft for review', async () => {
@@ -497,7 +497,7 @@ test('published doctor offers both free practice guidance and scored scene navig
   const app = page('platform-page.tsx','CatalogPage',async path => path.includes('/doctor/d') ? {id:'d',status:'published',name:'医生',updated_at:'2026-10-31'} : [], '#workspace?tab=doctor&doctor=d')
   app.render({kind:'doctor'}); await settle()
   const tree=app.render({kind:'doctor'})
-  assert.equal(find(tree,'section').filter(node=>node.props['aria-label']==='医生发布后续步骤').length,1)
+  assert.equal(find(tree,'Card').filter(node=>node.props['aria-label']==='医生发布后续步骤').length,1)
   assert.ok(find(tree,'a').some(node=>node.props.href==='#workspace?tab=scenario'))
 })
 

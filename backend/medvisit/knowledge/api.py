@@ -93,7 +93,7 @@ def medical_router(corpus, verifier):
             finally:
                 archive.close()
         return StreamingResponse(chunks(),media_type='application/zip',
-            headers={'Content-Disposition':'attachment; filename="BreathOn-medical-wiki.zip"'})
+            headers={'Content-Disposition':'attachment; filename="EviSpeak-medical-wiki.zip"'})
 
     @router.get('/sources/{source_id}')
     def source(source_id: str, version: str | None = None):

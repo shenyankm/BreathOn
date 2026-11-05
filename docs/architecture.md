@@ -25,7 +25,7 @@ React + Tauri 2 Android App（用户端，页面内置 APK）
           └─ storage/：PostgreSQL（Docker）或 JSON（本地兼容）
 ```
 
-Android 是唯一用户端，底部导航为「首页、训练、教练、我的」，拜访日记和复盘记录属于「我的」。页面复用目录、`/api/curriculum`、个人设置、健康观察及 `/api/realtime` 等接口。医生页面从首页或训练进入。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
+Android 是唯一用户端，面向医药代表，底部导航为「练习、记录、设置」。页面使用药品/医生目录、练习预览、个人演练/重练及 `/api/realtime` 接口；默认练习方式按账号保存在本机 SQLite。课程、拜访日记、审核和健康观察不再进入用户端。服务器只分发 Web 管理端；`/app` 返回 410，`/_android/` 返回 404。APK 的 `WebViewAssetLoader` 在本地提供 `/_android/` 资源，登录、API、附件和 WebSocket 同源连接服务器；应用不内置模型密钥。
 
 `main.py` 配置 HTTP 请求日志并创建 ASGI 应用，配置集中在 `core/config.py`。语音接收与智能体推理分离，保持原有流式语音协议；AgentScope 不接管麦克风和上游 WebSocket。每次模型请求创建独立 Agent，业务层显式提供限定长度的当前会话原文；SDK 自动重试关闭；应用层只对指定可恢复错误重试一次，具体边界见[Agent 可靠性](agent-reliability.md)。
 
@@ -157,9 +157,9 @@ TEST_DATABASE_URL='postgresql://测试用户:测试密码@127.0.0.1:测试端口
 
 实现参考：[AgentScope 源码与文档](https://github.com/agentscope-ai/agentscope)、[Psycopg 连接池](https://www.psycopg.org/psycopg3/docs/advanced/pool.html)、[Compose 健康依赖](https://docs.docker.com/compose/how-tos/startup-order/)。
 
-## Web 管理后台原型接入（2026-10-31）
+## 前端组件与路由
 
-Web 入口独立加载 `styles/admin.css`，沿用 `breathon-complete/admin` 的白底、青绿点缀、圆角卡片和九项侧栏；Android 不加载此样式。总览为默认入口，各后台页支持 `#admin?section=…`，原有 `#workspace?tab=…`、医生详情参数与 `#settings` 仍可访问，训练编辑器和服务页保持统一侧栏。
+前端路由沿用原型接入前的页面体系，组件与视觉统一为官方 shadcn/ui `radix-luma`，移除 `bp/` 页面、品牌主题覆盖和手写通用 UI。Android 保留五项底部导航；课程计划、完成标记和个人设置通过现有接口保存。Web 使用 Luma 原生组件、响应式侧栏和窄屏选择器，同时保留后续加入的总览、用户画像、课程、版本与审核管理功能。各后台页支持 `#admin?section=…`，原有 `#workspace?tab=…`、医生详情参数与 `#settings` 仍可访问。
 
 总览读取当前工作区的药品、医生、场景、政策、政策规则、资料与拜访目录。数量包含目录返回的草稿及停用记录；待审核与既有审核队列口径一致；最近更新来自目录的 `updated_at`，不是模拟活动日志。部分请求失败时明确提示并将不可确定的数量显示为「—」。
 

@@ -1,8 +1,7 @@
-import { lazy, StrictMode } from 'react'
+import { lazy,StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './styles/index.css'
-import './styles/admin.css'
 import { AuthGate } from './components/auth-gate.tsx'
+import './styles/index.css'
 
 const AdminApp = lazy(() => import('./admin-app').then(module => ({ default: module.AdminApp })))
 

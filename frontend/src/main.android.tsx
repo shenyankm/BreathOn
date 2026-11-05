@@ -1,9 +1,7 @@
-import { lazy, StrictMode } from 'react'
+import { lazy,StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './styles/index.css'
-import './styles/breathon.css'
-import './styles/bp.css'
 import { AuthGate } from './components/auth-gate'
+import './styles/index.css'
 
 const App = lazy(() => import('./App'))
 

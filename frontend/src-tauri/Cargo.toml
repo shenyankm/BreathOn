@@ -1,7 +1,7 @@
 [package]
 name = "medvisit-coach"
 version = "0.1.2"
-description = "BreathOn Android client"
+description = "EviSpeak Android client"
 license = "MIT"
 edition = "2024"
 rust-version = "1.90"

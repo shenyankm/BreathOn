@@ -7,13 +7,16 @@
 | 目录 | 内容 |
 | --- | --- |
 | `frontend/src/` | React 用户界面与 Web 管理后台；优先复用现有 shadcn/ui 组件 |
-| `user-app/` | 独立呼气代谢 Android 离线原型；构建与验证见其 README.txt |
 | `frontend/src-tauri/` | Tauri 2 Android 客户端、原生权限和打包配置 |
 | `backend/medvisit/` | FastAPI、语音、训练、资料与存储服务 |
 | `frontend/tests/`、`backend/tests/` | 前后端回归测试 |
 | `deploy/`、`docs/` | 部署配置与使用、运维文档 |
 
 用户端只通过 Android APK 提供，Web 只提供管理后台，后端在服务器运行。不要恢复 Web 用户端入口，或把服务密钥放进前端和 APK。
+
+## 前端组件
+
+`frontend/components.json` 使用 `radix-luma`。`components/ui/` 保持官方注册表源码，仅按项目路径和 Lucide 图标转换导入。业务组件组合这些原生组件，不再加入品牌主题覆盖、通用控件包装或装饰性样式；允许布局、安全区、滚动和无障碍所需的 Tailwind 类。组件来源与许可证见 `frontend/public/licenses/shadcn-radix-luma.txt`。
 
 ## 本地开发
 

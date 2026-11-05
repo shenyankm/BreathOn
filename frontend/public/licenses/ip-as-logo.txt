@@ -1,0 +1,13 @@
+EviSpeak mascot artwork: whale-teal-no-blowhole
+
+Source library: IP as Logo Skill, https://ipaslogo.com/
+Original artwork:
+https://cdn.ipaslogo.com/logos/fa4255f09f0d027f-whale-teal-no-blowhole.png
+Project: https://github.com/s1dashu/ip-as-logo-skill
+Downloaded: 2026-11-02
+
+The source website and project README state that the ready-made logos are
+free to download and use commercially.
+
+The original PNG was resized for the brand image and platform icons with the
+installed Tauri CLI, using #39716b as the adaptive icon background.

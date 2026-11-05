@@ -3,7 +3,8 @@ export type Entity = { id: string; version: number; status: string; created_at: 
 export type Content = Entity & { asset_id?: string | null; usable?:boolean; title: string; version_label: string; scope: string; source_url: string; publication_date: string | null; expires_at: string | null; pages: { number: number; text: string }[]; review_reason?: string; approved_by?: string; series_id: string }
 export type ManagedDrug = Entity & {name:string;brand:string;ownership:'company'|'competitor'|'unknown';practice_departments?:string[]}
 export type Policy = Content & { legal_status: string }
-export type Doctor = Entity & { name: string; display_name: string; specialty: string; practice_department?: string; hospital?: string; professional_title?: string; research_evidence_review_required?: boolean; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
+export type DoctorHonor = { name:string; organization:string; year:number|null; source_url:string; quote:string }
+export type Doctor = Entity & { name: string; display_name: string; specialty: string; practice_department?: string; hospital?: string; professional_title?: string; honors?:DoctorHonor[]; research_evidence_review_required?: boolean; background_type: string; public_facts: string; sources: string[]; population: string; focus: string; training_style: string; mood: string; opening: string; research_job_id?: string | null }
 export type DoctorDraft = Omit<Doctor, keyof Entity | 'display_name'>
 export type Dimension = { key: string; label: string; weight: number; anchors: string[]; requires_content: boolean }
 export type Rubric = Entity & { name: string; dimensions: Dimension[]; calibration_status: string }
@@ -17,13 +18,13 @@ export const situations: Record<string, string> = { first_visit:'首次拜访', 
 export function titleOf(item: CatalogRecord) { return 'title' in item ? item.title : 'display_name' in item ? item.display_name : item.name }
 export type TrainingSnapshot = {
   scenario: { id:string; title:string; product:string; disease:string; objective:string; duration_seconds:number; background?:string; situation?:string }
-  doctor: { id:string; display_name:string; specialty:string; public_facts:string; population:string; focus:string; training_style:string; mood:string; sources:string[] }
+  doctor: { id:string; display_name:string; specialty:string; public_facts:string; population:string; focus:string; training_style:string; mood:string; sources:string[]; honors?:DoctorHonor[] }
   rubric: { id:string; name:string; calibration_status:string }
   documents: { id:string; title:string; version_label:string }[]
   stage:string
 }
 export type FreePracticeContext = {
-  doctor: Pick<Doctor, 'id' | 'version' | 'name' | 'display_name' | 'specialty' | 'background_type' | 'public_facts' | 'population' | 'focus' | 'training_style' | 'mood' | 'sources' | 'opening'>
+  doctor: Pick<Doctor, 'id' | 'version' | 'name' | 'display_name' | 'specialty' | 'background_type' | 'public_facts' | 'population' | 'focus' | 'training_style' | 'mood' | 'sources' | 'opening' | 'honors'>
   drug: Pick<ManagedDrug, 'id' | 'version' | 'name' | 'brand'>
 }
 export type Assessment = {

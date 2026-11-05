@@ -22,7 +22,7 @@ test('visit review compares the doctor and leads to scenario generation',async()
   render();await settle();let tree=render()
   find(tree,'Button').find(node=>node.props.children==='审核').props.onClick()
   tree=render()
-  const doctorType=find(tree,'section').flatMap(section=>Array.isArray(section.props.children)?section.props.children:[]).find(node=>typeof node?.type==='function')?.type
+  const doctorType=find(tree,'CardContent').flatMap(section=>Array.isArray(section.props.children)?section.props.children:[]).find(node=>typeof node?.type==='function')?.type
   assert.equal(find(tree,doctorType)[0].props.doctorId,'doc1')
   assert.ok(find(tree,'p').some(node=>node.props.children==='经脱敏拜访内容'))
   find(tree,'Textarea')[0].props.onChange({target:{value:'记录为本次情境'}});tree=render()

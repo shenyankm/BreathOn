@@ -1,20 +1,21 @@
-import { useEffect, useId, useState } from 'react'
-import { Clock3, ExternalLink, Search, Square } from 'lucide-react'
+import { Card,CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import type { DoctorDraft,DoctorHonor } from '@/lib/catalog-types'
+import { api } from '@/lib/platform-api'
+import { Clock3,ExternalLink,Search,Square } from 'lucide-react'
+import { useEffect,useId,useState } from 'react'
+import { Accordion,AccordionContent,AccordionItem,AccordionTrigger } from './ui/accordion'
 import { Button } from './ui/button'
-import { Textarea } from './ui/textarea'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
-import { api } from '@/lib/platform-api'
-import type { DoctorDraft } from '@/lib/catalog-types'
-import { Label } from '@/components/ui/label'
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from './ui/select'
+import { Textarea } from './ui/textarea'
 
 type Kind = 'doctor' | 'drug'
 type Profile = { kind: Kind; label: string; description: string }
 type Version = { raw_sha256: string; retrieved_at: string; kind: 'html' | 'pdf' | 'doc' | 'docx' }
 type Source = { id: string; title: string; url: string; latest: Version; versions: Version[]; last_checked_at: string; last_check_error: string }
-type Detail = { label: string; value: string; source_id: string; source_version?: string; quote: string }
+type Detail = { label: string; value: string; source_id: string; source_version?: string; quote: string; honor?:Pick<DoctorHonor,'name'|'organization'|'year'> }
 export type Job = { id: string; kind: Kind | 'policy'; query: string; status: string; created_at: string; finished_at?: string; error: string; source_ids: string[];
   doctor_identity?: { name: string; hospital: string; department: string }; doctor_draft?: DoctorDraft; doctor_draft_error?: string; doctor_id?: string;
   source_metadata?: { id: string; raw_sha256: string; url: string; resolved_url: string; title: string; kind: string; retrieved_at: string }[];
@@ -33,22 +34,22 @@ const archiveUrl = (id: string, version: string, format = 'html') => `/api/resea
 export function ResearchFindings({ job }: { job: Job }) {
   return <>
     <p className="text-sm leading-7 text-muted-foreground">归档仅证明原文已读取，不代表原文支持结论。请逐项核对身份、机构来源与时效；抓取时间不是发布日期。</p>
-    {job.result?.findings.map((finding, index) => <article className="space-y-4 rounded-xl border bg-background p-5" key={index}>
+    {job.result?.findings.map((finding, index) => <Card className="space-y-4" key={index}><CardContent className="space-y-4">
       <h4 className="text-base font-medium">{finding.title}</h4>
-      {finding.caveats.length > 0 && <div role="note" className="rounded-lg border p-3 text-sm"><p className="font-medium">身份、来源与时效待核对</p><ul className="list-inside list-disc">{finding.caveats.map((text, i) => <li key={i}>{text}</li>)}</ul></div>}
+      {finding.caveats.length > 0 && <Card role="note" className="text-sm"><CardContent className="space-y-4"><p className="font-medium">身份、来源与时效待核对</p><ul className="list-inside list-disc">{finding.caveats.map((text, i) => <li key={i}>{text}</li>)}</ul></CardContent></Card>}
       {finding.details.map((detail, i) => {
         const version = detail.source_version ?? job.changes.find(change => change.source_id === detail.source_id)?.version
         const source = job.source_metadata?.find(source => source.id === detail.source_id && source.raw_sha256 === version)
-        return <div key={i} className="grid gap-4 border-t pt-4 text-sm leading-7 md:grid-cols-2">
-          <div><p className="font-medium">{detail.label}{detail.label === '同名或时效疑点' && ' · 需确认'}</p><p className="whitespace-pre-wrap break-words">{detail.value}</p></div>
-          <blockquote className="min-w-0 border-l-2 pl-3"><p className="whitespace-pre-wrap break-words">{detail.quote}</p>
+        return <div key={i} className="grid gap-4 pt-4 text-sm leading-7 md:grid-cols-2">
+          <div><p className="font-medium">{detail.label}{detail.label === '同名或时效疑点' && ' · 需确认'}</p><p className="whitespace-pre-wrap break-words">{detail.honor?.name ?? detail.value}</p>{detail.honor && <p className="break-words text-muted-foreground">{detail.honor.organization || '授予机构未载明'} · {detail.honor.year ?? '年份未载明'}</p>}</div>
+          <blockquote className="min-w-0 pl-3"><p className="whitespace-pre-wrap break-words">{detail.quote}</p>
             <p className="text-muted-foreground">{source ? `原件类型：${source.kind.toUpperCase()} · 抓取于 ${date(source.retrieved_at)}` : '来源日期与类型待核对'} · 发布日期待核对 · 机构属性需人工确认</p>
             {source && <a className="block break-all underline" href={source.resolved_url || source.url} target="_blank" rel="noreferrer">{source.title} · {source.resolved_url || source.url}</a>}
             {version && <a className="inline-flex min-h-11 items-center underline" href={archiveUrl(detail.source_id, version)} target="_blank" rel="noreferrer">查看归档原文</a>}
           </blockquote>
         </div>
       })}
-    </article>)}
+    </CardContent></Card>)}
     {job.result && job.result.further_checks.length > 0 && <section><h4 className="text-sm font-medium">还需核对</h4><ul className="mt-2 list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{job.result.further_checks.map((text, i) => <li key={i}>{text}</li>)}</ul></section>}
   </>
 }
@@ -62,12 +63,12 @@ export function DoctorCandidates({ job, busy, onConfirm }: { job: Job; busy: boo
     const key = `${job.id}:${index}`
     if (fields.some(values => values.length !== 1)) return <p key={key} className="text-sm">“{finding.title}”的姓名、医院或科室缺失或存在冲突，请补充检索后核对。</p>
     const [name, hospital, department] = fields.map(values => values[0])
-    return <section key={key} className="space-y-3 rounded-xl border p-4">
+    return <Card key={key} className="space-y-3"><CardContent className="space-y-4">
       <p className="text-sm font-medium">确认候选：{name} · {hospital} · {department}</p>
       {job.doctor_identity && <p className="text-sm text-muted-foreground">检索时填写：{job.doctor_identity.name} · {job.doctor_identity.hospital} · {job.doctor_identity.department}。简称、更名或任职差异需依据原文确认。</p>}
-      <div className="flex min-h-11 items-center gap-3 text-sm"><Checkbox id={`${prefix}-${key}`} checked={Boolean(confirmed[key])} onCheckedChange={checked => setConfirmed(value => ({...value, [key]:checked === true}))}/><Label htmlFor={`${prefix}-${key}`} className="flex min-h-11 cursor-pointer items-center leading-6 font-normal">我已核对该候选的姓名、医院、科室、来源及待核对项</Label></div>
+      <div className="flex min-h-11 items-center gap-3 text-sm"><Checkbox id={`${prefix}-${key}`} checked={Boolean(confirmed[key])} onCheckedChange={checked => setConfirmed(value => ({...value, [key]:checked === true}))}/><Label htmlFor={`${prefix}-${key}`} className="flex min-h-11 cursor-pointer items-center">我已核对该候选的姓名、医院、科室、来源及待核对项</Label></div>
       <Button variant="outline" disabled={busy || !confirmed[key]} onClick={() => onConfirm(index, name)}>创建待审核医生草稿</Button>
-    </section>
+    </CardContent></Card>
   })}</>
 }
 
@@ -125,10 +126,10 @@ export function ResearchPanel({ initialKind }: { initialKind?: Kind } = {}) {
 
   return <div className="space-y-6">
     <header><h2 className="text-lg font-medium">资料检索与追踪</h2></header>
-    <form className="space-y-4 rounded-xl border bg-background p-5" onSubmit={event => { event.preventDefault(); if (!busy && !running && query.trim()) void mutate('/research/jobs', { kind, query }) }}>
-      <div className="max-w-sm space-y-2"><Label htmlFor="research-kind" className="block text-sm font-medium leading-normal">查找什么</Label><Select value={kind} onValueChange={value => setKind(value as Kind)}><SelectTrigger id="research-kind" className="w-full"><SelectValue/></SelectTrigger><SelectContent>{(data?.profiles ?? [{kind:'doctor',label:'医生公开资料检索'},{kind:'drug',label:'同类药品检索'}]).map(profile => <SelectItem key={profile.kind} value={profile.kind}>{profile.label}</SelectItem>)}</SelectContent></Select></div>
+    <form className="space-y-4 p-5" onSubmit={event => { event.preventDefault(); if (!busy && !running && query.trim()) void mutate('/research/jobs', { kind, query }) }}>
+      <div className="max-w-sm space-y-2"><Label htmlFor="research-kind" className="block">查找什么</Label><Select value={kind} onValueChange={value => setKind(value as Kind)}><SelectTrigger id="research-kind" className="w-full min-h-11"><SelectValue/></SelectTrigger><SelectContent>{(data?.profiles ?? [{kind:'doctor',label:'医生公开资料检索'},{kind:'drug',label:'同类药品检索'}]).map(profile => <SelectItem key={profile.kind} value={profile.kind}>{profile.label}</SelectItem>)}</SelectContent></Select></div>
       {profile && <p className="text-sm leading-7 text-muted-foreground">{profile.description}</p>}
-      <div className="space-y-2"><Label htmlFor="research-query" className="block text-sm font-medium leading-normal">检索主题</Label><Textarea id="research-query" rows={2} maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={examples[kind]} required minLength={2}/></div>
+      <div className="space-y-2"><Label htmlFor="research-query" className="block">检索主题</Label><Textarea id="research-query" rows={2} maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={examples[kind]} required minLength={2}/></div>
       <div className="flex flex-wrap items-center gap-4"><Button type="submit" disabled={busy || Boolean(running) || !data?.configured || query.trim().length < 2}><Search/>{running ? '检索进行中' : '开始检索并归档'}</Button><p className="text-sm leading-6 text-muted-foreground">仅检索公开资料，会产生模型与搜索用量。</p></div>
       {data && !data.configured && <p className="text-sm leading-7 text-muted-foreground">请配置 DeepSeek 并开启公开搜索，再开始检索。<a href="#settings" className="ml-2 underline underline-offset-4">查看服务设置</a></p>}
     </form>
@@ -136,18 +137,18 @@ export function ResearchPanel({ initialKind }: { initialKind?: Kind } = {}) {
     {notice && <p role="status" className="text-sm">{notice}</p>}
     {!data && !error && <p role="status" className="text-sm text-muted-foreground">正在读取检索记录…</p>}
     {job ? <section className="space-y-5" aria-label="检索结果">
-      <div className="space-y-2"><Label htmlFor="research-history" className="block text-sm font-medium leading-normal">检索记录（最近 20 次及当前来源）</Label><Select value={job.id} onValueChange={setSelected}><SelectTrigger id="research-history" className="w-full"><SelectValue/></SelectTrigger><SelectContent>{data?.jobs.map(item => <SelectItem key={item.id} value={item.id}>{item.query} · {statuses[item.status]} · {date(item.created_at)}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-2"><Label htmlFor="research-history" className="block">检索记录（最近 20 次及当前来源）</Label><Select value={job.id} onValueChange={setSelected}><SelectTrigger id="research-history" className="w-full min-h-11"><SelectValue/></SelectTrigger><SelectContent>{data?.jobs.map(item => <SelectItem key={item.id} value={item.id}>{item.query} · {statuses[item.status]} · {date(item.created_at)}</SelectItem>)}</SelectContent></Select></div>
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-medium">{job.query}</h3><p className="mt-2 text-sm text-muted-foreground" role="status">{statuses[job.status]}{job.finished_at ? ` · 核验时间 ${date(job.finished_at)}` : ` · 已搜索 ${job.progress?.searches ?? 0} 次，已归档 ${job.progress?.archives ?? 0} 份`}</p></div>{job.status === 'running' ? <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/cancel`)}><Square/>停止检索</Button> : job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && (job.kind !== 'policy' || watch?.enabled) && <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/watch`, {enabled:!watch?.enabled}, 'PUT')}><Clock3/>{watch?.enabled ? '暂停每日追踪' : '开启每日追踪'}</Button>}</div>
-      {job.kind !== 'policy' && job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && <p className="text-sm leading-7 text-muted-foreground">每日重搜并复查最多 5 份来源；需本机后端运行，会产生模型与搜索用量。</p>}
+      {job.kind !== 'policy' && job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && <p className="text-sm leading-7 text-muted-foreground">每日复查最多 5 份来源，需后端持续运行，会产生用量。</p>}
       {job.error && <p role="alert" className="text-sm leading-7 text-destructive">{job.error}</p>}
       <ResearchFindings job={job}/>
       <DoctorCandidates job={job} busy={busy} onConfirm={(index, name) => void mutate(`/research/jobs/${job.id}/doctor-draft`, {finding_index:index, confirmed_identity:true, confirmed_name:name})}/>
-      {job.kind === 'policy' && job.source_ids.length > 0 && <section className="space-y-2 rounded-xl border p-4"><h4 className="text-sm font-medium">导入官方原文</h4><p className="text-sm text-muted-foreground">将归档正文导入待审核草稿；文件效力和适用范围需人工核对。</p>{job.source_ids.map(id => { const source = data?.sources.find(item => item.id === id); const change = job.changes.find(item => item.source_id === id); return source && change ? <div key={id} className="flex flex-wrap items-center gap-3"><span className="text-sm">{source.title}</span><Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/policy-draft`, {source_id:id, source_version:change.version})}>创建政策草稿</Button></div> : null })}</section>}
-      {job.source_ids.length > 0 && <section className="space-y-3"><h4 className="text-sm font-medium">已归档原文</h4>{job.source_ids.map(id => { const source = data?.sources.find(source => source.id === id); const change = job.changes.find(change => change.source_id === id); if (!source || !change) return null; return <article className="min-w-0 space-y-3 rounded-xl border p-4" key={id}><h5 className="break-words text-sm font-medium">{source.title}</h5><p className="text-sm text-muted-foreground">{changes[change.status]} · 保留 {source.versions.length} 个版本</p><div className="flex flex-wrap gap-3"><Button asChild variant="outline"><a href={archiveUrl(id, change.version)} target="_blank" rel="noreferrer">阅读 HTML</a></Button><Button asChild variant="outline"><a href={archiveUrl(id, change.version, 'original')}>下载原件</a></Button><Button asChild variant="ghost"><a href={source.url} target="_blank" rel="noreferrer"><ExternalLink/>来源网页</a></Button></div>{source.last_check_error && <p className="text-sm leading-7 text-destructive">最近复查未完成：{source.last_check_error}，上次成功副本保留。</p>}{source.versions.length > 1 && <Accordion type="single" collapsible className="rounded-none border-0 border-t"><AccordionItem value="versions"><AccordionTrigger className="min-h-11 px-0 py-3">历史原文版本</AccordionTrigger><AccordionContent><ul className="space-y-2">{source.versions.map(version => <li key={version.raw_sha256}><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={archiveUrl(id, version.raw_sha256)} target="_blank" rel="noreferrer">{date(version.retrieved_at)}</a></li>)}</ul></AccordionContent></AccordionItem></Accordion>}</article> })}</section>}
-      {job.source_errors && job.source_errors.length > 0 && <Accordion type="single" collapsible className="bg-background"><AccordionItem value="source-errors"><AccordionTrigger className="min-h-11">未完成的来源检查（{job.source_errors.length}）</AccordionTrigger><AccordionContent><ul className="space-y-3">{job.source_errors.map((failure, i) => <li className="break-words leading-7" key={i}>{failure.message}{failure.url && <a className="ml-2 underline underline-offset-4" href={failure.url} target="_blank" rel="noreferrer">查看来源</a>}</li>)}</ul></AccordionContent></AccordionItem></Accordion>}
+      {job.kind === 'policy' && job.source_ids.length > 0 && <Card className="space-y-2"><CardContent className="space-y-4"><h4 className="text-sm font-medium">导入官方原文</h4><p className="text-sm text-muted-foreground">将归档正文导入待审核草稿；文件效力和适用范围需人工核对。</p>{job.source_ids.map(id => { const source = data?.sources.find(item => item.id === id); const change = job.changes.find(item => item.source_id === id); return source && change ? <div key={id} className="flex flex-wrap items-center gap-3"><span className="text-sm">{source.title}</span><Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/policy-draft`, {source_id:id, source_version:change.version})}>创建政策草稿</Button></div> : null })}</CardContent></Card>}
+      {job.source_ids.length > 0 && <section className="space-y-3"><h4 className="text-sm font-medium">已归档原文</h4>{job.source_ids.map(id => { const source = data?.sources.find(source => source.id === id); const change = job.changes.find(change => change.source_id === id); if (!source || !change) return null; return <Card className="min-w-0 space-y-3" key={id}><CardContent className="space-y-4"><h5 className="break-words text-sm font-medium">{source.title}</h5><p className="text-sm text-muted-foreground">{changes[change.status]} · 保留 {source.versions.length} 个版本</p><div className="flex flex-wrap gap-3"><Button asChild variant="outline"><a href={archiveUrl(id, change.version)} target="_blank" rel="noreferrer">阅读 HTML</a></Button><Button asChild variant="outline"><a href={archiveUrl(id, change.version, 'original')}>下载原件</a></Button><Button asChild variant="ghost"><a href={source.url} target="_blank" rel="noreferrer"><ExternalLink/>来源网页</a></Button></div>{source.last_check_error && <p className="text-sm leading-7 text-destructive">最近复查未完成：{source.last_check_error}，上次成功副本保留。</p>}{source.versions.length > 1 && <Accordion type="single" collapsible ><AccordionItem value="versions"><AccordionTrigger className="min-h-11 px-0 py-3">历史原文版本</AccordionTrigger><AccordionContent><ul className="space-y-2">{source.versions.map(version => <li key={version.raw_sha256}><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={archiveUrl(id, version.raw_sha256)} target="_blank" rel="noreferrer">{date(version.retrieved_at)}</a></li>)}</ul></AccordionContent></AccordionItem></Accordion>}</CardContent></Card> })}</section>}
+      {job.source_errors && job.source_errors.length > 0 && <Accordion type="single" collapsible ><AccordionItem value="source-errors"><AccordionTrigger className="min-h-11">未完成的来源检查（{job.source_errors.length}）</AccordionTrigger><AccordionContent><ul className="space-y-3">{job.source_errors.map((failure, i) => <li className="break-words leading-7" key={i}>{failure.message}{failure.url && <a className="ml-2 underline underline-offset-4" href={failure.url} target="_blank" rel="noreferrer">查看来源</a>}</li>)}</ul></AccordionContent></AccordionItem></Accordion>}
       {job.currency_notice && <p className="text-sm leading-7 text-muted-foreground">{job.currency_notice}</p>}
     </section> : data && <p className="text-sm leading-7 text-muted-foreground">暂无检索记录</p>}
-    {data && data.watches.length > 0 && <Accordion type="single" collapsible className="bg-background"><AccordionItem value="watches"><AccordionTrigger className="min-h-11">追踪主题（{data.watches.filter(watch => watch.enabled && watch.kind !== 'policy').length} 个已开启）</AccordionTrigger><AccordionContent><p className="text-sm leading-7 text-muted-foreground">每日重搜并复查最多 5 份来源；需本机后端运行，会产生模型与搜索用量。</p><ul className="mt-4 divide-y">{data.watches.map(watch => <li key={watch.id} className="space-y-2 py-4 text-sm"><p className="font-medium">{watch.query} · {watch.kind === 'policy' ? '助手已停用' : watch.enabled ? '追踪中' : '已暂停'}</p><p className="leading-7 text-muted-foreground">{watch.source_ids.length} 份原始来源{watch.enabled && watch.kind !== 'policy' && ` · 下次检查 ${date(watch.next_check_at)}`}</p>{watch.last_error && <p className="leading-7 text-destructive">{watch.last_error}</p>}{(watch.kind !== 'policy' || watch.enabled) && <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${watch.last_job_id}/watch`, {enabled:!watch.enabled}, 'PUT')}>{watch.enabled ? '暂停追踪' : '恢复追踪'}</Button>}</li>)}</ul></AccordionContent></AccordionItem></Accordion>}
+    {data && data.watches.length > 0 && <Accordion type="single" collapsible ><AccordionItem value="watches"><AccordionTrigger className="min-h-11">追踪主题（{data.watches.filter(watch => watch.enabled && watch.kind !== 'policy').length} 个已开启）</AccordionTrigger><AccordionContent><p className="text-sm leading-7 text-muted-foreground">每日复查最多 5 份来源，需后端持续运行，会产生用量。</p><ul className="mt-4 divide-y">{data.watches.map(watch => <li key={watch.id} className="space-y-2 py-4 text-sm"><p className="font-medium">{watch.query} · {watch.kind === 'policy' ? '助手已停用' : watch.enabled ? '追踪中' : '已暂停'}</p><p className="leading-7 text-muted-foreground">{watch.source_ids.length} 份原始来源{watch.enabled && watch.kind !== 'policy' && ` · 下次检查 ${date(watch.next_check_at)}`}</p>{watch.last_error && <p className="leading-7 text-destructive">{watch.last_error}</p>}{(watch.kind !== 'policy' || watch.enabled) && <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${watch.last_job_id}/watch`, {enabled:!watch.enabled}, 'PUT')}>{watch.enabled ? '暂停追踪' : '恢复追踪'}</Button>}</li>)}</ul></AccordionContent></AccordionItem></Accordion>}
   </div>
 }
 
@@ -170,10 +171,10 @@ export function PolicyImports() {
     } catch (cause) { setError(cause instanceof Error ? cause.message : '导入未完成，请核对原文。') }
     finally { setBusy(false) }
   }
-  return <Accordion type="single" collapsible value={expanded} onValueChange={setExpanded} className="bg-background"><AccordionItem value="policy-import"><AccordionTrigger className="min-h-11">导入政策原文</AccordionTrigger><AccordionContent forceMount hidden={expanded !== 'policy-import'} className="space-y-4">
+  return <Accordion type="single" collapsible value={expanded} onValueChange={setExpanded} ><AccordionItem value="policy-import"><AccordionTrigger className="min-h-11">导入政策原文</AccordionTrigger><AccordionContent forceMount hidden={expanded !== 'policy-import'} className="space-y-4">
     <p className="text-sm leading-6 text-muted-foreground">导入 PDF、DOC 或 DOCX 原件并创建待审核草稿。Word 正文按单段展示，不能作为原件页码；不支持扫描件自动识别。</p>
-    <Label className="grid gap-2 text-sm font-normal leading-normal">文件名称<Input value={title} maxLength={180} onChange={event=>setTitle(event.target.value)}/></Label>
-    <Label className="grid gap-2 text-sm font-normal leading-normal">选择原件<Input className="cursor-pointer" type="file" accept=".pdf,.doc,.docx" onChange={event=>setFile(event.target.files?.[0] ?? null)}/></Label>
+    <Label className="grid gap-2">文件名称<Input value={title} maxLength={180} onChange={event=>setTitle(event.target.value)}/></Label>
+    <Label className="grid gap-2">选择原件<Input className="cursor-pointer min-h-11" type="file" accept=".pdf,.doc,.docx" onChange={event=>setFile(event.target.files?.[0] ?? null)}/></Label>
     <Button disabled={busy || !file || !title.trim()} onClick={()=>void upload()}>{busy?'正在导入…':'创建政策草稿'}</Button>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {notice && <p role="status" className="text-sm">政策草稿已创建，刷新政策列表后核对。<a className="ml-2 underline" href={`/api/research/policy-file/${notice}/original`}>下载原件</a></p>}

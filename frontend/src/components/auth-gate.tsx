@@ -1,12 +1,13 @@
-import { Suspense, useEffect, useRef, useState, type FormEvent, type ComponentType } from 'react'
-import { ChevronRight, Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react'
-import { LoadingBlock } from './loading-block'
+import { Field,FieldLabel } from '@/components/ui/field'
+import { Item,ItemContent,ItemDescription } from '@/components/ui/item'
+import { Spinner } from '@/components/ui/spinner'
+import { Eye,EyeOff } from 'lucide-react'
+import { Suspense,useEffect,useRef,useState,type ComponentType,type FormEvent } from 'react'
 import { Brand } from './brand'
+import { Alert,AlertDescription } from './ui/alert'
 import { Button } from './ui/button'
+import { Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle } from './ui/dialog'
 import { Input } from './ui/input'
-import { Field } from './ui/form-field'
-import { Alert, AlertDescription } from './ui/alert'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 
 type Session = { enabled: boolean; authenticated: boolean; expires_at: number | null; username?: string | null; role?: 'admin' | 'representative' | null }
 const signedOut: Session = { enabled: true, authenticated: false, expires_at: null }
@@ -146,8 +147,8 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
 
   const requestLogout = () => { if (!changing.current) setConfirmLogout(true) }
   const logoutConfirmation = <Dialog open={confirmLogout} onOpenChange={setConfirmLogout}>
-    <DialogContent role="alertdialog" showCloseButton={false}>
-      <DialogHeader><DialogTitle>退出登录？</DialogTitle><DialogDescription>退出后需要重新登录才能继续使用。</DialogDescription></DialogHeader>
+    <DialogContent aria-describedby={undefined} role="alertdialog" showCloseButton={false}>
+      <DialogHeader><DialogTitle>退出登录？</DialogTitle></DialogHeader>
       <DialogFooter className="grid grid-cols-2 gap-3 sm:flex">
         <Button variant="outline" onClick={() => setConfirmLogout(false)}>取消</Button>
         <Button disabled={busy} onClick={() => { setConfirmLogout(false); return logout() }}>确认退出</Button>
@@ -160,34 +161,19 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
     return <>
       {logoutConfirmation}
       {error && <Alert variant="destructive" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-lg"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="outline" disabled={busy} onClick={reconnect}>重新连接</Button></AlertDescription></Alert>}
-      <Suspense fallback={<LoadingBlock label="正在加载应用…" />}><AppComponent key={`${session.username ?? 'local'}:${session.role ?? 'admin'}`} onLogout={session.enabled ? requestLogout : undefined} username={session.username ?? undefined} role={session.enabled ? session.role ?? 'representative' : 'admin'} /></Suspense>
+      <Suspense fallback={<Item role="status"><Spinner aria-hidden="true" /><ItemContent><ItemDescription>{"正在加载应用…"}</ItemDescription></ItemContent></Item>}><AppComponent key={`${session.username ?? 'local'}:${session.role ?? 'admin'}`} onLogout={session.enabled ? requestLogout : undefined} username={session.username ?? undefined} role={session.enabled ? session.role ?? 'representative' : 'admin'} /></Suspense>
     </>
   }
 
-  const android = target === 'android'
-  return <main className={android ? 'bp-login' : 'flex min-h-svh items-center justify-center bg-muted/30 px-5 py-12'}>
-    {android && <svg className="bp-login-pattern" viewBox="0 0 393 852" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      <g fill="none" stroke="currentColor">{[.36,.56,.76,.96,1.16,1.36,1.56,1.76,1.96].map(scale =>
-        <polygon key={scale} points="355,-20 -130,435 410,704" strokeWidth={22 / scale} transform={`translate(196 385) scale(${scale}) translate(-196 -385)`} />)}</g>
-    </svg>}
-    <section className={android ? 'bp-login-content' : 'w-full max-w-sm'} aria-labelledby="login-title">
-      {android ? <header className="bp-login-hero"><div className="bp-login-orb" aria-hidden="true" /><h1 id="login-title">你好</h1><p>欢迎来到灵息BREATHON</p></header> : <>
-        <a href="/admin" className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
-        <h1 id="login-title" className="mb-6 text-2xl font-semibold">登录管理后台</h1>
-      </>}
+  return <main className="flex min-h-svh items-center justify-center px-5 py-12">
+    <section className="w-full max-w-sm" aria-labelledby="login-title">
+      <a href={target === 'android' ? '#practice' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
+      <h1 id="login-title" className="mb-6 text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录循言'}</h1>
       {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{error}</AlertDescription></Alert>}
-      {!session ? error ? <Button className="w-full" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="w-full" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className={android ? 'bp-login-form' : 'space-y-5'} aria-busy={busy}>
-        <div className={android ? 'bp-login-fields' : 'space-y-5'}>
-          <div className={android ? 'bp-login-field' : undefined}>
-            {android && <span className="bp-login-field-icon"><UserRound aria-hidden="true" /></span>}
-            <Field label="账号" htmlFor="username"><Input id="username" name="username" placeholder={android ? '请输入账号' : undefined} autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={100} disabled={busy} /></Field>
-          </div>
-          <div className={android ? 'bp-login-field' : undefined}>
-            {android && <span className="bp-login-field-icon"><LockKeyhole aria-hidden="true" /></span>}
-            <Field label="密码" htmlFor="password"><div className="relative"><Input id="password" name="password" placeholder={android ? '请输入密码' : undefined} type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={512} className="pr-12" disabled={busy} /><Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 h-11 w-11" aria-label={visible ? '隐藏密码' : '显示密码'} aria-pressed={visible} disabled={busy} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</Button></div></Field>
-          </div>
-        </div>
-        <Button type="submit" className={android ? 'bp-login-submit' : 'w-full'} disabled={busy}><span>{busy ? '正在登录…' : '登录'}</span>{android && <span className="bp-login-submit-arrow" aria-hidden="true"><ChevronRight /></span>}</Button>
+      {!session ? error ? <Button className="w-full min-h-11" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="w-full min-h-11" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
+        <Field><FieldLabel htmlFor="username">{"账号"}</FieldLabel><Input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={100} disabled={busy} /></Field>
+        <Field><FieldLabel htmlFor="password">{"密码"}</FieldLabel><div className="relative"><Input id="password" name="password" type={visible ? 'text' : 'password'} autoComplete="current-password" required maxLength={512} className="pr-12 min-h-11" disabled={busy} /><Button type="button" variant="ghost" size="icon" className="absolute inset-y-0 right-0 w-11 min-h-11" aria-label={visible ? '隐藏密码' : '显示密码'} aria-pressed={visible} disabled={busy} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</Button></div></Field>
+        <Button type="submit" className="w-full min-h-11" disabled={busy}>{busy ? '正在登录…' : '登录'}</Button>
       </form>}
     </section>
   </main>

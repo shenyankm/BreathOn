@@ -146,7 +146,7 @@ test('free practice starts with published drugs and enables matching doctors aft
   assert.equal(find(view, 'a').filter(node => /\/admin|#workspace|#settings/.test(node.props.href)).length, 0)
 })
 
-test('selected cards retain full drug, brand, doctor and specialty labels after a stale preview arrives', async () => {
+test('native selects retain current identity and complete option labels after a stale preview arrives', async () => {
   const longDrugs = [
     { ...drugs[0], brand: '测试长商品名甲' },
     { ...drugs[1], brand: '测试长商品名乙' },
@@ -167,7 +167,7 @@ test('selected cards retain full drug, brand, doctor and specialty labels after 
   let view = await app.flush()
   assert.ok(pending.length >= 2)
   function assertCurrentSummary() {
-    const text = find(view, 'SelectValue').map(textOf).join(' ')
+    const text = find(view, 'Select').map(select => textOf(find(select, 'SelectItem').find(item => item.props.value === select.props.value))).join(' ')
     for (const label of [longDrugs[1].name, longDrugs[1].brand, longDoctors[1].name, longDoctors[1].specialty]) assert.ok(text.includes(label), label)
     for (const label of [longDrugs[0].brand, longDoctors[0].name]) assert.ok(!text.includes(label), label)
   }
@@ -275,7 +275,7 @@ test('the home page preserves a restored free pair through the start callback', 
   assert.ok(!selection.props.autoSelect)
   selection.props.onReady(true)
   view = app.render(props)
-  const start = find(view, 'Button').find(node => textOf(node).includes('开始本轮对话'))
+  const start = find(view, 'Button').find(node => textOf(node).includes('开始练习'))
   assert.ok(start)
   assert.equal(start.props.disabled, false)
   start.props.onClick()
@@ -292,15 +292,16 @@ test('practice choices stay in the app owner when the home page is unmounted for
   const before = component('pages/practice-home.tsx', 'PracticeHome', async () => [])
   const view = before.render(props())
   find(view, 'ScenarioPicker')[0].props.onChange(next)
-  const modeButtons = find(view, 'Button').filter(node => ['辅助练习', '实战练习'].includes(textOf(node)))
+  const modeButtons = find(view, 'ToggleGroupItem')
   assert.deepEqual(modeButtons.map(textOf), ['辅助练习', '实战练习'])
-  assert.equal(modeButtons[0].props['aria-pressed'], true)
-  modeButtons[1].props.onClick()
+  assert.equal(find(view, 'ToggleGroup')[0].props.value, 'coached')
+  find(view, 'ToggleGroup')[0].props.onValueChange('combat')
   const after = component('pages/practice-home.tsx', 'PracticeHome', async () => [])
   const returned = after.render(props())
   assert.deepEqual(plain(find(returned, 'ScenarioPicker')[0].props.value), next)
-  assert.equal(find(returned, 'Button').find(node => textOf(node) === '实战练习')!.props['aria-pressed'], true)
-  assert.equal(find(returned, 'Button').find(node => textOf(node) === '辅助练习')!.props['aria-pressed'], false)
+  assert.equal(find(returned, 'ToggleGroup')[0].props.value, 'combat')
+  find(returned, 'ToggleGroup')[0].props.onValueChange('')
+  assert.equal(preset.id, 'combat')
 })
 
 test('choosing a drug filters doctors and changing drugs clears only an incompatible doctor', async () => {
@@ -358,7 +359,9 @@ test('doctor-first selection filters drugs and previews only a compatible pair',
   app.choose('练习药品', 'drug-b'); view = await app.flush()
   assert.equal(app.value.doctor_id, 'doctor-b')
   assert.equal(app.readiness.at(-1), true)
-  assert.ok(find(view, 'AvatarImage').some(node => node.props.alt === '统一医生模拟插图，非本人照片'))
+  const doctorSelect = find(view, 'Select').find(node => find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === '模拟医生'))!
+  assert.equal(doctorSelect.props.value, 'doctor-b')
+  assert.ok(find(doctorSelect, 'SelectItem').some(node => node.props.value === 'doctor-b'))
   app.choose('模拟医生', 'doctor-a'); await app.flush()
   assert.equal(app.value.drug_id, undefined)
   assert.equal(app.readiness.at(-1), false)
@@ -372,21 +375,18 @@ test('a doctor with no matching drug can be selected first and shows a recoverab
   assert.ok(find(view, 'Button').some(node => textOf(node) === '清除选择'))
 })
 
-test('pair information follows selection and clearing without repeating the full pair', async () => {
+test('clearing a verified pair disables start until a new pair is verified', async () => {
   const app = picker(async () => freeContext('drug-a', 'doctor-a'))
-  app.render(); let view = await app.flush()
-  const info = () => find(view, 'div').find(node => node.props['aria-label'] === '练习组合信息')!
-  assert.match(textOf(info()), /可选科室/)
-  app.choose('练习药品', 'drug-a'); view = await app.flush()
-  assert.match(textOf(info()), /可选科室/)
-  app.choose('模拟医生', 'doctor-a'); view = await app.flush()
-  assert.match(textOf(info()), /科室已匹配/)
-  assert.doesNotMatch(textOf(info()), /请选择|均可先选/)
-  find(info(), 'Button').find(node => textOf(node) === '清除选择')!.props.onClick()
-  view = await app.flush()
+  app.render(); await app.flush()
+  app.choose('练习药品', 'drug-a'); await app.flush()
+  app.choose('模拟医生', 'doctor-a'); const view = await app.flush()
+  assert.equal(app.readiness.at(-1), true)
+  find(view, 'Button').find(node => textOf(node) === '清除选择')!.props.onClick()
+  const cleared = await app.flush()
   assert.equal(app.value.drug_id, undefined)
   assert.equal(app.value.doctor_id, undefined)
-  assert.match(textOf(info()), /药品、医生均可先选/)
+  assert.equal(app.readiness.at(-1), false)
+  assert.equal(find(cleared, 'Button').some(node => textOf(node) === '清除选择'), false)
 })
 
 test('App limits drugs to mazdutide while keeping multiple doctors and rejecting stale selections', async () => {

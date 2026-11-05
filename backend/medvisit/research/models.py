@@ -1,8 +1,9 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..platform.input import Input
+from ..platform.models import HonorDetails
 
 ResearchKind = Literal['doctor', 'drug']
 
@@ -58,6 +59,13 @@ class FindingDetail(BaseModel):
     value: str = Field(min_length=1, max_length=600)
     source_id: str = Field(pattern=r'^[a-f0-9]{24}$')
     evidence_id: str = Field(pattern=r'^E[1-9][0-9]{0,5}-[a-f0-9]{12}$')
+    honor: HonorDetails | None = None
+
+    @model_validator(mode='after')
+    def honor_fields(self):
+        if (self.label == '荣誉与奖项') != (self.honor is not None):
+            raise ValueError('荣誉与奖项须提供独立的 honor 字段，其他事实不使用该字段')
+        return self
 
 
 class Finding(BaseModel):

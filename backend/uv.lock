@@ -1347,7 +1347,7 @@ wheels = [
 ]
 
 [[package]]
-name = "breathon-backend"
+name = "evispeak-backend"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
