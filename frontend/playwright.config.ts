@@ -11,7 +11,7 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:5187', channel: 'chrome',
     screenshot: 'only-on-failure', trace: 'retain-on-failure', actionTimeout: 15_000 },
   webServer: [
-    { command: 'uv run --directory ../backend --locked uvicorn tools.e2e_app:build --factory --host 127.0.0.1 --port 8187 --ws-max-size 4096 --ws-max-queue 16',
+    { command: 'node --experimental-transform-types ../backend/src/e2e.ts',
       url: 'http://127.0.0.1:8187/api/ready', timeout: 60_000, reuseExistingServer: false,
       env: { E2E_DATA_DIR: dataDir } },
     { command: 'npm run dev -- --host 127.0.0.1 --port 5187', url: 'http://127.0.0.1:5187/admin',

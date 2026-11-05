@@ -1,0 +1,41 @@
+{
+  "name": "@evispeak/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "node --watch --experimental-transform-types --env-file-if-exists=.env src/main.ts",
+    "start": "node --env-file-if-exists=.env dist/main.js",
+    "build": "tsc",
+    "test": "node --experimental-transform-types --test tests-ts/*.test.ts",
+    "password": "node dist/password.js",
+    "import:records": "node --env-file-if-exists=.env dist/import-records.js",
+    "mcp:research": "node --env-file-if-exists=.env dist/mcp.js",
+    "medical:ingest": "node --env-file-if-exists=.env dist/wiki.js"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "1.5.0",
+    "@earendil-works/pi-ai": "1.5.0",
+    "@fastify/websocket": "^11.2.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "ajv": "^8.18.0",
+    "ajv-formats": "^3.0.1",
+    "decimal.js": "^10.6.0",
+    "fastify": "^5.8.0",
+    "fflate": "^0.8.3",
+    "htmlparser2": "^12.0.0",
+    "ipaddr.js": "^2.5.0",
+    "pg": "^8.20.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.18.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "~6.0.3"
+  }
+}

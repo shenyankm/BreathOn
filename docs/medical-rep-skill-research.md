@@ -6,11 +6,11 @@
 
 | 技能 | 解决的问题 | 入口 |
 | --- | --- | --- |
-| 学术拜访 | 访前准备、时间分配、需求探询、倾听、异议回应与跟进 | [medical-rep-academic-visit](../backend/medvisit/agents/skills/medical-rep-academic-visit/SKILL.md) |
-| 循证沟通 | 人群、设计、终点、效应量、局限及参考话术中的证据外推 | [medical-rep-evidence-communication](../backend/medvisit/agents/skills/medical-rep-evidence-communication/SKILL.md) |
-| 推广合规 | 利益交换、授权接待、误导宣传、个人信息及疑似不良反应转交 | [medical-rep-promotion-compliance](../backend/medvisit/agents/skills/medical-rep-promotion-compliance/SKILL.md) |
+| 学术拜访 | 访前准备、时间分配、需求探询、倾听、异议回应与跟进 | [medical-rep-academic-visit](../backend/resources/skills/medical-rep-academic-visit/SKILL.md) |
+| 循证沟通 | 人群、设计、终点、效应量、局限及参考话术中的证据外推 | [medical-rep-evidence-communication](../backend/resources/skills/medical-rep-evidence-communication/SKILL.md) |
+| 推广合规 | 利益交换、授权接待、误导宣传、个人信息及疑似不良反应转交 | [medical-rep-promotion-compliance](../backend/resources/skills/medical-rep-promotion-compliance/SKILL.md) |
 
-每个目录都有Agent Skills兼容的 `SKILL.md`、中文界面元数据与按需读取的来源说明。循证技能另有合成统计练习。三个技能已由AgentScope `LocalSkillLoader` 按场景读取正文，与原有Humanizer共同使用；练习由医生和教练并发独立推理，复盘只调用教练，未安装为用户全局技能。
+每个目录都有Agent Skills兼容的 `SKILL.md`、中文界面元数据与按需读取的来源说明。循证技能另有合成统计练习。三个技能由 Pi 业务适配层按场景读取 Markdown 正文，与原有Humanizer共同使用；练习由医生和教练并发独立推理，复盘只调用教练，未安装为用户全局技能。
 
 运行时加载基础拜访技能，按当前可见问答的关键词补充循证、合规技能；复盘覆盖可见整场记录，多个场景可同时启用。来源说明和合成统计练习仍按需提供：当前单次请求没有参考文件读取工具，正文里的相对链接不会自动变成模型上下文，也不能据此声称已读来源。使用原有JSON结构，保留原话与证据限制。
 
@@ -54,7 +54,7 @@
 
 ## 验证与后续验收
 
-静态验证应包括Skill Creator校验、引用文件存在性和AgentScope真实加载；这些只证明结构可用。独立前向测试使用合成文本，实际完成拜访、证据解释与合规请求，不修改线上服务。它不能替代医学/合规人员评审，也不能证明DeepSeek会稳定遵循。
+静态验证应包括Skill Creator校验、引用文件存在性和 Pi 运行时真实加载；这些只证明结构可用。独立前向测试使用合成文本，实际完成拜访、证据解释与合规请求，不修改线上服务。它不能替代医学/合规人员评审，也不能证明DeepSeek会稳定遵循。
 
 创建时三个技能通过 `quick_validate.py`、引用文件检查和 `LocalSkillLoader` 实际加载。独立测试完成6个请求，第4题初答将HR泛称“风险比模型中的相对效应指标”，虽随后纠正，仍有术语混淆风险；据此在循证技能及练习中补入HR/RR/OR的中英文含义。初轮完整记录（本机证据：`backend/data/validation/medical-rep-skills-forward-test-20261027.md`）保留原始回答。接入后的真实DeepSeek验证及修复另见 [指导效果验证](coaching-live-validation.md)。
 

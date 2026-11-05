@@ -1,0 +1,8371 @@
+{
+  "platform.models.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.models.LessonAction": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "enum": [
+          "practice",
+          "doctor_ips"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "scenario": {
+        "default": "first",
+        "enum": [
+          "first",
+          "evidence",
+          "next"
+        ],
+        "title": "Scenario",
+        "type": "string"
+      },
+      "ip_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Ip Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind"
+    ],
+    "title": "LessonAction",
+    "type": "object"
+  },
+  "platform.models.Lesson": {
+    "$defs": {
+      "LessonAction": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "practice",
+              "doctor_ips"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "scenario": {
+            "default": "first",
+            "enum": [
+              "first",
+              "evidence",
+              "next"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "ip_id": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Ip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "LessonAction",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "level": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ],
+        "title": "Level",
+        "type": "string"
+      },
+      "summary": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Summary",
+        "type": "string"
+      },
+      "tagline": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Tagline",
+        "type": "string"
+      },
+      "owner": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Owner",
+        "type": "string"
+      },
+      "sections": {
+        "items": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "type": "array"
+        },
+        "maxItems": 30,
+        "minItems": 1,
+        "title": "Sections",
+        "type": "array"
+      },
+      "unverified_figures": {
+        "default": true,
+        "title": "Unverified Figures",
+        "type": "boolean"
+      },
+      "action": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/LessonAction"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "title",
+      "level",
+      "summary",
+      "owner",
+      "sections"
+    ],
+    "title": "Lesson",
+    "type": "object"
+  },
+  "platform.models.LessonEdit": {
+    "$defs": {
+      "LessonAction": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "practice",
+              "doctor_ips"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "scenario": {
+            "default": "first",
+            "enum": [
+              "first",
+              "evidence",
+              "next"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "ip_id": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Ip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "LessonAction",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "level": {
+        "enum": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ],
+        "title": "Level",
+        "type": "string"
+      },
+      "summary": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Summary",
+        "type": "string"
+      },
+      "tagline": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Tagline",
+        "type": "string"
+      },
+      "owner": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Owner",
+        "type": "string"
+      },
+      "sections": {
+        "items": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "type": "array"
+        },
+        "maxItems": 30,
+        "minItems": 1,
+        "title": "Sections",
+        "type": "array"
+      },
+      "unverified_figures": {
+        "default": true,
+        "title": "Unverified Figures",
+        "type": "boolean"
+      },
+      "action": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/LessonAction"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "level",
+      "summary",
+      "owner",
+      "sections",
+      "version"
+    ],
+    "title": "LessonEdit",
+    "type": "object"
+  },
+  "platform.models.Audience": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "audience_type": {
+        "enum": [
+          "representative",
+          "doctor",
+          "health"
+        ],
+        "title": "Audience Type",
+        "type": "string"
+      },
+      "task": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Task",
+        "type": "string"
+      },
+      "needs": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "title": "Needs",
+        "type": "array"
+      },
+      "metrics": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Metrics",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "audience_type",
+      "task",
+      "needs"
+    ],
+    "title": "Audience",
+    "type": "object"
+  },
+  "platform.models.AudienceEdit": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "audience_type": {
+        "enum": [
+          "representative",
+          "doctor",
+          "health"
+        ],
+        "title": "Audience Type",
+        "type": "string"
+      },
+      "task": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Task",
+        "type": "string"
+      },
+      "needs": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "title": "Needs",
+        "type": "array"
+      },
+      "metrics": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Metrics",
+        "type": "array"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "name",
+      "audience_type",
+      "task",
+      "needs",
+      "version"
+    ],
+    "title": "AudienceEdit",
+    "type": "object"
+  },
+  "platform.models.Page": {
+    "additionalProperties": false,
+    "properties": {
+      "number": {
+        "maximum": 2000,
+        "minimum": 1,
+        "title": "Number",
+        "type": "integer"
+      },
+      "text": {
+        "maxLength": 20000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "number",
+      "text"
+    ],
+    "title": "Page",
+    "type": "object"
+  },
+  "platform.models.Content": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages"
+    ],
+    "title": "Content",
+    "type": "object"
+  },
+  "platform.models.ContentEdit": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages",
+      "version"
+    ],
+    "title": "ContentEdit",
+    "type": "object"
+  },
+  "platform.models.Policy": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      },
+      "text_is_summary": {
+        "default": false,
+        "title": "Text Is Summary",
+        "type": "boolean"
+      },
+      "issuer": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Issuer",
+        "type": "string"
+      },
+      "document_number": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Document Number",
+        "type": "string"
+      },
+      "level": {
+        "default": "",
+        "maxLength": 40,
+        "title": "Level",
+        "type": "string"
+      },
+      "jurisdiction": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Jurisdiction",
+        "type": "string"
+      },
+      "effective_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Effective Date"
+      },
+      "end_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "End Date"
+      },
+      "legal_status": {
+        "default": "unknown",
+        "enum": [
+          "draft",
+          "pending",
+          "effective",
+          "expired",
+          "unknown"
+        ],
+        "title": "Legal Status",
+        "type": "string"
+      },
+      "supersedes": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Supersedes",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages"
+    ],
+    "title": "Policy",
+    "type": "object"
+  },
+  "platform.models.PolicyEdit": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      },
+      "text_is_summary": {
+        "default": false,
+        "title": "Text Is Summary",
+        "type": "boolean"
+      },
+      "issuer": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Issuer",
+        "type": "string"
+      },
+      "document_number": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Document Number",
+        "type": "string"
+      },
+      "level": {
+        "default": "",
+        "maxLength": 40,
+        "title": "Level",
+        "type": "string"
+      },
+      "jurisdiction": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Jurisdiction",
+        "type": "string"
+      },
+      "effective_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Effective Date"
+      },
+      "end_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "End Date"
+      },
+      "legal_status": {
+        "default": "unknown",
+        "enum": [
+          "draft",
+          "pending",
+          "effective",
+          "expired",
+          "unknown"
+        ],
+        "title": "Legal Status",
+        "type": "string"
+      },
+      "supersedes": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Supersedes",
+        "type": "string"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages",
+      "version"
+    ],
+    "title": "PolicyEdit",
+    "type": "object"
+  },
+  "platform.models.PolicyRule": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 150,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "policy_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Policy Id",
+        "type": "string"
+      },
+      "article": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Article",
+        "type": "string"
+      },
+      "quote": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Quote",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "risk": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "Risk",
+        "type": "string"
+      },
+      "action": {
+        "default": "warn",
+        "enum": [
+          "warn",
+          "pause"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "examples": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Examples",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "policy_id",
+      "article",
+      "quote",
+      "scope",
+      "risk"
+    ],
+    "title": "PolicyRule",
+    "type": "object"
+  },
+  "platform.models.PolicyRuleEdit": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 150,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "policy_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Policy Id",
+        "type": "string"
+      },
+      "article": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Article",
+        "type": "string"
+      },
+      "quote": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Quote",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "risk": {
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "title": "Risk",
+        "type": "string"
+      },
+      "action": {
+        "default": "warn",
+        "enum": [
+          "warn",
+          "pause"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "examples": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Examples",
+        "type": "array"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "name",
+      "policy_id",
+      "article",
+      "quote",
+      "scope",
+      "risk",
+      "version"
+    ],
+    "title": "PolicyRuleEdit",
+    "type": "object"
+  },
+  "platform.models.DrugComparison": {
+    "additionalProperties": false,
+    "properties": {
+      "drug_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Drug Id",
+        "type": "string"
+      },
+      "relation": {
+        "enum": [
+          "mechanism",
+          "indication"
+        ],
+        "title": "Relation",
+        "type": "string"
+      },
+      "reason": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      },
+      "source_url": {
+        "maxLength": 8192,
+        "minLength": 1,
+        "title": "Source Url",
+        "type": "string"
+      }
+    },
+    "required": [
+      "drug_id",
+      "relation",
+      "reason",
+      "source_url"
+    ],
+    "title": "DrugComparison",
+    "type": "object"
+  },
+  "platform.models.Drug": {
+    "$defs": {
+      "DrugComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "drug_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Drug Id",
+            "type": "string"
+          },
+          "relation": {
+            "enum": [
+              "mechanism",
+              "indication"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "drug_id",
+          "relation",
+          "reason",
+          "source_url"
+        ],
+        "title": "DrugComparison",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "practice_departments": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Practice Departments",
+        "type": "array"
+      },
+      "name": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "brand": {
+        "default": "",
+        "maxLength": 120,
+        "title": "Brand",
+        "type": "string"
+      },
+      "aliases": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Aliases",
+        "type": "array"
+      },
+      "company": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Company",
+        "type": "string"
+      },
+      "manufacturer": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Manufacturer",
+        "type": "string"
+      },
+      "overview": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Overview",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "ownership": {
+        "default": "unknown",
+        "enum": [
+          "company",
+          "competitor",
+          "unknown"
+        ],
+        "title": "Ownership",
+        "type": "string"
+      },
+      "category": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Category",
+        "type": "string"
+      },
+      "diseases": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Diseases",
+        "type": "array"
+      },
+      "mechanism": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Mechanism",
+        "type": "string"
+      },
+      "dosage_form": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Dosage Form",
+        "type": "string"
+      },
+      "regions": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Regions",
+        "type": "array"
+      },
+      "indications": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Indications",
+        "type": "array"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "comparisons": {
+        "items": {
+          "$ref": "#/$defs/DrugComparison"
+        },
+        "maxItems": 30,
+        "title": "Comparisons",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "Drug",
+    "type": "object"
+  },
+  "platform.models.DrugEdit": {
+    "$defs": {
+      "DrugComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "drug_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Drug Id",
+            "type": "string"
+          },
+          "relation": {
+            "enum": [
+              "mechanism",
+              "indication"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "drug_id",
+          "relation",
+          "reason",
+          "source_url"
+        ],
+        "title": "DrugComparison",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "practice_departments": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Practice Departments",
+        "type": "array"
+      },
+      "name": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "brand": {
+        "default": "",
+        "maxLength": 120,
+        "title": "Brand",
+        "type": "string"
+      },
+      "aliases": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 20,
+        "title": "Aliases",
+        "type": "array"
+      },
+      "company": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Company",
+        "type": "string"
+      },
+      "manufacturer": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Manufacturer",
+        "type": "string"
+      },
+      "overview": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Overview",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "ownership": {
+        "default": "unknown",
+        "enum": [
+          "company",
+          "competitor",
+          "unknown"
+        ],
+        "title": "Ownership",
+        "type": "string"
+      },
+      "category": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Category",
+        "type": "string"
+      },
+      "diseases": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Diseases",
+        "type": "array"
+      },
+      "mechanism": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Mechanism",
+        "type": "string"
+      },
+      "dosage_form": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Dosage Form",
+        "type": "string"
+      },
+      "regions": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Regions",
+        "type": "array"
+      },
+      "indications": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Indications",
+        "type": "array"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 30,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "comparisons": {
+        "items": {
+          "$ref": "#/$defs/DrugComparison"
+        },
+        "maxItems": 30,
+        "title": "Comparisons",
+        "type": "array"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "name",
+      "version"
+    ],
+    "title": "DrugEdit",
+    "type": "object"
+  },
+  "platform.models.TaxonomyTerm": {
+    "additionalProperties": false,
+    "properties": {
+      "value": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Value",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "active",
+          "pending"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "value",
+      "status"
+    ],
+    "title": "TaxonomyTerm",
+    "type": "object"
+  },
+  "platform.models.TaxonomyEdit": {
+    "$defs": {
+      "TaxonomyTerm": {
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "status"
+        ],
+        "title": "TaxonomyTerm",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "terms": {
+        "items": {
+          "$ref": "#/$defs/TaxonomyTerm"
+        },
+        "maxItems": 1000,
+        "title": "Terms",
+        "type": "array"
+      }
+    },
+    "required": [
+      "version",
+      "terms"
+    ],
+    "title": "TaxonomyEdit",
+    "type": "object"
+  },
+  "platform.models.Transition": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "action": {
+        "enum": [
+          "submit",
+          "approve",
+          "reject",
+          "retire"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "reason": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "version",
+      "action",
+      "reason"
+    ],
+    "title": "Transition",
+    "type": "object"
+  },
+  "platform.models.IPProfile": {
+    "additionalProperties": false,
+    "description": "Communication-style role model. Not a real person: it carries no name, hospital or credential claim.",
+    "properties": {
+      "ip_key": {
+        "pattern": "^[a-z][a-z0-9_]{1,30}$",
+        "title": "Ip Key",
+        "type": "string"
+      },
+      "dept": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Dept",
+        "type": "string"
+      },
+      "style": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Style",
+        "type": "string"
+      },
+      "area": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Area",
+        "type": "string"
+      },
+      "role": {
+        "default": "",
+        "maxLength": 60,
+        "title": "Role",
+        "type": "string"
+      },
+      "tags": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Tags",
+        "type": "array"
+      },
+      "entry": {
+        "default": "",
+        "maxLength": 300,
+        "title": "Entry",
+        "type": "string"
+      },
+      "question": {
+        "default": "",
+        "maxLength": 300,
+        "title": "Question",
+        "type": "string"
+      },
+      "match": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Match",
+        "type": "string"
+      },
+      "domain": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Domain",
+        "type": "string"
+      },
+      "modules": {
+        "items": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "type": "array"
+        },
+        "maxItems": 8,
+        "title": "Modules",
+        "type": "array"
+      }
+    },
+    "required": [
+      "ip_key",
+      "dept",
+      "style",
+      "area"
+    ],
+    "title": "IPProfile",
+    "type": "object"
+  },
+  "platform.models.HonorDetails": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "organization": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Organization",
+        "type": "string"
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 9999,
+            "minimum": 1000,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Year"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "HonorDetails",
+    "type": "object"
+  },
+  "platform.models.DoctorHonor": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "organization": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Organization",
+        "type": "string"
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 9999,
+            "minimum": 1000,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Year"
+      },
+      "source_url": {
+        "maxLength": 8192,
+        "minLength": 1,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "quote": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Quote",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "source_url",
+      "quote"
+    ],
+    "title": "DoctorHonor",
+    "type": "object"
+  },
+  "platform.models.Doctor": {
+    "$defs": {
+      "DoctorHonor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_url",
+          "quote"
+        ],
+        "title": "DoctorHonor",
+        "type": "object"
+      },
+      "IPProfile": {
+        "additionalProperties": false,
+        "description": "Communication-style role model. Not a real person: it carries no name, hospital or credential claim.",
+        "properties": {
+          "ip_key": {
+            "pattern": "^[a-z][a-z0-9_]{1,30}$",
+            "title": "Ip Key",
+            "type": "string"
+          },
+          "dept": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Dept",
+            "type": "string"
+          },
+          "style": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Style",
+            "type": "string"
+          },
+          "area": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Area",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Role",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          },
+          "entry": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Entry",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Question",
+            "type": "string"
+          },
+          "match": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Match",
+            "type": "string"
+          },
+          "domain": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Domain",
+            "type": "string"
+          },
+          "modules": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 8,
+            "title": "Modules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ip_key",
+          "dept",
+          "style",
+          "area"
+        ],
+        "title": "IPProfile",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "specialty": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Specialty",
+        "type": "string"
+      },
+      "hospital": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Hospital",
+        "type": "string"
+      },
+      "professional_title": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Professional Title",
+        "type": "string"
+      },
+      "honors": {
+        "items": {
+          "$ref": "#/$defs/DoctorHonor"
+        },
+        "maxItems": 20,
+        "title": "Honors",
+        "type": "array"
+      },
+      "background_type": {
+        "default": "fictional",
+        "enum": [
+          "fictional",
+          "public"
+        ],
+        "title": "Background Type",
+        "type": "string"
+      },
+      "public_facts": {
+        "default": "",
+        "maxLength": 3000,
+        "title": "Public Facts",
+        "type": "string"
+      },
+      "sources": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Sources",
+        "type": "array"
+      },
+      "population": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Population",
+        "type": "string"
+      },
+      "focus": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Focus",
+        "type": "string"
+      },
+      "training_style": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Training Style",
+        "type": "string"
+      },
+      "mood": {
+        "default": "neutral",
+        "enum": [
+          "neutral",
+          "busy",
+          "skeptical",
+          "friendly"
+        ],
+        "title": "Mood",
+        "type": "string"
+      },
+      "opening": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Opening",
+        "type": "string"
+      },
+      "research_job_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Research Job Id"
+      },
+      "ip_profile": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IPProfile"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "name",
+      "specialty",
+      "population",
+      "focus",
+      "training_style",
+      "opening"
+    ],
+    "title": "Doctor",
+    "type": "object"
+  },
+  "platform.models.DoctorEdit": {
+    "$defs": {
+      "DoctorHonor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_url",
+          "quote"
+        ],
+        "title": "DoctorHonor",
+        "type": "object"
+      },
+      "IPProfile": {
+        "additionalProperties": false,
+        "description": "Communication-style role model. Not a real person: it carries no name, hospital or credential claim.",
+        "properties": {
+          "ip_key": {
+            "pattern": "^[a-z][a-z0-9_]{1,30}$",
+            "title": "Ip Key",
+            "type": "string"
+          },
+          "dept": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Dept",
+            "type": "string"
+          },
+          "style": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Style",
+            "type": "string"
+          },
+          "area": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Area",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Role",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          },
+          "entry": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Entry",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Question",
+            "type": "string"
+          },
+          "match": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Match",
+            "type": "string"
+          },
+          "domain": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Domain",
+            "type": "string"
+          },
+          "modules": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 8,
+            "title": "Modules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ip_key",
+          "dept",
+          "style",
+          "area"
+        ],
+        "title": "IPProfile",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "specialty": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Specialty",
+        "type": "string"
+      },
+      "hospital": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Hospital",
+        "type": "string"
+      },
+      "professional_title": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Professional Title",
+        "type": "string"
+      },
+      "honors": {
+        "items": {
+          "$ref": "#/$defs/DoctorHonor"
+        },
+        "maxItems": 20,
+        "title": "Honors",
+        "type": "array"
+      },
+      "background_type": {
+        "default": "fictional",
+        "enum": [
+          "fictional",
+          "public"
+        ],
+        "title": "Background Type",
+        "type": "string"
+      },
+      "public_facts": {
+        "default": "",
+        "maxLength": 3000,
+        "title": "Public Facts",
+        "type": "string"
+      },
+      "sources": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Sources",
+        "type": "array"
+      },
+      "population": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Population",
+        "type": "string"
+      },
+      "focus": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Focus",
+        "type": "string"
+      },
+      "training_style": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Training Style",
+        "type": "string"
+      },
+      "mood": {
+        "default": "neutral",
+        "enum": [
+          "neutral",
+          "busy",
+          "skeptical",
+          "friendly"
+        ],
+        "title": "Mood",
+        "type": "string"
+      },
+      "opening": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Opening",
+        "type": "string"
+      },
+      "research_job_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Research Job Id"
+      },
+      "ip_profile": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IPProfile"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "name",
+      "specialty",
+      "population",
+      "focus",
+      "training_style",
+      "opening",
+      "version"
+    ],
+    "title": "DoctorEdit",
+    "type": "object"
+  },
+  "platform.models.Dimension": {
+    "additionalProperties": false,
+    "properties": {
+      "key": {
+        "pattern": "^[a-z][a-z_]{1,40}$",
+        "title": "Key",
+        "type": "string"
+      },
+      "label": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Label",
+        "type": "string"
+      },
+      "weight": {
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Weight",
+        "type": "integer"
+      },
+      "anchors": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 5,
+        "minItems": 5,
+        "title": "Anchors",
+        "type": "array"
+      },
+      "requires_content": {
+        "default": false,
+        "title": "Requires Content",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "key",
+      "label",
+      "weight",
+      "anchors"
+    ],
+    "title": "Dimension",
+    "type": "object"
+  },
+  "platform.models.Rubric": {
+    "$defs": {
+      "Dimension": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z_]{1,40}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Weight",
+            "type": "integer"
+          },
+          "anchors": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Anchors",
+            "type": "array"
+          },
+          "requires_content": {
+            "default": false,
+            "title": "Requires Content",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "anchors"
+        ],
+        "title": "Dimension",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "dimensions": {
+        "items": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "maxItems": 10,
+        "minItems": 1,
+        "title": "Dimensions",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "dimensions"
+    ],
+    "title": "Rubric",
+    "type": "object"
+  },
+  "platform.models.RubricEdit": {
+    "$defs": {
+      "Dimension": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z_]{1,40}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Weight",
+            "type": "integer"
+          },
+          "anchors": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Anchors",
+            "type": "array"
+          },
+          "requires_content": {
+            "default": false,
+            "title": "Requires Content",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "anchors"
+        ],
+        "title": "Dimension",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "dimensions": {
+        "items": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "maxItems": 10,
+        "minItems": 1,
+        "title": "Dimensions",
+        "type": "array"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "name",
+      "dimensions",
+      "version"
+    ],
+    "title": "RubricEdit",
+    "type": "object"
+  },
+  "platform.models.Scenario": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "product": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Product",
+        "type": "string"
+      },
+      "drug_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Drug Id"
+      },
+      "competitor_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Competitor Id"
+      },
+      "policy_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Policy Ids",
+        "type": "array"
+      },
+      "disease": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Disease",
+        "type": "string"
+      },
+      "objective": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Objective",
+        "type": "string"
+      },
+      "doctor_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "rubric_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Rubric Id",
+        "type": "string"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "stages": {
+        "items": {
+          "enum": [
+            "opening",
+            "needs",
+            "evidence",
+            "objections",
+            "safety",
+            "closing"
+          ],
+          "type": "string"
+        },
+        "maxItems": 6,
+        "minItems": 1,
+        "title": "Stages",
+        "type": "array"
+      },
+      "duration_seconds": {
+        "default": 300,
+        "maximum": 600,
+        "minimum": 30,
+        "title": "Duration Seconds",
+        "type": "integer"
+      },
+      "difficulty": {
+        "default": "basic",
+        "enum": [
+          "basic",
+          "intermediate",
+          "advanced"
+        ],
+        "title": "Difficulty",
+        "type": "string"
+      },
+      "situation": {
+        "default": "first_visit",
+        "enum": [
+          "first_visit",
+          "follow_up",
+          "time_pressure",
+          "evidence_challenge"
+        ],
+        "title": "Situation",
+        "type": "string"
+      },
+      "background": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Background",
+        "type": "string"
+      },
+      "opening": {
+        "default": "",
+        "maxLength": 400,
+        "title": "Opening",
+        "type": "string"
+      },
+      "objections": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Objections",
+        "type": "array"
+      },
+      "success_criteria": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Success Criteria",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "product",
+      "disease",
+      "objective",
+      "doctor_id",
+      "rubric_id",
+      "stages"
+    ],
+    "title": "Scenario",
+    "type": "object"
+  },
+  "platform.models.ScenarioEdit": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "product": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Product",
+        "type": "string"
+      },
+      "drug_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Drug Id"
+      },
+      "competitor_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Competitor Id"
+      },
+      "policy_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Policy Ids",
+        "type": "array"
+      },
+      "disease": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Disease",
+        "type": "string"
+      },
+      "objective": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Objective",
+        "type": "string"
+      },
+      "doctor_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "rubric_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Rubric Id",
+        "type": "string"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "stages": {
+        "items": {
+          "enum": [
+            "opening",
+            "needs",
+            "evidence",
+            "objections",
+            "safety",
+            "closing"
+          ],
+          "type": "string"
+        },
+        "maxItems": 6,
+        "minItems": 1,
+        "title": "Stages",
+        "type": "array"
+      },
+      "duration_seconds": {
+        "default": 300,
+        "maximum": 600,
+        "minimum": 30,
+        "title": "Duration Seconds",
+        "type": "integer"
+      },
+      "difficulty": {
+        "default": "basic",
+        "enum": [
+          "basic",
+          "intermediate",
+          "advanced"
+        ],
+        "title": "Difficulty",
+        "type": "string"
+      },
+      "situation": {
+        "default": "first_visit",
+        "enum": [
+          "first_visit",
+          "follow_up",
+          "time_pressure",
+          "evidence_challenge"
+        ],
+        "title": "Situation",
+        "type": "string"
+      },
+      "background": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Background",
+        "type": "string"
+      },
+      "opening": {
+        "default": "",
+        "maxLength": 400,
+        "title": "Opening",
+        "type": "string"
+      },
+      "objections": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Objections",
+        "type": "array"
+      },
+      "success_criteria": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Success Criteria",
+        "type": "array"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "product",
+      "disease",
+      "objective",
+      "doctor_id",
+      "rubric_id",
+      "stages",
+      "version"
+    ],
+    "title": "ScenarioEdit",
+    "type": "object"
+  },
+  "platform.models.Publish": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version"
+    ],
+    "title": "Publish",
+    "type": "object"
+  },
+  "platform.cases.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.cases.CaseText": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "situation": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Situation",
+        "type": "string"
+      },
+      "approach": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Approach",
+        "type": "string"
+      },
+      "rationale": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Rationale",
+        "type": "string"
+      },
+      "limitations": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Limitations",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "situation",
+      "approach",
+      "rationale",
+      "limitations"
+    ],
+    "title": "CaseText",
+    "type": "object"
+  },
+  "platform.cases.CaseEdit": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "situation": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Situation",
+        "type": "string"
+      },
+      "approach": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Approach",
+        "type": "string"
+      },
+      "rationale": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Rationale",
+        "type": "string"
+      },
+      "limitations": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Limitations",
+        "type": "string"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "title",
+      "situation",
+      "approach",
+      "rationale",
+      "limitations",
+      "version"
+    ],
+    "title": "CaseEdit",
+    "type": "object"
+  },
+  "platform.cases.CaseFromRecord": {
+    "additionalProperties": false,
+    "properties": {
+      "message_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Message Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "message_id"
+    ],
+    "title": "CaseFromRecord",
+    "type": "object"
+  },
+  "platform.cases.PortableQuote": {
+    "additionalProperties": false,
+    "properties": {
+      "role": {
+        "pattern": "^(doctor|trainee)$",
+        "title": "Role",
+        "type": "string"
+      },
+      "text": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "role",
+      "text"
+    ],
+    "title": "PortableQuote",
+    "type": "object"
+  },
+  "platform.cases.PortableSource": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "page": {
+        "maximum": 2000,
+        "minimum": 1,
+        "title": "Page",
+        "type": "integer"
+      },
+      "quote": {
+        "maxLength": 500,
+        "minLength": 6,
+        "title": "Quote",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "page",
+      "quote"
+    ],
+    "title": "PortableSource",
+    "type": "object"
+  },
+  "platform.cases.PortableCase": {
+    "$defs": {
+      "PortableQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "pattern": "^(doctor|trainee)$",
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "PortableQuote",
+        "type": "object"
+      },
+      "PortableSource": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "version_label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version Label",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "maxLength": 8192,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "page": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 500,
+            "minLength": 6,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "version_label",
+          "page",
+          "quote"
+        ],
+        "title": "PortableSource",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "situation": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Situation",
+        "type": "string"
+      },
+      "approach": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Approach",
+        "type": "string"
+      },
+      "rationale": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Rationale",
+        "type": "string"
+      },
+      "limitations": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Limitations",
+        "type": "string"
+      },
+      "quotes": {
+        "items": {
+          "$ref": "#/$defs/PortableQuote"
+        },
+        "maxItems": 2,
+        "title": "Quotes",
+        "type": "array"
+      },
+      "sources": {
+        "items": {
+          "$ref": "#/$defs/PortableSource"
+        },
+        "maxItems": 12,
+        "title": "Sources",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "situation",
+      "approach",
+      "rationale",
+      "limitations",
+      "quotes",
+      "sources"
+    ],
+    "title": "PortableCase",
+    "type": "object"
+  },
+  "platform.cases.CaseImport": {
+    "$defs": {
+      "PortableCase": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "situation": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Situation",
+            "type": "string"
+          },
+          "approach": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Approach",
+            "type": "string"
+          },
+          "rationale": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "limitations": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Limitations",
+            "type": "string"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/$defs/PortableQuote"
+            },
+            "maxItems": 2,
+            "title": "Quotes",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/$defs/PortableSource"
+            },
+            "maxItems": 12,
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "situation",
+          "approach",
+          "rationale",
+          "limitations",
+          "quotes",
+          "sources"
+        ],
+        "title": "PortableCase",
+        "type": "object"
+      },
+      "PortableQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "pattern": "^(doctor|trainee)$",
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "PortableQuote",
+        "type": "object"
+      },
+      "PortableSource": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "version_label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version Label",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "maxLength": 8192,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "page": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 500,
+            "minLength": 6,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "version_label",
+          "page",
+          "quote"
+        ],
+        "title": "PortableSource",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "schema_version": {
+        "maximum": 1,
+        "minimum": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "case": {
+        "$ref": "#/$defs/PortableCase"
+      }
+    },
+    "required": [
+      "schema_version",
+      "case"
+    ],
+    "title": "CaseImport",
+    "type": "object"
+  },
+  "platform.calibration.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.calibration.SampleMessage": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "doctor",
+          "trainee"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "text": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      },
+      "final": {
+        "default": true,
+        "title": "Final",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "id",
+      "role",
+      "text"
+    ],
+    "title": "SampleMessage",
+    "type": "object"
+  },
+  "platform.calibration.CalibrationSample": {
+    "$defs": {
+      "SampleMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "doctor",
+              "trainee"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "final": {
+            "default": true,
+            "title": "Final",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "text"
+        ],
+        "title": "SampleMessage",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "scenario_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Scenario Id",
+        "type": "string"
+      },
+      "stage": {
+        "default": "full",
+        "enum": [
+          "full",
+          "opening",
+          "needs",
+          "evidence",
+          "objections",
+          "safety",
+          "closing"
+        ],
+        "title": "Stage",
+        "type": "string"
+      },
+      "label_type": {
+        "enum": [
+          "expert",
+          "synthetic"
+        ],
+        "title": "Label Type",
+        "type": "string"
+      },
+      "messages": {
+        "items": {
+          "$ref": "#/$defs/SampleMessage"
+        },
+        "maxItems": 32,
+        "minItems": 1,
+        "title": "Messages",
+        "type": "array"
+      },
+      "expected_scores": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "maxProperties": 10,
+        "minProperties": 1,
+        "title": "Expected Scores",
+        "type": "object"
+      }
+    },
+    "required": [
+      "title",
+      "scenario_id",
+      "label_type",
+      "messages",
+      "expected_scores"
+    ],
+    "title": "CalibrationSample",
+    "type": "object"
+  },
+  "platform.curriculum.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.curriculum.SettingsEdit": {
+    "additionalProperties": false,
+    "properties": {
+      "training_reminder": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Training Reminder"
+      },
+      "save_dialogue": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Save Dialogue"
+      },
+      "review_reminder": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Review Reminder"
+      },
+      "doctor_recommendation": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Doctor Recommendation"
+      }
+    },
+    "title": "SettingsEdit",
+    "type": "object"
+  },
+  "platform.curriculum.LessonState": {
+    "additionalProperties": false,
+    "properties": {
+      "state": {
+        "enum": [
+          "planned",
+          "completed",
+          "none"
+        ],
+        "title": "State",
+        "type": "string"
+      }
+    },
+    "required": [
+      "state"
+    ],
+    "title": "LessonState",
+    "type": "object"
+  },
+  "platform.generation.InjectionConfig": {
+    "description": "The state injection related configuration in AgentScope.",
+    "properties": {
+      "inject_runtime_state": {
+        "default": true,
+        "description": "Inject the runtime state to context, including current time,tasks state, context length, etc.",
+        "title": "Inject Runtime State",
+        "type": "boolean"
+      },
+      "timezone": {
+        "default": "UTC",
+        "description": "The injected timezone. e.g. 'America/New_York' or 'Asia/Shanghai'.",
+        "title": "Timezone",
+        "type": "string"
+      },
+      "time_format": {
+        "default": "%Y-%m-%dT%H:%M:%S",
+        "description": "The format to inject and parse the time information, which must round-trip a full timestamp, i.e. carry the date part. A time-only format such as '%H:%M:%S' makes the parsed time fall back to year 1900, so that the time is injected in every iteration.",
+        "title": "Time Format",
+        "type": "string"
+      },
+      "time_interval": {
+        "default": 0.5,
+        "description": "The minimum time interval in hours from the last injection to trigger new time injection",
+        "minimum": 0,
+        "title": "Time Interval",
+        "type": "number"
+      },
+      "context_buffer_ratio": {
+        "anyOf": [
+          {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Deprecated, use the 'context_buffer_ratio' of the context config instead. When provided, it overrides the one in the context config.",
+        "title": "Context Buffer"
+      },
+      "tool_retries_limit": {
+        "default": 3,
+        "description": "The number of consecutive failures of the same tool call that triggers the tool error injection.",
+        "minimum": 3,
+        "title": "Tool Retries Limit",
+        "type": "integer"
+      },
+      "tool_retries_hint": {
+        "default": "The last {count} calls to '{tool_name}' with the same arguments all failed. Stop retrying the same call as-is, check the error message and try a different approach.",
+        "description": "The hint injected when the same tool call keeps failing, where the '{tool_name}' and '{count}' placeholders will be replaced by the failing tool name and the number of consecutive failures.",
+        "title": "Tool Retries Hint",
+        "type": "string"
+      },
+      "template": {
+        "default": "<system-reminder>Treat the following as the ground truth at this point of the conversation. Anything stated earlier is outdated, and a later reminder, if any, supersedes this one:\n{runtime_state}\n</system-reminder>",
+        "description": "The template to wrap the injected runtime state, where the '{runtime_state}' placeholder will be replaced by the injected fields.",
+        "title": "Template",
+        "type": "string"
+      },
+      "injection_source": {
+        "default": "{\"label\": \"System\", \"sublabel\": \"Runtime State\"}",
+        "description": "The source of the injected hint block, which is also used to identify the previous injections within the context.",
+        "title": "Injection Source",
+        "type": "string"
+      },
+      "task_tool_names": {
+        "description": "The names of the task related tools. Their presence in the context suppresses the tasks injection.",
+        "items": {
+          "type": "string"
+        },
+        "title": "Task Tool Names",
+        "type": "array"
+      },
+      "extra_fields": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "The extra fields to inject, which will be wrapped into the '<{key}>{value}</{key}>' format.",
+        "title": "Extra Fields",
+        "type": "object"
+      },
+      "emit_hint_event": {
+        "default": true,
+        "description": "If emit the HintBlockEvent when runtime state injection happens.",
+        "title": "Emit Hint Event",
+        "type": "boolean"
+      }
+    },
+    "title": "InjectionConfig",
+    "type": "object"
+  },
+  "platform.generation.ReActConfig": {
+    "description": "The reasoning related configuration",
+    "properties": {
+      "max_iters": {
+        "default": 50,
+        "description": "The maximum number of reasoning-acting iterations in one reply",
+        "title": "Max Iterations",
+        "type": "integer"
+      },
+      "structured_output_grace_iters": {
+        "default": 5,
+        "description": "The grace iterations for structured output when exceeding the max iterations",
+        "exclusiveMinimum": 0,
+        "title": "Grace Iters for Structured Output",
+        "type": "integer"
+      },
+      "stop_on_reject": {
+        "default": false,
+        "description": "Whether to stop replying when being rejected to execute tools.",
+        "title": "Rejection Handling",
+        "type": "boolean"
+      },
+      "interruption_message": {
+        "default": "I notice the interruption. How can I help you?",
+        "description": "The quick reply message when interrupted.",
+        "title": "Interruption Message",
+        "type": "string"
+      },
+      "interruption_raise_cancelled_error": {
+        "default": false,
+        "description": "Whether to re-raise ``asyncio.CancelledError`` after handling the interruption. When ``False``, the ``CancelledError`` is swallowed once the interruption context has been produced.",
+        "title": "Raise CancelledError on Interruption",
+        "type": "boolean"
+      }
+    },
+    "title": "ReActConfig",
+    "type": "object"
+  },
+  "platform.generation.OpenAICredential": {
+    "description": "The OpenAI credential model.",
+    "properties": {
+      "id": {
+        "description": "The credential id",
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "default": "",
+        "description": "User-facing display name for this credential.",
+        "title": "Name",
+        "type": "string"
+      },
+      "type": {
+        "const": "openai_credential",
+        "default": "openai_credential",
+        "title": "Type",
+        "type": "string"
+      },
+      "api_key": {
+        "description": "The OpenAI API key.",
+        "format": "password",
+        "title": "Api Key",
+        "type": "string",
+        "writeOnly": true
+      },
+      "organization": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "The OpenAI organization ID.",
+        "title": "Organization"
+      },
+      "base_url": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "The base URL for the OpenAI API. Can be used for OpenAI-compatible endpoints.",
+        "title": "Base Url"
+      }
+    },
+    "required": [
+      "api_key"
+    ],
+    "title": "OpenAI API",
+    "type": "object"
+  },
+  "platform.generation.Msg": {
+    "$defs": {
+      "Base64Source": {
+        "description": "The base64 source.",
+        "properties": {
+          "type": {
+            "const": "base64",
+            "default": "base64",
+            "title": "Type",
+            "type": "string"
+          },
+          "data": {
+            "title": "Data",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "media_type"
+        ],
+        "title": "Base64Source",
+        "type": "object"
+      },
+      "DataBlock": {
+        "description": "The data block for binary content (images, audio, video, etc.).",
+        "properties": {
+          "type": {
+            "const": "data",
+            "default": "data",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Base64Source"
+              },
+              {
+                "$ref": "#/$defs/URLSource"
+              }
+            ],
+            "title": "Source"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "DataBlock",
+        "type": "object"
+      },
+      "ErrorInfo": {
+        "description": "Structured, UI-facing description of a fatal reply error.",
+        "properties": {
+          "type": {
+            "$ref": "#/$defs/ErrorType",
+            "default": "unknown"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ErrorInfo",
+        "type": "object"
+      },
+      "ErrorType": {
+        "description": "Classification of a fatal error that terminated a reply.\n\nNot model-specific: the status-derived members apply to any upstream\nservice reached during a reply (chat model, embedding, TTS, MCP).",
+        "enum": [
+          "authentication",
+          "permission",
+          "rate_limit",
+          "invalid_request",
+          "upstream",
+          "connection",
+          "internal",
+          "setup",
+          "unknown"
+        ],
+        "title": "ErrorType",
+        "type": "string"
+      },
+      "HintBlock": {
+        "description": "A block used to provide instructions or hints to the LLM during the\nreasoning-acting loop. When passed to the LLM API, the hint block is\nconverted into a user message.\n\nThe ``hint`` field can be a plain string (text-only) or a list of\n:class:`TextBlock` / :class:`DataBlock` for multimodal content\n(e.g. a background tool result containing both text and an image).",
+        "properties": {
+          "type": {
+            "const": "hint",
+            "default": "hint",
+            "title": "Type",
+            "type": "string"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/TextBlock"
+                    },
+                    {
+                      "$ref": "#/$defs/DataBlock"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Hint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "hint"
+        ],
+        "title": "HintBlock",
+        "type": "object"
+      },
+      "PermissionBehavior": {
+        "description": "The behavior of permission.\n\nAttributes:\n    ALLOW: Allow the operation\n    DENY: Deny the operation\n    ASK: Ask the user for permission\n    PASSTHROUGH: Let the permission engine continue with rule matching\n        (used by tools to defer decision to the engine)",
+        "enum": [
+          "allow",
+          "deny",
+          "ask",
+          "passthrough"
+        ],
+        "title": "PermissionBehavior",
+        "type": "string"
+      },
+      "PermissionRule": {
+        "description": "Permission rule for tool usage.\n\nA permission rule defines whether a specific tool or tool operation\nshould be allowed, denied, or require user confirmation. The\nrule_content field has different semantics depending on the tool_name:\n\n- For \"Bash\": rule_content is a substring pattern matched against the\n  command Example: rule_content=\"npm install\" matches \"npm install express\"\n\n- For \"Write\"/\"Read\": rule_content is a glob pattern matched against file\n  paths Example: rule_content=\"src/**\" matches \"src/main.py\"\n\n- For other tools: rule_content is a tool-specific filter pattern",
+        "properties": {
+          "tool_name": {
+            "title": "Tool Name",
+            "type": "string"
+          },
+          "rule_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Content"
+          },
+          "behavior": {
+            "$ref": "#/$defs/PermissionBehavior"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_name",
+          "rule_content",
+          "behavior",
+          "source"
+        ],
+        "title": "PermissionRule",
+        "type": "object"
+      },
+      "ReplyFinishedReason": {
+        "description": "The reason a reply finished.",
+        "enum": [
+          "completed",
+          "interrupted",
+          "exceed_max_iters",
+          "error"
+        ],
+        "title": "ReplyFinishedReason",
+        "type": "string"
+      },
+      "TextBlock": {
+        "description": "The text block.",
+        "properties": {
+          "type": {
+            "const": "text",
+            "default": "text",
+            "title": "Type",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TextBlock",
+        "type": "object"
+      },
+      "ThinkingBlock": {
+        "additionalProperties": true,
+        "description": "The thinking block.\n\nAllows extra provider-specific fields (e.g. Anthropic's ``signature``,\n``redacted_thinking_data``) via ``extra=\"allow\"`` so that model\nimplementations can pass arbitrary metadata without subclassing.\n\n.. note::\n    Anthropic's ``redacted_thinking`` blocks are also stored as\n    ``ThinkingBlock`` instances with ``thinking=\"\"`` and the\n    encrypted payload in the ``redacted_thinking_data`` extra\n    field. Callers filtering by ``type==\"thinking\"`` (e.g.\n    ``get_content_blocks``) will receive both visible and\n    redacted blocks.",
+        "properties": {
+          "type": {
+            "const": "thinking",
+            "default": "thinking",
+            "title": "Type",
+            "type": "string"
+          },
+          "thinking": {
+            "title": "Thinking",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "thinking"
+        ],
+        "title": "ThinkingBlock",
+        "type": "object"
+      },
+      "ToolCallBlock": {
+        "description": "The tool call block.",
+        "properties": {
+          "type": {
+            "const": "tool_call",
+            "default": "tool_call",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "input": {
+            "title": "Input",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/$defs/ToolCallState",
+            "default": "pending"
+          },
+          "suggested_rules": {
+            "items": {
+              "$ref": "#/$defs/PermissionRule"
+            },
+            "title": "Suggested Rules",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "input"
+        ],
+        "title": "ToolCallBlock",
+        "type": "object"
+      },
+      "ToolCallState": {
+        "description": "The state of the tool call.",
+        "enum": [
+          "pending",
+          "asking",
+          "allowed",
+          "submitted",
+          "finished"
+        ],
+        "title": "ToolCallState",
+        "type": "string"
+      },
+      "ToolResultBlock": {
+        "description": "The tool result block.",
+        "properties": {
+          "type": {
+            "const": "tool_result",
+            "default": "tool_result",
+            "title": "Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/TextBlock"
+                    },
+                    {
+                      "$ref": "#/$defs/DataBlock"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Output"
+          },
+          "state": {
+            "$ref": "#/$defs/ToolResultState",
+            "default": "running"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "output"
+        ],
+        "title": "ToolResultBlock",
+        "type": "object"
+      },
+      "ToolResultState": {
+        "description": "The tool result state.",
+        "enum": [
+          "success",
+          "error",
+          "interrupted",
+          "denied",
+          "running"
+        ],
+        "title": "ToolResultState",
+        "type": "string"
+      },
+      "URLSource": {
+        "description": "The URL source.",
+        "properties": {
+          "type": {
+            "const": "url",
+            "default": "url",
+            "title": "Type",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "media_type"
+        ],
+        "title": "URLSource",
+        "type": "object"
+      },
+      "Usage": {
+        "description": "The token usage information of a message.",
+        "properties": {
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "cache_input_tokens": {
+            "default": 0,
+            "title": "Cache Input Tokens",
+            "type": "integer"
+          },
+          "cache_creation_input_tokens": {
+            "default": 0,
+            "title": "Cache Creation Input Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens"
+        ],
+        "title": "Usage",
+        "type": "object"
+      }
+    },
+    "description": "The message class in AgentScope, responsible for information storage\nand transmission among different agents.",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "content": {
+        "items": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextBlock"
+            },
+            {
+              "$ref": "#/$defs/ThinkingBlock"
+            },
+            {
+              "$ref": "#/$defs/HintBlock"
+            },
+            {
+              "$ref": "#/$defs/ToolCallBlock"
+            },
+            {
+              "$ref": "#/$defs/ToolResultBlock"
+            },
+            {
+              "$ref": "#/$defs/DataBlock"
+            }
+          ]
+        },
+        "title": "Content",
+        "type": "array"
+      },
+      "role": {
+        "enum": [
+          "user",
+          "assistant",
+          "system"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "metadata": {
+        "additionalProperties": true,
+        "title": "Metadata",
+        "type": "object"
+      },
+      "created_at": {
+        "title": "Created At",
+        "type": "string"
+      },
+      "usage": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Usage"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "finished_at": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Finished At"
+      },
+      "finished_reason": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ReplyFinishedReason"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "structured_output": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Structured Output"
+      },
+      "error": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ErrorInfo"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "name",
+      "content",
+      "role"
+    ],
+    "title": "Msg",
+    "type": "object"
+  },
+  "platform.generation.TextBlock": {
+    "description": "The text block.",
+    "properties": {
+      "type": {
+        "const": "text",
+        "default": "text",
+        "title": "Type",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "created_at": {
+        "title": "Created At",
+        "type": "string"
+      },
+      "finished_at": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Finished At"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "title": "TextBlock",
+    "type": "object"
+  },
+  "platform.generation.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.generation.Scenario": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "product": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Product",
+        "type": "string"
+      },
+      "drug_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Drug Id"
+      },
+      "competitor_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Competitor Id"
+      },
+      "policy_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Policy Ids",
+        "type": "array"
+      },
+      "disease": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Disease",
+        "type": "string"
+      },
+      "objective": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Objective",
+        "type": "string"
+      },
+      "doctor_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "rubric_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Rubric Id",
+        "type": "string"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "stages": {
+        "items": {
+          "enum": [
+            "opening",
+            "needs",
+            "evidence",
+            "objections",
+            "safety",
+            "closing"
+          ],
+          "type": "string"
+        },
+        "maxItems": 6,
+        "minItems": 1,
+        "title": "Stages",
+        "type": "array"
+      },
+      "duration_seconds": {
+        "default": 300,
+        "maximum": 600,
+        "minimum": 30,
+        "title": "Duration Seconds",
+        "type": "integer"
+      },
+      "difficulty": {
+        "default": "basic",
+        "enum": [
+          "basic",
+          "intermediate",
+          "advanced"
+        ],
+        "title": "Difficulty",
+        "type": "string"
+      },
+      "situation": {
+        "default": "first_visit",
+        "enum": [
+          "first_visit",
+          "follow_up",
+          "time_pressure",
+          "evidence_challenge"
+        ],
+        "title": "Situation",
+        "type": "string"
+      },
+      "background": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Background",
+        "type": "string"
+      },
+      "opening": {
+        "default": "",
+        "maxLength": 400,
+        "title": "Opening",
+        "type": "string"
+      },
+      "objections": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Objections",
+        "type": "array"
+      },
+      "success_criteria": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Success Criteria",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "product",
+      "disease",
+      "objective",
+      "doctor_id",
+      "rubric_id",
+      "stages"
+    ],
+    "title": "Scenario",
+    "type": "object"
+  },
+  "platform.generation.CaseText": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "situation": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Situation",
+        "type": "string"
+      },
+      "approach": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Approach",
+        "type": "string"
+      },
+      "rationale": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Rationale",
+        "type": "string"
+      },
+      "limitations": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Limitations",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "situation",
+      "approach",
+      "rationale",
+      "limitations"
+    ],
+    "title": "CaseText",
+    "type": "object"
+  },
+  "platform.generation.GenerateScenario": {
+    "additionalProperties": false,
+    "properties": {
+      "product": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Product",
+        "type": "string"
+      },
+      "disease": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Disease",
+        "type": "string"
+      },
+      "objective": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Objective",
+        "type": "string"
+      },
+      "doctor_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "rubric_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Rubric Id",
+        "type": "string"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "minItems": 1,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "situation": {
+        "default": "first_visit",
+        "enum": [
+          "first_visit",
+          "follow_up",
+          "time_pressure",
+          "evidence_challenge"
+        ],
+        "title": "Situation",
+        "type": "string"
+      },
+      "difficulty": {
+        "default": "basic",
+        "enum": [
+          "basic",
+          "intermediate",
+          "advanced"
+        ],
+        "title": "Difficulty",
+        "type": "string"
+      },
+      "duration_seconds": {
+        "default": 300,
+        "maximum": 600,
+        "minimum": 30,
+        "title": "Duration Seconds",
+        "type": "integer"
+      },
+      "drug_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Drug Id"
+      },
+      "case_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Case Id"
+      }
+    },
+    "required": [
+      "product",
+      "disease",
+      "objective",
+      "doctor_id",
+      "rubric_id",
+      "content_ids"
+    ],
+    "title": "GenerateScenario",
+    "type": "object"
+  },
+  "platform.generation.SourceQuote": {
+    "additionalProperties": false,
+    "properties": {
+      "source_id": {
+        "maxLength": 20,
+        "minLength": 1,
+        "title": "Source Id",
+        "type": "string"
+      },
+      "quote": {
+        "maxLength": 500,
+        "minLength": 6,
+        "title": "Quote",
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_id",
+      "quote"
+    ],
+    "title": "SourceQuote",
+    "type": "object"
+  },
+  "platform.generation.Outline": {
+    "$defs": {
+      "SourceQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 500,
+            "minLength": 6,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "quote"
+        ],
+        "title": "SourceQuote",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "background": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Background",
+        "type": "string"
+      },
+      "opening": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Opening",
+        "type": "string"
+      },
+      "objections": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Objections",
+        "type": "array"
+      },
+      "success_criteria": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Success Criteria",
+        "type": "array"
+      },
+      "citations": {
+        "items": {
+          "$ref": "#/$defs/SourceQuote"
+        },
+        "maxItems": 8,
+        "minItems": 1,
+        "title": "Citations",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "background",
+      "opening",
+      "objections",
+      "success_criteria",
+      "citations"
+    ],
+    "title": "Outline",
+    "type": "object"
+  },
+  "platform.health.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.health.Observation": {
+    "additionalProperties": false,
+    "properties": {
+      "metric": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Metric",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 1000000,
+        "minimum": 0,
+        "title": "Value",
+        "type": "number"
+      },
+      "unit": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Unit",
+        "type": "string"
+      },
+      "observed_at": {
+        "format": "date-time",
+        "title": "Observed At",
+        "type": "string"
+      },
+      "conditions": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Conditions",
+        "type": "string"
+      },
+      "limitations": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Limitations",
+        "type": "string"
+      }
+    },
+    "required": [
+      "metric",
+      "value",
+      "unit",
+      "observed_at",
+      "conditions",
+      "limitations"
+    ],
+    "title": "Observation",
+    "type": "object"
+  },
+  "platform.health.Consent": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "consent": {
+        "const": true,
+        "title": "Consent",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "version",
+      "consent"
+    ],
+    "title": "Consent",
+    "type": "object"
+  },
+  "platform.health.Version": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version"
+    ],
+    "title": "Version",
+    "type": "object"
+  },
+  "platform.health.HealthReview": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "decision": {
+        "enum": [
+          "approve",
+          "reject"
+        ],
+        "title": "Decision",
+        "type": "string"
+      },
+      "reason": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "version",
+      "decision",
+      "reason"
+    ],
+    "title": "HealthReview",
+    "type": "object"
+  },
+  "platform.importer.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.importer.Content": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages"
+    ],
+    "title": "Content",
+    "type": "object"
+  },
+  "platform.importer.Entry": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      },
+      "previous_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Previous Id"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages"
+    ],
+    "title": "Entry",
+    "type": "object"
+  },
+  "platform.importer.Batch": {
+    "$defs": {
+      "Entry": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "version_label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version Label",
+            "type": "string"
+          },
+          "scope": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "maxLength": 8192,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "publication_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Publication Date"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/$defs/Page"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Pages",
+            "type": "array"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Asset Id"
+          },
+          "previous_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Previous Id"
+          }
+        },
+        "required": [
+          "title",
+          "version_label",
+          "scope",
+          "pages"
+        ],
+        "title": "Entry",
+        "type": "object"
+      },
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "documents": {
+        "items": {
+          "$ref": "#/$defs/Entry"
+        },
+        "maxItems": 50,
+        "minItems": 1,
+        "title": "Documents",
+        "type": "array"
+      }
+    },
+    "required": [
+      "documents"
+    ],
+    "title": "Batch",
+    "type": "object"
+  },
+  "platform.management.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.management.ReviewRules": {
+    "additionalProperties": false,
+    "properties": {
+      "drug": {
+        "default": "admin",
+        "enum": [
+          "admin",
+          "two_admins",
+          "medical_compliance"
+        ],
+        "title": "Drug",
+        "type": "string"
+      },
+      "doctor": {
+        "default": "admin",
+        "enum": [
+          "admin",
+          "two_admins",
+          "medical_compliance"
+        ],
+        "title": "Doctor",
+        "type": "string"
+      },
+      "content": {
+        "default": "admin",
+        "enum": [
+          "admin",
+          "two_admins",
+          "medical_compliance"
+        ],
+        "title": "Content",
+        "type": "string"
+      },
+      "scenario": {
+        "default": "admin",
+        "enum": [
+          "admin",
+          "two_admins",
+          "medical_compliance"
+        ],
+        "title": "Scenario",
+        "type": "string"
+      },
+      "lesson": {
+        "default": "admin",
+        "enum": [
+          "admin",
+          "two_admins",
+          "medical_compliance"
+        ],
+        "title": "Lesson",
+        "type": "string"
+      }
+    },
+    "title": "ReviewRules",
+    "type": "object"
+  },
+  "platform.management.WorkspaceSettings": {
+    "$defs": {
+      "ReviewRules": {
+        "additionalProperties": false,
+        "properties": {
+          "drug": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "two_admins",
+              "medical_compliance"
+            ],
+            "title": "Drug",
+            "type": "string"
+          },
+          "doctor": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "two_admins",
+              "medical_compliance"
+            ],
+            "title": "Doctor",
+            "type": "string"
+          },
+          "content": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "two_admins",
+              "medical_compliance"
+            ],
+            "title": "Content",
+            "type": "string"
+          },
+          "scenario": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "two_admins",
+              "medical_compliance"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "lesson": {
+            "default": "admin",
+            "enum": [
+              "admin",
+              "two_admins",
+              "medical_compliance"
+            ],
+            "title": "Lesson",
+            "type": "string"
+          }
+        },
+        "title": "ReviewRules",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 0,
+        "title": "Version",
+        "type": "integer"
+      },
+      "doctor_recommendation": {
+        "default": true,
+        "title": "Doctor Recommendation",
+        "type": "boolean"
+      },
+      "training_scoring": {
+        "default": true,
+        "title": "Training Scoring",
+        "type": "boolean"
+      },
+      "health_sharing": {
+        "default": false,
+        "title": "Health Sharing",
+        "type": "boolean"
+      },
+      "review_rules": {
+        "$ref": "#/$defs/ReviewRules"
+      },
+      "medical_reviewers": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 100,
+        "title": "Medical Reviewers",
+        "type": "array"
+      },
+      "compliance_reviewers": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 100,
+        "title": "Compliance Reviewers",
+        "type": "array"
+      }
+    },
+    "required": [
+      "version"
+    ],
+    "title": "WorkspaceSettings",
+    "type": "object"
+  },
+  "platform.management.Approval": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "settings_version": {
+        "minimum": 0,
+        "title": "Settings Version",
+        "type": "integer"
+      },
+      "decision": {
+        "default": "approve",
+        "enum": [
+          "approve",
+          "reject"
+        ],
+        "title": "Decision",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "admin",
+          "medical",
+          "compliance"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "reason": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "version",
+      "settings_version",
+      "role",
+      "reason"
+    ],
+    "title": "Approval",
+    "type": "object"
+  },
+  "platform.operations.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.operations.Citation": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Document Id",
+        "type": "string"
+      },
+      "page": {
+        "maximum": 2000,
+        "minimum": 1,
+        "title": "Page",
+        "type": "integer"
+      },
+      "quote": {
+        "maxLength": 500,
+        "minLength": 6,
+        "title": "Quote",
+        "type": "string"
+      }
+    },
+    "required": [
+      "document_id",
+      "page",
+      "quote"
+    ],
+    "title": "Citation",
+    "type": "object"
+  },
+  "platform.operations.Override": {
+    "$defs": {
+      "Citation": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          },
+          "page": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 500,
+            "minLength": 6,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "page",
+          "quote"
+        ],
+        "title": "Citation",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "key": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Key",
+        "type": "string"
+      },
+      "score": {
+        "anyOf": [
+          {
+            "maximum": 4,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Score"
+      },
+      "reason": {
+        "maxLength": 600,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      },
+      "citations": {
+        "items": {
+          "$ref": "#/$defs/Citation"
+        },
+        "maxItems": 3,
+        "title": "Citations",
+        "type": "array"
+      }
+    },
+    "required": [
+      "key",
+      "reason"
+    ],
+    "title": "Override",
+    "type": "object"
+  },
+  "platform.operations.Review": {
+    "$defs": {
+      "Citation": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          },
+          "page": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "maxLength": 500,
+            "minLength": 6,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "page",
+          "quote"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
+      "Override": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "maximum": 4,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Score"
+          },
+          "reason": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/$defs/Citation"
+            },
+            "maxItems": 3,
+            "title": "Citations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "reason"
+        ],
+        "title": "Override",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "message_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Message Id"
+      },
+      "comment": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Comment",
+        "type": "string"
+      },
+      "overrides": {
+        "items": {
+          "$ref": "#/$defs/Override"
+        },
+        "maxItems": 10,
+        "title": "Overrides",
+        "type": "array"
+      }
+    },
+    "required": [
+      "comment"
+    ],
+    "title": "Review",
+    "type": "object"
+  },
+  "platform.operations.Retrain": {
+    "additionalProperties": false,
+    "properties": {
+      "stage": {
+        "anyOf": [
+          {
+            "maxLength": 40,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Stage"
+      },
+      "note": {
+        "default": "",
+        "maxLength": 1000,
+        "title": "Note",
+        "type": "string"
+      }
+    },
+    "title": "Retrain",
+    "type": "object"
+  },
+  "platform.progress.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.progress.Price": {
+    "additionalProperties": false,
+    "properties": {
+      "provider": {
+        "enum": [
+          "deepseek",
+          "seedasr",
+          "doubao-tts",
+          "doubao-duplex"
+        ],
+        "title": "Provider",
+        "type": "string"
+      },
+      "model": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Model",
+        "type": "string"
+      },
+      "unit": {
+        "enum": [
+          "input_tokens",
+          "output_tokens",
+          "audio_seconds",
+          "text_characters",
+          "search_requests",
+          "fetch_requests"
+        ],
+        "title": "Unit",
+        "type": "string"
+      },
+      "amount": {
+        "anyOf": [
+          {
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "title": "Amount"
+      },
+      "per_units": {
+        "maximum": 1000000000,
+        "minimum": 1,
+        "title": "Per Units",
+        "type": "integer"
+      },
+      "currency": {
+        "enum": [
+          "CNY",
+          "USD"
+        ],
+        "title": "Currency",
+        "type": "string"
+      },
+      "source_url": {
+        "maxLength": 8192,
+        "minLength": 1,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "checked_on": {
+        "format": "date",
+        "title": "Checked On",
+        "type": "string"
+      },
+      "note": {
+        "default": "",
+        "maxLength": 500,
+        "title": "Note",
+        "type": "string"
+      }
+    },
+    "required": [
+      "provider",
+      "model",
+      "unit",
+      "amount",
+      "per_units",
+      "currency",
+      "source_url",
+      "checked_on"
+    ],
+    "title": "Price",
+    "type": "object"
+  },
+  "platform.progress.Prices": {
+    "$defs": {
+      "Price": {
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "enum": [
+              "deepseek",
+              "seedasr",
+              "doubao-tts",
+              "doubao-duplex"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "input_tokens",
+              "output_tokens",
+              "audio_seconds",
+              "text_characters",
+              "search_requests",
+              "fetch_requests"
+            ],
+            "title": "Unit",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "per_units": {
+            "maximum": 1000000000,
+            "minimum": 1,
+            "title": "Per Units",
+            "type": "integer"
+          },
+          "currency": {
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "title": "Currency",
+            "type": "string"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "checked_on": {
+            "format": "date",
+            "title": "Checked On",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "unit",
+          "amount",
+          "per_units",
+          "currency",
+          "source_url",
+          "checked_on"
+        ],
+        "title": "Price",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "default": 0,
+        "minimum": 0,
+        "title": "Version",
+        "type": "integer"
+      },
+      "rates": {
+        "items": {
+          "$ref": "#/$defs/Price"
+        },
+        "maxItems": 50,
+        "title": "Rates",
+        "type": "array"
+      }
+    },
+    "required": [
+      "rates"
+    ],
+    "title": "Prices",
+    "type": "object"
+  },
+  "platform.sharing.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "platform.sharing.Content": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Asset Id"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages"
+    ],
+    "title": "Content",
+    "type": "object"
+  },
+  "platform.sharing.Doctor": {
+    "$defs": {
+      "DoctorHonor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_url",
+          "quote"
+        ],
+        "title": "DoctorHonor",
+        "type": "object"
+      },
+      "IPProfile": {
+        "additionalProperties": false,
+        "description": "Communication-style role model. Not a real person: it carries no name, hospital or credential claim.",
+        "properties": {
+          "ip_key": {
+            "pattern": "^[a-z][a-z0-9_]{1,30}$",
+            "title": "Ip Key",
+            "type": "string"
+          },
+          "dept": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Dept",
+            "type": "string"
+          },
+          "style": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Style",
+            "type": "string"
+          },
+          "area": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Area",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Role",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          },
+          "entry": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Entry",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Question",
+            "type": "string"
+          },
+          "match": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Match",
+            "type": "string"
+          },
+          "domain": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Domain",
+            "type": "string"
+          },
+          "modules": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 8,
+            "title": "Modules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ip_key",
+          "dept",
+          "style",
+          "area"
+        ],
+        "title": "IPProfile",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "specialty": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Specialty",
+        "type": "string"
+      },
+      "hospital": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Hospital",
+        "type": "string"
+      },
+      "professional_title": {
+        "default": "",
+        "maxLength": 100,
+        "title": "Professional Title",
+        "type": "string"
+      },
+      "honors": {
+        "items": {
+          "$ref": "#/$defs/DoctorHonor"
+        },
+        "maxItems": 20,
+        "title": "Honors",
+        "type": "array"
+      },
+      "background_type": {
+        "default": "fictional",
+        "enum": [
+          "fictional",
+          "public"
+        ],
+        "title": "Background Type",
+        "type": "string"
+      },
+      "public_facts": {
+        "default": "",
+        "maxLength": 3000,
+        "title": "Public Facts",
+        "type": "string"
+      },
+      "sources": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Sources",
+        "type": "array"
+      },
+      "population": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Population",
+        "type": "string"
+      },
+      "focus": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Focus",
+        "type": "string"
+      },
+      "training_style": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Training Style",
+        "type": "string"
+      },
+      "mood": {
+        "default": "neutral",
+        "enum": [
+          "neutral",
+          "busy",
+          "skeptical",
+          "friendly"
+        ],
+        "title": "Mood",
+        "type": "string"
+      },
+      "opening": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Opening",
+        "type": "string"
+      },
+      "research_job_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Research Job Id"
+      },
+      "ip_profile": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IPProfile"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "name",
+      "specialty",
+      "population",
+      "focus",
+      "training_style",
+      "opening"
+    ],
+    "title": "Doctor",
+    "type": "object"
+  },
+  "platform.sharing.Rubric": {
+    "$defs": {
+      "Dimension": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z_]{1,40}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Weight",
+            "type": "integer"
+          },
+          "anchors": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Anchors",
+            "type": "array"
+          },
+          "requires_content": {
+            "default": false,
+            "title": "Requires Content",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "anchors"
+        ],
+        "title": "Dimension",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "dimensions": {
+        "items": {
+          "$ref": "#/$defs/Dimension"
+        },
+        "maxItems": 10,
+        "minItems": 1,
+        "title": "Dimensions",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "dimensions"
+    ],
+    "title": "Rubric",
+    "type": "object"
+  },
+  "platform.sharing.Scenario": {
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 160,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "product": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Product",
+        "type": "string"
+      },
+      "drug_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Drug Id"
+      },
+      "competitor_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Competitor Id"
+      },
+      "policy_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Policy Ids",
+        "type": "array"
+      },
+      "disease": {
+        "maxLength": 120,
+        "minLength": 1,
+        "title": "Disease",
+        "type": "string"
+      },
+      "objective": {
+        "maxLength": 1500,
+        "minLength": 1,
+        "title": "Objective",
+        "type": "string"
+      },
+      "doctor_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "rubric_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Rubric Id",
+        "type": "string"
+      },
+      "content_ids": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 12,
+        "title": "Content Ids",
+        "type": "array"
+      },
+      "stages": {
+        "items": {
+          "enum": [
+            "opening",
+            "needs",
+            "evidence",
+            "objections",
+            "safety",
+            "closing"
+          ],
+          "type": "string"
+        },
+        "maxItems": 6,
+        "minItems": 1,
+        "title": "Stages",
+        "type": "array"
+      },
+      "duration_seconds": {
+        "default": 300,
+        "maximum": 600,
+        "minimum": 30,
+        "title": "Duration Seconds",
+        "type": "integer"
+      },
+      "difficulty": {
+        "default": "basic",
+        "enum": [
+          "basic",
+          "intermediate",
+          "advanced"
+        ],
+        "title": "Difficulty",
+        "type": "string"
+      },
+      "situation": {
+        "default": "first_visit",
+        "enum": [
+          "first_visit",
+          "follow_up",
+          "time_pressure",
+          "evidence_challenge"
+        ],
+        "title": "Situation",
+        "type": "string"
+      },
+      "background": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Background",
+        "type": "string"
+      },
+      "opening": {
+        "default": "",
+        "maxLength": 400,
+        "title": "Opening",
+        "type": "string"
+      },
+      "objections": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Objections",
+        "type": "array"
+      },
+      "success_criteria": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Success Criteria",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "product",
+      "disease",
+      "objective",
+      "doctor_id",
+      "rubric_id",
+      "stages"
+    ],
+    "title": "Scenario",
+    "type": "object"
+  },
+  "platform.sharing.TemplateDocument": {
+    "$defs": {
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 180,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "version_label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Version Label",
+        "type": "string"
+      },
+      "scope": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Scope",
+        "type": "string"
+      },
+      "source_url": {
+        "default": "",
+        "maxLength": 8192,
+        "title": "Source Url",
+        "type": "string"
+      },
+      "publication_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Publication Date"
+      },
+      "expires_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expires At"
+      },
+      "pages": {
+        "items": {
+          "$ref": "#/$defs/Page"
+        },
+        "maxItems": 200,
+        "minItems": 1,
+        "title": "Pages",
+        "type": "array"
+      },
+      "asset_id": {
+        "const": null,
+        "default": null,
+        "title": "Asset Id",
+        "type": "null"
+      },
+      "key": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Key",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "version_label",
+      "scope",
+      "pages",
+      "key"
+    ],
+    "title": "TemplateDocument",
+    "type": "object"
+  },
+  "platform.sharing.TrainingTemplate": {
+    "$defs": {
+      "Dimension": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "pattern": "^[a-z][a-z_]{1,40}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "weight": {
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Weight",
+            "type": "integer"
+          },
+          "anchors": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Anchors",
+            "type": "array"
+          },
+          "requires_content": {
+            "default": false,
+            "title": "Requires Content",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "weight",
+          "anchors"
+        ],
+        "title": "Dimension",
+        "type": "object"
+      },
+      "Doctor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "specialty": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Specialty",
+            "type": "string"
+          },
+          "hospital": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Hospital",
+            "type": "string"
+          },
+          "professional_title": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Professional Title",
+            "type": "string"
+          },
+          "honors": {
+            "items": {
+              "$ref": "#/$defs/DoctorHonor"
+            },
+            "maxItems": 20,
+            "title": "Honors",
+            "type": "array"
+          },
+          "background_type": {
+            "default": "fictional",
+            "enum": [
+              "fictional",
+              "public"
+            ],
+            "title": "Background Type",
+            "type": "string"
+          },
+          "public_facts": {
+            "default": "",
+            "maxLength": 3000,
+            "title": "Public Facts",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Sources",
+            "type": "array"
+          },
+          "population": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Population",
+            "type": "string"
+          },
+          "focus": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Focus",
+            "type": "string"
+          },
+          "training_style": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Training Style",
+            "type": "string"
+          },
+          "mood": {
+            "default": "neutral",
+            "enum": [
+              "neutral",
+              "busy",
+              "skeptical",
+              "friendly"
+            ],
+            "title": "Mood",
+            "type": "string"
+          },
+          "opening": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Opening",
+            "type": "string"
+          },
+          "research_job_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Research Job Id"
+          },
+          "ip_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/IPProfile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "name",
+          "specialty",
+          "population",
+          "focus",
+          "training_style",
+          "opening"
+        ],
+        "title": "Doctor",
+        "type": "object"
+      },
+      "DoctorHonor": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          },
+          "source_url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source_url",
+          "quote"
+        ],
+        "title": "DoctorHonor",
+        "type": "object"
+      },
+      "IPProfile": {
+        "additionalProperties": false,
+        "description": "Communication-style role model. Not a real person: it carries no name, hospital or credential claim.",
+        "properties": {
+          "ip_key": {
+            "pattern": "^[a-z][a-z0-9_]{1,30}$",
+            "title": "Ip Key",
+            "type": "string"
+          },
+          "dept": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Dept",
+            "type": "string"
+          },
+          "style": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Style",
+            "type": "string"
+          },
+          "area": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Area",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "maxLength": 60,
+            "title": "Role",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          },
+          "entry": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Entry",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Question",
+            "type": "string"
+          },
+          "match": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Match",
+            "type": "string"
+          },
+          "domain": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Domain",
+            "type": "string"
+          },
+          "modules": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "maxItems": 8,
+            "title": "Modules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ip_key",
+          "dept",
+          "style",
+          "area"
+        ],
+        "title": "IPProfile",
+        "type": "object"
+      },
+      "Page": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "maximum": 2000,
+            "minimum": 1,
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "Page",
+        "type": "object"
+      },
+      "Rubric": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/$defs/Dimension"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Dimensions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "dimensions"
+        ],
+        "title": "Rubric",
+        "type": "object"
+      },
+      "Scenario": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "product": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Product",
+            "type": "string"
+          },
+          "drug_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Drug Id"
+          },
+          "competitor_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Competitor Id"
+          },
+          "policy_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Policy Ids",
+            "type": "array"
+          },
+          "disease": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Disease",
+            "type": "string"
+          },
+          "objective": {
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Objective",
+            "type": "string"
+          },
+          "doctor_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Doctor Id",
+            "type": "string"
+          },
+          "rubric_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Rubric Id",
+            "type": "string"
+          },
+          "content_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Content Ids",
+            "type": "array"
+          },
+          "stages": {
+            "items": {
+              "enum": [
+                "opening",
+                "needs",
+                "evidence",
+                "objections",
+                "safety",
+                "closing"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Stages",
+            "type": "array"
+          },
+          "duration_seconds": {
+            "default": 300,
+            "maximum": 600,
+            "minimum": 30,
+            "title": "Duration Seconds",
+            "type": "integer"
+          },
+          "difficulty": {
+            "default": "basic",
+            "enum": [
+              "basic",
+              "intermediate",
+              "advanced"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "situation": {
+            "default": "first_visit",
+            "enum": [
+              "first_visit",
+              "follow_up",
+              "time_pressure",
+              "evidence_challenge"
+            ],
+            "title": "Situation",
+            "type": "string"
+          },
+          "background": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Background",
+            "type": "string"
+          },
+          "opening": {
+            "default": "",
+            "maxLength": 400,
+            "title": "Opening",
+            "type": "string"
+          },
+          "objections": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Objections",
+            "type": "array"
+          },
+          "success_criteria": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Success Criteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "product",
+          "disease",
+          "objective",
+          "doctor_id",
+          "rubric_id",
+          "stages"
+        ],
+        "title": "Scenario",
+        "type": "object"
+      },
+      "TemplateDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "version_label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version Label",
+            "type": "string"
+          },
+          "scope": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Scope",
+            "type": "string"
+          },
+          "source_url": {
+            "default": "",
+            "maxLength": 8192,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "publication_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Publication Date"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/$defs/Page"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Pages",
+            "type": "array"
+          },
+          "asset_id": {
+            "const": null,
+            "default": null,
+            "title": "Asset Id",
+            "type": "null"
+          },
+          "key": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "version_label",
+          "scope",
+          "pages",
+          "key"
+        ],
+        "title": "TemplateDocument",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "doctor": {
+        "$ref": "#/$defs/Doctor"
+      },
+      "rubric": {
+        "$ref": "#/$defs/Rubric"
+      },
+      "documents": {
+        "items": {
+          "$ref": "#/$defs/TemplateDocument"
+        },
+        "maxItems": 12,
+        "title": "Documents",
+        "type": "array"
+      },
+      "scenario": {
+        "$ref": "#/$defs/Scenario"
+      }
+    },
+    "required": [
+      "schema_version",
+      "doctor",
+      "rubric",
+      "documents",
+      "scenario"
+    ],
+    "title": "TrainingTemplate",
+    "type": "object"
+  },
+  "research.models.Input": {
+    "additionalProperties": false,
+    "properties": {},
+    "title": "Input",
+    "type": "object"
+  },
+  "research.models.HonorDetails": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "organization": {
+        "default": "",
+        "maxLength": 200,
+        "title": "Organization",
+        "type": "string"
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 9999,
+            "minimum": 1000,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Year"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "HonorDetails",
+    "type": "object"
+  },
+  "research.models.DoctorResearchRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "hospital": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Hospital",
+        "type": "string"
+      },
+      "department": {
+        "maxLength": 50,
+        "minLength": 1,
+        "title": "Department",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "hospital",
+      "department"
+    ],
+    "title": "DoctorResearchRequest",
+    "type": "object"
+  },
+  "research.models.ResearchRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "enum": [
+          "doctor",
+          "drug"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "query": {
+        "maxLength": 200,
+        "minLength": 2,
+        "title": "Query",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "query"
+    ],
+    "title": "ResearchRequest",
+    "type": "object"
+  },
+  "research.models.WatchRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "enabled"
+    ],
+    "title": "WatchRequest",
+    "type": "object"
+  },
+  "research.models.DoctorDraftRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "finding_index": {
+        "maximum": 4,
+        "minimum": 0,
+        "title": "Finding Index",
+        "type": "integer"
+      },
+      "confirmed_name": {
+        "maxLength": 60,
+        "minLength": 1,
+        "title": "Confirmed Name",
+        "type": "string"
+      },
+      "confirmed_identity": {
+        "const": true,
+        "title": "Confirmed Identity",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "finding_index",
+      "confirmed_name",
+      "confirmed_identity"
+    ],
+    "title": "DoctorDraftRequest",
+    "type": "object"
+  },
+  "research.models.PolicyDraftRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "source_id": {
+        "pattern": "^[a-f0-9]{24}$",
+        "title": "Source Id",
+        "type": "string"
+      },
+      "source_version": {
+        "pattern": "^[a-f0-9]{64}$",
+        "title": "Source Version",
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_id",
+      "source_version"
+    ],
+    "title": "PolicyDraftRequest",
+    "type": "object"
+  },
+  "research.models.FindingDetail": {
+    "$defs": {
+      "HonorDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "HonorDetails",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "label": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Label",
+        "type": "string"
+      },
+      "value": {
+        "maxLength": 600,
+        "minLength": 1,
+        "title": "Value",
+        "type": "string"
+      },
+      "source_id": {
+        "pattern": "^[a-f0-9]{24}$",
+        "title": "Source Id",
+        "type": "string"
+      },
+      "evidence_id": {
+        "pattern": "^E[1-9][0-9]{0,5}-[a-f0-9]{12}$",
+        "title": "Evidence Id",
+        "type": "string"
+      },
+      "honor": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/HonorDetails"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "label",
+      "value",
+      "source_id",
+      "evidence_id"
+    ],
+    "title": "FindingDetail",
+    "type": "object"
+  },
+  "research.models.Finding": {
+    "$defs": {
+      "FindingDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "source_id": {
+            "pattern": "^[a-f0-9]{24}$",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "evidence_id": {
+            "pattern": "^E[1-9][0-9]{0,5}-[a-f0-9]{12}$",
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "honor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HonorDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "source_id",
+          "evidence_id"
+        ],
+        "title": "FindingDetail",
+        "type": "object"
+      },
+      "HonorDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "HonorDetails",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "title": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "details": {
+        "items": {
+          "$ref": "#/$defs/FindingDetail"
+        },
+        "maxItems": 12,
+        "minItems": 1,
+        "title": "Details",
+        "type": "array"
+      },
+      "caveats": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 5,
+        "title": "Caveats",
+        "type": "array"
+      }
+    },
+    "required": [
+      "title",
+      "details",
+      "caveats"
+    ],
+    "title": "Finding",
+    "type": "object"
+  },
+  "research.models.ResearchResult": {
+    "$defs": {
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/$defs/FindingDetail"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Details",
+            "type": "array"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Caveats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "details",
+          "caveats"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          },
+          "source_id": {
+            "pattern": "^[a-f0-9]{24}$",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "evidence_id": {
+            "pattern": "^E[1-9][0-9]{0,5}-[a-f0-9]{12}$",
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "honor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HonorDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "source_id",
+          "evidence_id"
+        ],
+        "title": "FindingDetail",
+        "type": "object"
+      },
+      "HonorDetails": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Organization",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "maximum": 9999,
+                "minimum": 1000,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Year"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "HonorDetails",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "findings": {
+        "items": {
+          "$ref": "#/$defs/Finding"
+        },
+        "maxItems": 5,
+        "title": "Findings",
+        "type": "array"
+      },
+      "further_checks": {
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 8,
+        "title": "Further Checks",
+        "type": "array"
+      }
+    },
+    "required": [
+      "findings",
+      "further_checks"
+    ],
+    "title": "ResearchResult",
+    "type": "object"
+  },
+  "visits.api.VisitInput": {
+    "additionalProperties": false,
+    "properties": {
+      "doctor_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "drug_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Drug Id",
+        "type": "string"
+      },
+      "visited_at": {
+        "format": "date",
+        "title": "Visited At",
+        "type": "string"
+      },
+      "text": {
+        "default": "",
+        "maxLength": 30000,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "visited_at"
+    ],
+    "title": "VisitInput",
+    "type": "object"
+  },
+  "visits.api.CreateVisit": {
+    "additionalProperties": false,
+    "properties": {
+      "doctor_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "drug_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Drug Id",
+        "type": "string"
+      },
+      "visited_at": {
+        "format": "date",
+        "title": "Visited At",
+        "type": "string"
+      },
+      "text": {
+        "default": "",
+        "maxLength": 30000,
+        "title": "Text",
+        "type": "string"
+      },
+      "source": {
+        "default": "self_report",
+        "enum": [
+          "self_report",
+          "recording"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "private_audio": {
+        "default": false,
+        "title": "Private Audio",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "visited_at"
+    ],
+    "title": "CreateVisit",
+    "type": "object"
+  },
+  "visits.api.EditVisit": {
+    "additionalProperties": false,
+    "properties": {
+      "doctor_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Doctor Id",
+        "type": "string"
+      },
+      "drug_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Drug Id",
+        "type": "string"
+      },
+      "visited_at": {
+        "format": "date",
+        "title": "Visited At",
+        "type": "string"
+      },
+      "text": {
+        "default": "",
+        "maxLength": 30000,
+        "title": "Text",
+        "type": "string"
+      },
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "visited_at",
+      "version"
+    ],
+    "title": "EditVisit",
+    "type": "object"
+  },
+  "visits.api.Speaker": {
+    "additionalProperties": false,
+    "properties": {
+      "speaker_id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Speaker Id",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "doctor",
+          "representative",
+          "other",
+          "unknown"
+        ],
+        "title": "Role",
+        "type": "string"
+      }
+    },
+    "required": [
+      "speaker_id",
+      "role"
+    ],
+    "title": "Speaker",
+    "type": "object"
+  },
+  "visits.api.ConfirmVisit": {
+    "$defs": {
+      "Speaker": {
+        "additionalProperties": false,
+        "properties": {
+          "speaker_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Speaker Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "doctor",
+              "representative",
+              "other",
+              "unknown"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "speaker_id",
+          "role"
+        ],
+        "title": "Speaker",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "redacted_text": {
+        "maxLength": 30000,
+        "minLength": 1,
+        "title": "Redacted Text",
+        "type": "string"
+      },
+      "redaction_confirmed": {
+        "const": true,
+        "title": "Redaction Confirmed",
+        "type": "boolean"
+      },
+      "speakers": {
+        "items": {
+          "$ref": "#/$defs/Speaker"
+        },
+        "maxItems": 50,
+        "title": "Speakers",
+        "type": "array"
+      }
+    },
+    "required": [
+      "version",
+      "redacted_text",
+      "redaction_confirmed"
+    ],
+    "title": "ConfirmVisit",
+    "type": "object"
+  },
+  "visits.api.ReviewVisit": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "decision": {
+        "enum": [
+          "scenario",
+          "needs_evidence",
+          "reject",
+          "fact"
+        ],
+        "title": "Decision",
+        "type": "string"
+      },
+      "reason": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Reason",
+        "type": "string"
+      },
+      "content_id": {
+        "default": "",
+        "maxLength": 80,
+        "title": "Content Id",
+        "type": "string"
+      },
+      "page": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Page"
+      },
+      "quote": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Quote",
+        "type": "string"
+      },
+      "identity_confirmed": {
+        "default": false,
+        "title": "Identity Confirmed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "version",
+      "decision",
+      "reason"
+    ],
+    "title": "ReviewVisit",
+    "type": "object"
+  },
+  "api.auth.Login": {
+    "additionalProperties": false,
+    "properties": {
+      "username": {
+        "maxLength": 100,
+        "minLength": 1,
+        "title": "Username",
+        "type": "string"
+      },
+      "password": {
+        "maxLength": 512,
+        "minLength": 1,
+        "title": "Password",
+        "type": "string"
+      }
+    },
+    "required": [
+      "username",
+      "password"
+    ],
+    "title": "Login",
+    "type": "object"
+  },
+  "knowledge.api.CheckRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "text": {
+        "maxLength": 6000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      },
+      "context": {
+        "default": "",
+        "maxLength": 3000,
+        "title": "Context",
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "title": "CheckRequest",
+    "type": "object"
+  }
+}

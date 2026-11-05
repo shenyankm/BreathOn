@@ -217,7 +217,7 @@ for (const experience of ['practice','combat']) test(`real providers: ${experien
   const { execFileSync } = await import('node:child_process')
   const { readFileSync } = await import('node:fs')
   const audioPath = path.resolve('test-results/synthetic-input.pcm')
-  if(!existsSync(audioPath)) execFileSync('uv',['run','--directory','../backend','--locked','python','-m','tools.e2e_audio','--live','--output',audioPath],{timeout:60_000})
+  if(!existsSync(audioPath)) execFileSync(process.execPath,['--experimental-transform-types','--env-file-if-exists=../backend/.env','../backend/src/e2e-assets.ts','--live','--output',audioPath],{timeout:60_000})
   const audio=readFileSync(audioPath).toString('base64')
   await page.context().addCookies((await actors.admin.storageState()).cookies)
   await page.goto('/admin')
@@ -362,8 +362,7 @@ test('drug versions, policy source validation, published rules, lessons and taxo
 
 test('recording upload requires consent, checks real media and stays private; missing HTTPS is explicit', async () => {
   const {execFileSync}=await import('node:child_process')
-  const wav=execFileSync('uv',['run','--directory','../backend','--locked','python','-c',
-    'import io,wave,sys; b=io.BytesIO(); w=wave.open(b,"wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(32000)); w.close(); sys.stdout.buffer.write(b.getvalue())'])
+  const wav=execFileSync(process.execPath,['--experimental-transform-types','../backend/src/e2e-assets.ts','--wav'])
   const row=await call('a','POST','/visits',{source:'recording',visited_at:new Date().toISOString().slice(0,10)})
   const url=`/api/visits/${row.id}/audio`
   expect((await actors.a.post(url,{data:wav,headers:{'Content-Type':'audio/wav'}})).status()).toBe(422)
@@ -398,8 +397,7 @@ test('real providers: drug research retains verifiable archived originals', asyn
 
 test('Word policy import keeps the original and never inherits an effective legal status', async () => {
   const {execFileSync}=await import('node:child_process')
-  const word=execFileSync('uv',['run','--directory','../backend','--locked','python','-c',
-    'import io,sys,zipfile; b=io.BytesIO(); z=zipfile.ZipFile(b,"w"); z.writestr("word/document.xml",\'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Synthetic policy: verify the source and authorization.</w:t></w:r></w:p></w:body></w:document>\'); z.close(); sys.stdout.buffer.write(b.getvalue())'])
+  const word=execFileSync(process.execPath,['--experimental-transform-types','../backend/src/e2e-assets.ts','--word'])
   const response=await actors.admin.post('/api/research/policy-file?title=E2E%E5%90%88%E6%88%90%E6%94%BF%E7%AD%96',{data:word,headers:{'Content-Type':'application/octet-stream'}})
   expect(response.ok(),await response.text()).toBe(true)
   const draft=await response.json()

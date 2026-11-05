@@ -1,13 +1,15 @@
 # 服务器与 CI/CD
 
-`https://openwook.cloud` 由原生 Caddy 终止 TLS、直接提供预构建的 Web 管理页面，并将 `/api/*` 转发到 systemd 管理的原生 FastAPI（`127.0.0.1:8000`）。只有 PostgreSQL 保留 Docker，数据库端口仅绑定 `127.0.0.1:5432`。主域名和 `www` 只提供 Web 管理后台与同源 API，避免旧站点的永久重定向缓存形成循环；普通用户页面内置于 React + Tauri 2 Android APK，Web `/app` 返回 410、`/_android/` 返回 404。IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
+本文描述本分支的目标部署，尚未切换线上 Python 服务。首次跨运行时迁移须按 [TypeScript / Pi 迁移与回退](typescript-pi-migration.md) 手工执行；自动部署保持关闭。
+
+`https://openwook.cloud` 由原生 Caddy 终止 TLS、直接提供预构建的 Web 管理页面，并将 `/api/*` 转发到 systemd 管理的原生 Node.js / TypeScript API（`127.0.0.1:8000`）。只有 PostgreSQL 保留 Docker，数据库端口仅绑定 `127.0.0.1:5432`。主域名和 `www` 只提供 Web 管理后台与同源 API，避免旧站点的永久重定向缓存形成循环；普通用户页面内置于 React + Tauri 2 Android APK，Web `/app` 返回 410、`/_android/` 返回 404。IP 地址不直接提供应用。API 和 PostgreSQL 不发布到公网端口；仅 SSH、HTTP 和 HTTPS 需要入站访问。
 
 ## 账号登录
 
 服务支持预配置账号，不提供公开注册或成员管理。训练资料、医生角色、场景和量表共享；代表之间的演练与拜访记录按账号隔离，管理员可按授权查看和审核代表记录。公网配置必须设置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME`、`ADMIN_PASSWORD_HASH`；多账号则通过 `LOGIN_USERS_JSON` 指定“账号 → scrypt 哈希”对象，覆盖单账号配置，并用 `ADMIN_USERS_JSON` 明确管理员账号，其余账号为普通代表。允许来源为 `https://openwook.cloud,https://www.openwook.cloud`。使用下列命令交互生成 scrypt 哈希，原始密码不写入服务配置：
 
 ```sh
-uv run --directory backend python -m medvisit.api.auth
+npm --prefix backend run password
 ```
 
 会话使用随机令牌，服务端仅保存令牌摘要；Cookie 为 HttpOnly、SameSite=Strict，HTTPS 下附加 Secure。会话最长 8 小时，退出即撤销当前令牌；重启或部署会清除全部会话，需重新登录。全站登录限为每分钟 10 次，密码校验串行执行。每个账号同时运行 1 场演练，全站上限由 `VOICE_MAX_SESSIONS` 控制、默认 10 场，HTTP 与各账号会话可以并发使用。写入仍检查 Origin，API 和 WebSocket 都检查登录，存活和就绪探针保持匿名但不返回业务数据。
@@ -21,16 +23,16 @@ Web 本机开发未配置登录时可沿用免登录方式；Android 用户端�
 `.github/workflows/ci.yml` 同时用于 Pull Request 和推送检查，分为五个任务：
 
 - `frontend`：安装 npm 锁定依赖，运行前端测试与 lint，分别构建 Web 管理后台和 Android 用户资源。Vite 检查实际分块的模块图，拒绝两类入口或动态页面互相混入；管理页面上传为 `EviSpeak-admin-dist-<commit>`，供同一次工作流的集成检查和发布下载。
-- `backend`：运行完整 Python 测试与真实 PostgreSQL 回归，并要求测试报告中没有跳过项。
+- `backend`：编译 TypeScript 服务端并运行当前 TypeScript 测试与真实 PostgreSQL 回归，CI 必须配置测试数据库。
 - `android`：在固定的 Ubuntu 24.04 环境中使用 Node 24、JDK 25、Rust 1.98.1、SDK 37.0、Build-Tools 36.0.0 与 NDK 28.2.13676358，按 `Cargo.lock` 编译真正的 ARM64 debug APK。检查包内原生库、用户资源和签名文件边界后，上传 `EviSpeak-android-arm64-debug-<commit>` 工件，保留 14 天；不上传私钥或发布 keystore。
-- `deployment`：等待以上三个任务全部成功，使用独立 PostgreSQL 容器、真实原生 Uvicorn 与经 SHA-256 校验的 Caddy 2.11.7，检查路由、缓存、上传边界、API 进程重启持久化和数据库断连恢复，再验证管理员和两个普通代表的 Cookie 登录、角色限制、记录隔离与退出后的旧 Cookie 撤销。测试结束清理子进程、临时数据和凭据，不构建或启动 API/Web 容器。
+- `deployment`：等待以上三个任务全部成功，使用独立 PostgreSQL 容器、真实原生 Node.js 与经 SHA-256 校验的 Caddy 2.11.7，检查路由、缓存、上传边界、API 进程重启持久化和数据库断连恢复，再验证管理员和两个普通代表的 Cookie 登录、角色限制、记录隔离与退出后的旧 Cookie 撤销。测试结束清理子进程、临时数据和凭据，不构建或启动 API/Web 容器。
 - `production`：当前禁用。保留的发布流程原先等待前面四个任务全部成功，仅在推送 `main` 时进入串行部署队列；读取 GitHub 当前 `main` 的 SHA，只有仍为最新提交时才执行 SSH 部署，过时提交跳过部署。
 
 认证 smoke 只在显式标记的可丢弃本机栈运行。三个临时账号使用随机密码，凭据和哈希只写入私有临时文件，检查后删除，不使用生产账号或调用模型服务。PostgreSQL 服务容器由 GitHub Actions 在任务结束时清除。`deploy/check-native.py` 启动原生进程并复用 `deploy/check-stack.py`，要求旧 Web 用户入口为 410、Android 资源路径为 404；`deploy/check-auth.py` 验证实际 HTTP 与登录 Cookie，而非只检查配置开关。
 
 不同 `main` 提交的检查可并行运行，不会被正在执行的生产部署阻塞；Pull Request 和其他分支仍按分支取消旧检查。只有 `production` 使用固定并发组串行执行，且不自动取消正在运行的部署，主机文件锁继续避免同时更新。Pull Request 不部署；Android 编译或身份隔离检查失败也会阻止部署。
 
-GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器不安装 npm、不构建前端，也不构建 API/Web 镜像；仅使用已有系统 Python 3.12+ 和 `/usr/local/bin/uv` 按 `backend/uv.lock` 安装 Python 依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。当前 wheel 下载基址为 `https://mirrors.cloud.tencent.com/pypi`，pip 索引为 `https://mirrors.cloud.tencent.com/pypi/simple`，符合[腾讯云官方镜像说明](https://cloud.tencent.com/document/product/213/8623)。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置；服务器不安装 npm。服务器无需 GitHub 令牌。
+GitHub 只下载本次工作流、同一提交的已验证管理页面工件，通过固定主机密钥的 SSH 发送三个普通文件：`REVISION`、`source.tar`（gzip 压缩的 backend、deploy 与许可证）和 `web.tar.gz`（预构建管理页面）。受限接收端校验 40 位提交 SHA、文件集合与大小上限，拒绝路径穿越、链接、重复路径及环境文件，再展开到独立 release。服务器需要 Node.js 24 / npm，只按 `backend/package-lock.json` 安装运行依赖，运行 CI 编译好的 `backend/dist`；不构建前端，也不构建 API/Web 镜像。Python 3.12+ 和 `/usr/local/bin/uv` 仅按 `backend/uv.lock` 安装文档解析依赖。下载可沿用 root 所有 `compose.env` 中的 `PYPI_DOWNLOAD_BASE`：仅暂时替换锁文件的 wheel 下载地址，保留所有版本与哈希，安装结束或失败时还原原锁文件；不全局升级 uv。当前 wheel 下载基址为 `https://mirrors.cloud.tencent.com/pypi`，pip 索引为 `https://mirrors.cloud.tencent.com/pypi/simple`，符合[腾讯云官方镜像说明](https://cloud.tencent.com/document/product/213/8623)。主机已有腾讯云 APT 源（`http://mirrors.tencentyun.com/ubuntu`）和 Docker registry 缓存（`https://mirror.ccs.tencentyun.com`）继续沿用，不重启 Docker、不更改全局 uv 配置。服务器无需 GitHub 令牌。
 
 GitHub 仓库配置：
 

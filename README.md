@@ -67,4 +67,4 @@ AI 反馈用于练习参考，医学内容需要专业复核。资料可追溯�
 - [技术架构](docs/architecture.md)：Android、Web 与服务端的协作
 - [服务器部署](docs/server-deployment.md) · [部署运维](docs/operations.md)
 
-原创代码与文档采用 [MIT License](LICENSE)。第三方组件、字体、图片和医学资料保留各自许可与权利；组件许可见[前端许可文件](frontend/public/licenses/)及 [Humanizer 许可证](backend/medvisit/agents/skills/humanizer/LICENSE)。
+原创代码与文档采用 [MIT License](LICENSE)。第三方组件、字体、图片和医学资料保留各自许可与权利；组件许可见[前端许可文件](frontend/public/licenses/)及 [Humanizer 许可证](backend/resources/skills/humanizer/LICENSE)。

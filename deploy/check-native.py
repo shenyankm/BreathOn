@@ -1,4 +1,4 @@
-"""Exercise native Uvicorn/Caddy against an explicitly disposable PostgreSQL container."""
+"""Exercise native Node/Caddy against an explicitly disposable PostgreSQL container."""
 from contextlib import contextmanager
 from dataclasses import dataclass
 from http.client import HTTPException
@@ -123,20 +123,22 @@ def stopped_database(container):
 
 
 def serve_api():
-    import uvicorn
-    from medvisit.api.app import create_app
-    from medvisit.core.config import Settings
     config = json.loads(Path(os.environ['NATIVE_API_CONFIG']).read_text())
-    settings = Settings(auth_required=config['authenticated'], login_users=config['hashes'],
-        admin_users=['ci-auth-admin'], origins=(config['origin'],), records=Path(config['records']),
-        database_url=config['database'], api_key='', asr_api_key='', deepseek_api_key='', tts_api_key='',
-        deepseek_search_enabled=False)
-    uvicorn.run(create_app(settings), host='127.0.0.1', port=config['port'], access_log=False, log_level='warning',
-                ws_max_size=4096, ws_max_queue=16, timeout_graceful_shutdown=10)
+    env = {**os.environ, 'AUTH_REQUIRED':str(config['authenticated']).lower(),
+        'LOGIN_USERS_JSON':json.dumps(config['hashes']), 'ADMIN_USERS_JSON':'["ci-auth-admin"]',
+        'ALLOWED_ORIGINS':config['origin'], 'RECORDS_DIR':config['records'],
+        'DATABASE_URL':config['database'], 'DOUBAO_API_KEY':'', 'SEEDASR_API_KEY':'',
+        'DEEPSEEK_API_KEY':'', 'DOUBAO_TTS_API_KEY':'', 'DEEPSEEK_SEARCH_ENABLED':'false',
+        'HOST':'127.0.0.1', 'PORT':str(config['port'])}
+    os.execvpe('node', ['node', str(ROOT/'backend/dist/main.js')], env)
 
 
 def check_native(config):
-    from medvisit.api.auth import hash_password
+    import hashlib
+    def hash_password(password):
+        salt = secrets.token_bytes(16)
+        digest = hashlib.scrypt(password.encode(), salt=salt, n=131072, r=8, p=1, dklen=32, maxmem=256*1024*1024)
+        return f'scrypt:{salt.hex()}:{digest.hex()}'
     api_port, web_port = free_port(), free_port()
     while web_port == api_port:
         web_port = free_port()

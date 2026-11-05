@@ -4,10 +4,10 @@
 
 ## 入口与维护
 
-- 结构化清单：`backend/medvisit/knowledge/mazdutide_demo.json`。
-- Wiki 入口：`backend/medvisit/knowledge/snapshot/wiki/demo.md`。
+- 结构化清单：`backend/resources/mazdutide-demo.json`。
+- Wiki 入口：`backend/resources/medical/wiki/demo.md`。
 - 原件：`backend/data/sessions/medical-wiki/raw/sources/<来源>/<SHA-256>`；Git 中保留阅读副本和原件清单，运行目录保留原件与历史版本。
-- 增量补齐：`backend/.venv/bin/python backend/tools/ingest_demo.py --root backend/data/sessions/medical-wiki`。失败保留旧版；正文身份校验失败不入库；`--refresh` 重新获取原件。
+- 增量补齐：`npm --prefix backend run medical:ingest -- --manifest demo`。失败保留旧版；正文身份校验失败不入库；`--refresh` 重新获取原件。
 
 ## 覆盖范围
 

@@ -8,8 +8,8 @@
 | --- | --- |
 | `frontend/src/` | React 用户界面与 Web 管理后台；优先复用现有 shadcn/ui 组件 |
 | `frontend/src-tauri/` | Tauri 2 Android 客户端、原生权限和打包配置 |
-| `backend/medvisit/` | FastAPI、语音、训练、资料与存储服务 |
-| `frontend/tests/`、`backend/tests/` | 前后端回归测试 |
+| `backend/src/` | TypeScript / Fastify / Pi、语音、训练、资料与存储服务 |
+| `frontend/tests/`、`backend/tests-ts/` | 前后端回归测试 |
 | `deploy/`、`docs/` | 部署配置与使用、运维文档 |
 
 用户端只通过 Android APK 提供，Web 只提供管理后台，后端在服务器运行。不要恢复 Web 用户端入口，或把服务密钥放进前端和 APK。
@@ -20,11 +20,13 @@
 
 ## 本地开发
 
-需要 Node.js 22.12+、Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)。在仓库根目录执行：
+需要 Node.js 24、Python 3.12+（仅文档解析）、ffmpeg / ffprobe、antiword 和 [uv](https://docs.astral.sh/uv/)。在仓库根目录执行：
 
 ```sh
 npm --prefix frontend ci
+npm --prefix backend ci
 uv sync --directory backend --locked
+npm --prefix backend run build
 cp -n backend/.env.example backend/.env
 ```
 
@@ -38,7 +40,7 @@ cp -n backend/.env.example backend/.env
 
 密钥仅由后端读取，不使用 `VITE_` 前缀，不提交 `.env`。未配置服务密钥时仍可浏览后台，语音演练需相应服务权限；修改密钥后重启后端。
 
-Web 本机开发可免登录，Android 始终要求启用账号登录。使用 `uv run --directory backend python -m medvisit.api.auth` 交互生成密码哈希，配置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`；多账号使用 `LOGIN_USERS_JSON` 与 `ADMIN_USERS_JSON`。完整认证规则见[账号登录](docs/server-deployment.md#账号登录)。
+Web 本机开发可免登录，Android 始终要求启用账号登录。使用 `npm --prefix backend run password` 交互生成密码哈希，配置 `AUTH_REQUIRED=true`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`；多账号使用 `LOGIN_USERS_JSON` 与 `ADMIN_USERS_JSON`。完整认证规则见[账号登录](docs/server-deployment.md#账号登录)。
 
 分别启动后端和 Web 管理后台：
 

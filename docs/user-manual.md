@@ -1,6 +1,6 @@
 # 循言 EviSpeak 使用手册
 
-适用架构：React + Tauri 2 Android 用户端；服务器通过原生 Caddy 提供 Web 管理端，FastAPI 由 systemd 原生运行，只有 PostgreSQL 使用 Docker。
+适用架构：React + Tauri 2 Android 用户端；服务器通过原生 Caddy 提供 Web 管理端，TypeScript / Fastify API 由 systemd 原生运行，只有 PostgreSQL 使用 Docker。
 
 Android App 面向医药代表，用于模拟拜访、查看练习复盘和设置默认练习方式；管理员通过服务器 `/admin` 准备训练内容和审核资料。下文的内容管理与服务设置操作仅适用于 Web 管理端。
 

@@ -8,7 +8,7 @@ service=medvisit-coach.service
 exec 9>"$root/deploy.lock"
 flock -w 900 9
 previous=$(readlink -f "$root/current")
-[[ "$previous" == "$root/releases/"* && -x "$previous/backend/.venv/bin/python" ]]
+[[ "$previous" == "$root/releases/"* && -f "$previous/backend/dist/main.js" ]]
 systemctl is-active --quiet "$service"
 stage=$(mktemp -d "$root/.native-incoming.XXXXXX")
 release=
@@ -110,13 +110,15 @@ for filename, destination, allowed, maximum in (
             archive.extract(member, destination, filter="data")
     for path in destination.rglob("*"):
         path.chmod(0o755 if path.is_dir() else 0o644)
-required = ("backend/pyproject.toml", "backend/uv.lock", "backend/medvisit/main.py", "deploy/native-backup.py", "deploy/Caddyfile.native", "frontend/dist/index.html")
+required = ("backend/package.json", "backend/package-lock.json", "backend/dist/main.js", "backend/pyproject.toml", "backend/uv.lock", "deploy/native-backup.py", "deploy/Caddyfile.native", "frontend/dist/index.html")
 if any(not (release/name).is_file() for name in required) or not any((release/"frontend/dist/assets").glob("*.js")):
     raise SystemExit("Incomplete native release")
 ' "$stage" "$release"
 printf '%s\n' "$revision" > "$release/REVISION"
-# The host runtime is administrator-installed; CD never downloads Python or builds Web UI.
+# The host Node runtime is administrator-installed; CI supplies compiled API and Web assets.
 python3 -c 'import sys; assert sys.version_info >= (3,12)'
+node -e 'if(Number(process.versions.node.split(".")[0])<24)process.exit(1)'
+run 900 npm --prefix "$release/backend" ci --omit=dev --ignore-scripts
 [[ -f /etc/medvisit-coach/database.compose.yaml && -f /etc/medvisit-coach/compose.env ]]
 cp "$release/backend/uv.lock" "$stage/uv.lock.original"
 lock_saved=true

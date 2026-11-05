@@ -1,0 +1,2277 @@
+{
+  "lesson": [
+    {
+      "id": "l4-03",
+      "title": "模拟拜访：推进下一步",
+      "summary": "练习让医生愿意继续看资料、交换问题或安排复访。",
+      "tagline": "内分泌科 IP · 合规训练",
+      "status": "draft",
+      "owner": "教练组",
+      "sections": [
+        [
+          "训练目标",
+          "练习让医生愿意继续看资料、交换问题或安排复访。"
+        ],
+        [
+          "建议动作",
+          "先阅读资料，再进入对应医生 IP 的模拟对话。"
+        ],
+        [
+          "完成标准",
+          "能够准确说出证据来源，并知道哪些结论不能说满。"
+        ]
+      ],
+      "action": {
+        "kind": "practice",
+        "scenario": "next",
+        "ip_id": "ip-endocrine"
+      },
+      "level": "L4",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311673+00:00",
+      "updated_at": "2026-11-05T13:50:20.311674+00:00"
+    },
+    {
+      "id": "l4-02",
+      "title": "模拟拜访：质疑证据",
+      "summary": "练习回应样本量、对照组、终点、观察周期和证据边界。",
+      "tagline": "血液科 IP · 证据边界",
+      "status": "draft",
+      "owner": "教练组",
+      "sections": [
+        [
+          "训练目标",
+          "练习回应样本量、对照组、终点、观察周期和证据边界。"
+        ],
+        [
+          "建议动作",
+          "先阅读资料，再进入对应医生 IP 的模拟对话。"
+        ],
+        [
+          "完成标准",
+          "能够准确说出证据来源，并知道哪些结论不能说满。"
+        ]
+      ],
+      "action": {
+        "kind": "practice",
+        "scenario": "evidence",
+        "ip_id": "ip-blood"
+      },
+      "level": "L4",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311666+00:00",
+      "updated_at": "2026-11-05T13:50:20.311667+00:00"
+    },
+    {
+      "id": "l4-01",
+      "title": "模拟拜访：首次拜访",
+      "summary": "练习开场、需求探索和疾病线匹配，避免一上来只讲产品。",
+      "tagline": "乳腺外科 IP · 8 分钟",
+      "status": "published",
+      "owner": "教练组",
+      "sections": [
+        [
+          "训练目标",
+          "练习开场、需求探索和疾病线匹配，避免一上来只讲产品。"
+        ],
+        [
+          "建议动作",
+          "先阅读资料，再进入对应医生 IP 的模拟对话。"
+        ],
+        [
+          "完成标准",
+          "能够准确说出证据来源，并知道哪些结论不能说满。"
+        ]
+      ],
+      "action": {
+        "kind": "practice",
+        "scenario": "first",
+        "ip_id": "ip-breast"
+      },
+      "level": "L4",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311658+00:00",
+      "updated_at": "2026-11-05T13:50:20.311659+00:00"
+    },
+    {
+      "id": "l3-01",
+      "title": "医生 IP：七类沟通偏好",
+      "summary": "血液科、乳腺外科、内分泌科、全科、心血管内科、肿瘤科、儿科的沟通入口。",
+      "tagline": "血液科、乳腺外科、内分泌科、全科、心血管内科、肿瘤科、儿科",
+      "status": "published",
+      "owner": "教练组",
+      "sections": [
+        [
+          "训练目标",
+          "血液科、乳腺外科、内分泌科、全科、心血管内科、肿瘤科、儿科的沟通入口。"
+        ],
+        [
+          "建议动作",
+          "先阅读资料，再进入对应医生 IP 的模拟对话。"
+        ],
+        [
+          "完成标准",
+          "能够准确说出证据来源，并知道哪些结论不能说满。"
+        ]
+      ],
+      "action": {
+        "kind": "doctor_ips"
+      },
+      "level": "L3",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311649+00:00",
+      "updated_at": "2026-11-05T13:50:20.311650+00:00"
+    },
+    {
+      "id": "l2-02",
+      "title": "代谢管理与长期依从性",
+      "summary": "围绕患者依从性、指标趋势和长期管理建立沟通。",
+      "tagline": "指标趋势、患者管理和随访",
+      "status": "draft",
+      "owner": "综合管线组",
+      "sections": [
+        [
+          "临床场景",
+          "围绕患者依从性、指标趋势、随访周期和生活方式管理展开。"
+        ],
+        [
+          "数据边界",
+          "项链数据属于探索性辅助信息，要记录检测条件，避免过度解读。"
+        ],
+        [
+          "下一步",
+          "用内分泌科案例分享型 IP 练习一次患者管理表达。"
+        ]
+      ],
+      "level": "L2",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311641+00:00",
+      "updated_at": "2026-11-05T13:50:20.311642+00:00"
+    },
+    {
+      "id": "l2-01",
+      "title": "肿瘤疾病线与临床场景",
+      "summary": "肺癌、胃肠癌、乳腺癌、血液瘤的疾病线入口和医生敏感点。",
+      "tagline": "肺癌、乳腺癌、血液瘤",
+      "status": "published",
+      "owner": "肿瘤线",
+      "sections": [
+        [
+          "疾病线入口",
+          "肺癌、胃肠癌、乳腺癌和血液瘤；先按科室和患者问题选择资料。"
+        ],
+        [
+          "医生匹配",
+          "乳腺外科更关注疗效终点和证据等级；血液科更关注研究设计和终点。"
+        ],
+        [
+          "下一步",
+          "选择一个医生 IP，生成一段不超过 30 秒的开场。"
+        ]
+      ],
+      "level": "L2",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311632+00:00",
+      "updated_at": "2026-11-05T13:50:20.311633+00:00"
+    },
+    {
+      "id": "l1-02",
+      "title": "证据分级与合规表达",
+      "summary": "正式研究、公司披露、真实世界反馈、项链探索性数据分别怎么说。",
+      "tagline": "项链数据 = 探索性辅助证据",
+      "status": "published",
+      "owner": "医学 + 合规",
+      "sections": [
+        [
+          "证据分层",
+          "正式研究 / 说明书 → 公司披露 → 真实世界反馈 → 项链探索性呼气数据。"
+        ],
+        [
+          "关键边界",
+          "丙酮数据只能描述代谢趋势、检测条件和局限，不能直接推导药品疗效。"
+        ],
+        [
+          "下一步",
+          "面对医生质疑时，主动说清来源、样本量、观察周期和不能支持的结论。"
+        ]
+      ],
+      "level": "L1",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311618+00:00",
+      "updated_at": "2026-11-05T13:50:20.311620+00:00"
+    },
+    {
+      "id": "l1-01",
+      "title": "2026 H1 公司与产品底盘",
+      "summary": "总收入、产品组合、医保覆盖、管线方向和正式资料边界。",
+      "tagline": "20 个产品组合 · 13 个医保覆盖",
+      "status": "draft",
+      "owner": "医学内容组",
+      "sections": [
+        [
+          "公司与产品底盘",
+          "总收入 86 亿元；产品收入 82 亿元；20 个产品组合；13 个产品纳入医保。"
+        ],
+        [
+          "可以怎么说",
+          "用于说明公司规模、产品组合和疾病线布局，不直接证明某个单品的个体疗效。"
+        ],
+        [
+          "下一步",
+          "完成 3 分钟小测：把公司背景、产品信息和正式研究区分开。"
+        ]
+      ],
+      "unverified_figures": true,
+      "level": "L1",
+      "created_by": "local",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311580+00:00",
+      "updated_at": "2026-11-05T13:50:20.311588+00:00"
+    }
+  ],
+  "audience": [],
+  "content": [],
+  "policy": [
+    {
+      "title": "苏州市进一步加快建设“人工智能+”城市的若干措施（2026年版）",
+      "version_label": "待核验",
+      "scope": "符合规定条件的苏州市人工智能相关主体及项目。",
+      "source_url": "https://www.suzhou.gov.cn/szsrmzf/zfwj/202512/81ccb2edeec5426990646da3f59dfc4b.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "苏州市人民政府 · 苏府规字〔2025〕18号",
+      "document_number": "",
+      "level": "市级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-e42bfa38cb3ca6571719d787",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-e42bfa38cb3ca6571719d787",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314409+00:00",
+      "updated_at": "2026-11-05T13:50:20.314410+00:00",
+      "usable": false
+    },
+    {
+      "title": "苏州市加快建设“人工智能+”城市行动方案（2025—2026年）",
+      "version_label": "待核验",
+      "scope": "苏州市人工智能产业发展及健康医疗、教育等应用方向。",
+      "source_url": "https://www.suzhou.gov.cn/szsrmzf/zfbgswj/202509/95a8e52a6db5414db93a1fbc2d559e39.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "苏州市人民政府办公室 · 苏府办〔2025〕102号",
+      "document_number": "",
+      "level": "市级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-17942d4b8bf6f82c1ac622e0",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-17942d4b8bf6f82c1ac622e0",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314390+00:00",
+      "updated_at": "2026-11-05T13:50:20.314390+00:00",
+      "usable": false
+    },
+    {
+      "title": "互联网诊疗监管细则（试行）",
+      "version_label": "待核验",
+      "scope": "医疗机构开展互联网诊疗及其监管。",
+      "source_url": "https://www.nhc.gov.cn/yzygj/c100068/202203/2072f0e8988249e59d942e1b2a933916.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家卫生健康委办公厅、国家中医药局办公室 · 国卫办医发〔2022〕2号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-1d2d26ba3354ca41a8925e8a",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-1d2d26ba3354ca41a8925e8a",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314369+00:00",
+      "updated_at": "2026-11-05T13:50:20.314370+00:00",
+      "usable": false
+    },
+    {
+      "title": "人工智能生成合成内容标识办法",
+      "version_label": "待核验",
+      "scope": "在境内提供人工智能生成合成内容相关服务，且符合办法第二条规定情形的网络信息服务提供者。",
+      "source_url": "https://www.cac.gov.cn/2025-03/14/c_1743654684782215.htm",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家互联网信息办公室等四部门 · 国家互联网信息办公室令第20号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-1df4715b84b9d95a3a1b74c8",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-1df4715b84b9d95a3a1b74c8",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314349+00:00",
+      "updated_at": "2026-11-05T13:50:20.314350+00:00",
+      "usable": false
+    },
+    {
+      "title": "生成式人工智能服务管理暂行办法",
+      "version_label": "待核验",
+      "scope": "利用生成式人工智能技术向中华人民共和国境内公众提供生成文本、图片、音频、视频等内容的服务。",
+      "source_url": "https://www.cac.gov.cn/2023-07/13/c_1690898327029107.htm",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家互联网信息办公室等七部门 · 国家互联网信息办公室令第15号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-4d0c17a97aa7b94407b70c06",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-4d0c17a97aa7b94407b70c06",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314329+00:00",
+      "updated_at": "2026-11-05T13:50:20.314330+00:00",
+      "usable": false
+    },
+    {
+      "title": "中华人民共和国个人信息保护法",
+      "version_label": "待核验",
+      "scope": "在中华人民共和国境内处理自然人个人信息等法定情形。",
+      "source_url": "https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "全国人民代表大会常务委员会 · 主席令第91号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-ec116706ee1c8f173daaf9f8",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-ec116706ee1c8f173daaf9f8",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314309+00:00",
+      "updated_at": "2026-11-05T13:50:20.314310+00:00",
+      "usable": false
+    },
+    {
+      "title": "中华人民共和国药品管理法实施条例",
+      "version_label": "待核验",
+      "scope": "中华人民共和国境内药品研制、生产、经营、使用及监督管理。",
+      "source_url": "https://www.nmpa.gov.cn/xxgk/fgwj/flxzhfg/20260127172639127.html",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国务院 · 国务院令第828号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-4c6e315d505bc0cd90a28ce9",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-4c6e315d505bc0cd90a28ce9",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314288+00:00",
+      "updated_at": "2026-11-05T13:50:20.314289+00:00",
+      "usable": false
+    },
+    {
+      "title": "关于加强药品追溯码在医疗保障和工伤保险领域采集应用的通知",
+      "version_label": "待核验",
+      "scope": "医疗保障和工伤保险领域药品追溯码采集与应用。",
+      "source_url": "https://ybj.suzhou.gov.cn/szybj/zcfgjj/202504/c4cd006fb0e542849fafe3daab2ad86d.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家医保局、人力资源社会保障部、国家卫生健康委、国家药监局 · 苏州市医保局转载",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-aebe193d9d9866da8bfc0365",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-aebe193d9d9866da8bfc0365",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314266+00:00",
+      "updated_at": "2026-11-05T13:50:20.314267+00:00",
+      "usable": false
+    },
+    {
+      "title": "2025年版国家医保药品目录在苏州落地",
+      "version_label": "待核验",
+      "scope": "苏州医保药品目录实施情况介绍；非独立规范性文件。",
+      "source_url": "https://www.suzhou.gov.cn/szsrmzf/bmdt/202601/30cf1d3bd29e4a728ec909dd1588383a.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "苏州市人民政府网站 · 部门工作信息",
+      "document_number": "",
+      "level": "市级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-a53427d6706058eaacfe52a7",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-a53427d6706058eaacfe52a7",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314246+00:00",
+      "updated_at": "2026-11-05T13:50:20.314247+00:00",
+      "usable": false
+    },
+    {
+      "title": "苏州市“双通道”管理及单独支付药品待遇备案指南",
+      "version_label": "待核验",
+      "scope": "苏州基本医疗保险参保人员及相关定点医药机构的待遇备案。",
+      "source_url": "https://ybj.suzhou.gov.cn/szybj/zgylbxdy/202601/adf3d4fc853949aa980195b29663a498.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "苏州市医疗保障局 · 办事指南",
+      "document_number": "",
+      "level": "市级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-0b56453e4759b027b6fcc35a",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-0b56453e4759b027b6fcc35a",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314226+00:00",
+      "updated_at": "2026-11-05T13:50:20.314227+00:00",
+      "usable": false
+    },
+    {
+      "title": "苏州高新区人民医院规范医疗机构工作人员接待医药代表管理制度",
+      "version_label": "待核验",
+      "scope": "该院接待医药代表的院内制度，并非苏州市统一规定。",
+      "source_url": "https://www.snd-yy.com/publicAnnouncement/detail/ff80808191e1d05e0191e4f996a30051",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "苏州高新区人民医院 · 院务公开",
+      "document_number": "",
+      "level": "机构制度",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-bea551dca5acef573194fe3d",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-bea551dca5acef573194fe3d",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314205+00:00",
+      "updated_at": "2026-11-05T13:50:20.314206+00:00",
+      "usable": false
+    },
+    {
+      "title": "江苏省医疗机构及其工作人员廉洁从业行动计划实施方案（2021—2024年）",
+      "version_label": "待核验",
+      "scope": "江苏省医疗机构及其工作人员；作为历史工作部署参考。",
+      "source_url": "https://wjw.jiangsu.gov.cn/art/2021/11/18/art_7316_10117915.html",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "江苏省卫生健康委、江苏省中医药管理局 · 苏卫行风〔2021〕3号",
+      "document_number": "",
+      "level": "省级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-aa551589894614e72f356617",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-aa551589894614e72f356617",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314184+00:00",
+      "updated_at": "2026-11-05T13:50:20.314185+00:00",
+      "usable": false
+    },
+    {
+      "title": "2026年纠正医药购销领域和医疗服务中不正之风工作要点",
+      "version_label": "待核验",
+      "scope": "全国医药购销领域和医疗服务相关部门及机构的年度治理工作。",
+      "source_url": "https://credit.suzhou.gov.cn/news/show/394309.html",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家卫生健康委等部门 · 国卫医急函〔2026〕123号；信用苏州转载",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-4a72458be73db5c91495f7d2",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-4a72458be73db5c91495f7d2",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314160+00:00",
+      "updated_at": "2026-11-05T13:50:20.314161+00:00",
+      "usable": false
+    },
+    {
+      "title": "医疗机构工作人员廉洁从业九项准则",
+      "version_label": "待核验",
+      "scope": "全国医疗机构内工作人员，包含接受医疗机构管理的其他社会从业人员。",
+      "source_url": "https://www.nhc.gov.cn/yzygj/c100067/202111/0c7f21b59d064cfaa49b35fe970cffdd.shtml",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家卫生健康委、国家医保局、国家中医药局 · 国卫医发〔2021〕37号",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-698e1844aec0e009d45a09b3",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-698e1844aec0e009d45a09b3",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314136+00:00",
+      "updated_at": "2026-11-05T13:50:20.314137+00:00",
+      "usable": false
+    },
+    {
+      "title": "医药企业防范商业贿赂风险合规指引",
+      "version_label": "待核验",
+      "scope": "医药企业及相关经营活动的商业贿赂风险合规管理。",
+      "source_url": "https://www.samr.gov.cn/zw/zfxxgk/fdzdgknr/jjjzs/art/2025/art_0cee28b1eba84820addc024b351b7bac.html",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家市场监督管理总局 · 2025年第3号公告",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-1e14927571f9b94e21084197",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-1e14927571f9b94e21084197",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314109+00:00",
+      "updated_at": "2026-11-05T13:50:20.314110+00:00",
+      "usable": false
+    },
+    {
+      "title": "医药代表管理办法",
+      "version_label": "待核验",
+      "scope": "全国境内药品学术推广相关的医药代表、药品上市许可持有人和医疗卫生机构。",
+      "source_url": "https://www.nmpa.gov.cn/directory/web/nmpa/xxgk/fgwj/xzhgfxwj/20260507180422166.html",
+      "publication_date": null,
+      "expires_at": null,
+      "asset_id": null,
+      "text_is_summary": true,
+      "issuer": "国家药监局等七部门 · 2026年第42号公告",
+      "document_number": "",
+      "level": "国家级",
+      "jurisdiction": "",
+      "effective_date": null,
+      "end_date": null,
+      "legal_status": "unknown",
+      "supersedes": "",
+      "status": "draft",
+      "created_by": "local",
+      "series_id": "seed-policy-0d8554844a7daeb1224b2c50",
+      "imported_from": "frontend catalogue 2026-10-28",
+      "id": "seed-policy-0d8554844a7daeb1224b2c50",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314080+00:00",
+      "updated_at": "2026-11-05T13:50:20.314081+00:00",
+      "usable": false
+    }
+  ],
+  "policy_rule": [],
+  "drug": [
+    {
+      "practice_departments": [
+        "血液科"
+      ],
+      "name": "盐酸奎扎替尼片",
+      "brand": "维复泰",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "FLT3 抑制剂。中国版说明书用于 FLT3-ITD 突变的新诊断急性髓系白血病成人患者，包含联合化疗及后续维持治疗的规定。",
+      "source_url": "https://www.daiichisankyo.com.cn/Portals/0/344_0_奎扎替尼说明书.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "FLT3",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-quizartinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314035+00:00",
+      "updated_at": "2026-11-05T13:50:20.314036+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科"
+      ],
+      "name": "阿贝西利片",
+      "brand": "唯择",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "CDK4/6 抑制剂。中国版说明书涉及特定 HR 阳性、HER2 阴性乳腺癌人群的联合内分泌治疗，包含辅助治疗及晚期治疗的不同条件。",
+      "source_url": "https://www.lillymedical.cn/file/raw/f4e09dab-5cac-445c-91f1-1222ec5bbb93/阿贝西利片说明书.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "CDK4/6",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-abemaciclib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314014+00:00",
+      "updated_at": "2026-11-05T13:50:20.314015+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科"
+      ],
+      "name": "伊匹木单抗N01注射液",
+      "brand": "达伯欣",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 CTLA-4 的单克隆抗体。与信迪利单抗联合的新辅助治疗涉及特定 MSI-H/dMMR 结肠癌人群，具体范围见说明书。",
+      "source_url": "https://img.innoventbio.com/product/Ipilimumab.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "CTLA-4",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-ipilimumab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313995+00:00",
+      "updated_at": "2026-11-05T13:50:20.313996+00:00"
+    },
+    {
+      "practice_departments": [
+        "皮肤科"
+      ],
+      "name": "匹康奇拜单抗注射液",
+      "brand": "信美悦",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 IL-23p19 的单克隆抗体，相关治疗涉及中重度斑块状银屑病成人患者。系统治疗条件与注意事项见说明书。",
+      "source_url": "https://img.innoventbio.com/product/PECONDLE.pdf",
+      "ownership": "unknown",
+      "category": "自身免疫",
+      "diseases": [],
+      "mechanism": "IL-23p19",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-picankibart",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313976+00:00",
+      "updated_at": "2026-11-05T13:50:20.313977+00:00"
+    },
+    {
+      "practice_departments": [
+        "内分泌科"
+      ],
+      "name": "玛仕度肽注射液",
+      "brand": "信尔美",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "同时激动 GCG 和 GLP-1 受体的药物。相关资料涵盖成人体重管理及血糖控制，具体适用条件应分别核对对应说明书。",
+      "source_url": "https://img.innoventbio.com/product/S5LGV8EM_SMS_24mg.pdf",
+      "ownership": "unknown",
+      "category": "新陈代谢",
+      "diseases": [],
+      "mechanism": "GCG/GLP-1",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-mazdutide",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313957+00:00",
+      "updated_at": "2026-11-05T13:50:20.313958+00:00"
+    },
+    {
+      "practice_departments": [
+        "眼科"
+      ],
+      "name": "替妥尤单抗N01注射液",
+      "brand": "信必敏",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 IGF-1R 的单克隆抗体，用于甲状腺眼病相关治疗。厂家当前入口提供图片版说明书。",
+      "source_url": "https://img.innoventbio.com/25.03/teprotumumabN01.jpg",
+      "ownership": "unknown",
+      "category": "眼科",
+      "diseases": [],
+      "mechanism": "IGF-1R",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-teprotumumab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313939+00:00",
+      "updated_at": "2026-11-05T13:50:20.313940+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科"
+      ],
+      "name": "利厄替尼片",
+      "brand": "奥壹新",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "口服 EGFR 酪氨酸激酶抑制剂，相关治疗涉及 EGFR 突变阳性非小细胞肺癌。须区分具体突变与治疗线次。",
+      "source_url": "https://img.innoventbio.com/25.02/Limertinib.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "EGFR",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-limertinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313920+00:00",
+      "updated_at": "2026-11-05T13:50:20.313921+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科"
+      ],
+      "name": "己二酸他雷替尼胶囊",
+      "brand": "达伯乐",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "口服 ROS1 抑制剂，相关治疗涉及 ROS1 阳性非小细胞肺癌。适用突变、既往治疗及患者条件见说明书。",
+      "source_url": "https://img.innoventbio.com/2024.12/dbl.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "ROS1",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-taletrectinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313900+00:00",
+      "updated_at": "2026-11-05T13:50:20.313901+00:00"
+    },
+    {
+      "practice_departments": [
+        "血液科",
+        "肿瘤科"
+      ],
+      "name": "匹妥布替尼片",
+      "brand": "捷帕力",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "非共价 BTK 抑制剂，相关治疗涉及 B 细胞恶性肿瘤。不同疾病的获批范围须按中国版说明书核对。",
+      "source_url": "https://img.innoventbio.com/product/pirtobrutinib.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "BTK",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-pirtobrutinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313881+00:00",
+      "updated_at": "2026-11-05T13:50:20.313882+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科"
+      ],
+      "name": "氟泽雷塞片",
+      "brand": "达伯特",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "口服 KRAS G12C 小分子抑制剂，针对相应突变发挥作用。检测要求、适用肿瘤及既往治疗条件见说明书。",
+      "source_url": "https://img.innoventbio.com/fzlsp.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "KRAS G12C",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-fulzerasib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313862+00:00",
+      "updated_at": "2026-11-05T13:50:20.313863+00:00"
+    },
+    {
+      "practice_departments": [
+        "心血管科",
+        "内分泌科"
+      ],
+      "name": "托莱西单抗注射液",
+      "brand": "信必乐",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 PCSK9 的单克隆抗体，通过影响 LDL 受体相关过程降低低密度脂蛋白胆固醇。适用人群和联合用药要求见说明书。",
+      "source_url": "https://img.innoventbio.com/tlx3.22.pdf",
+      "ownership": "unknown",
+      "category": "新陈代谢",
+      "diseases": [],
+      "mechanism": "PCSK9",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-tafolecimab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313842+00:00",
+      "updated_at": "2026-11-05T13:50:20.313843+00:00"
+    },
+    {
+      "practice_departments": [
+        "血液科"
+      ],
+      "name": "伊基奥仑赛注射液",
+      "brand": "福可苏",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 BCMA 的 CAR-T 细胞治疗产品，相关治疗涉及复发或难治性多发性骨髓瘤。此处提供官方患者手册，不能替代说明书。",
+      "source_url": "https://images.qingtv.com/%E6%82%A3%E8%80%85%E6%89%8B%E5%86%8C%E4%B8%AD%E6%96%87%E7%89%88.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "BCMA CAR-T",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-equecabtagene",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313823+00:00",
+      "updated_at": "2026-11-05T13:50:20.313824+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科"
+      ],
+      "name": "塞普替尼胶囊",
+      "brand": "睿妥",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "选择性 RET 酪氨酸激酶抑制剂。相关肿瘤治疗须区分 RET 融合或突变类型，并核对说明书规定的人群。",
+      "source_url": "https://img.innoventbio.com/rt.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "RET",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-selpercatinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313804+00:00",
+      "updated_at": "2026-11-05T13:50:20.313805+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科"
+      ],
+      "name": "雷莫西尤单抗注射液",
+      "brand": "希冉择",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 VEGFR-2 的单克隆抗体，可阻断相关血管生成信号。适用肿瘤和既往治疗条件见中国版说明书。",
+      "source_url": "https://img.innoventbio.com/xrz11.231.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "VEGFR-2",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-ramucirumab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313784+00:00",
+      "updated_at": "2026-11-05T13:50:20.313785+00:00"
+    },
+    {
+      "practice_departments": [
+        "血液科"
+      ],
+      "name": "奥雷巴替尼片",
+      "brand": "耐立克",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "口服 BCR-ABL 酪氨酸激酶抑制剂，相关治疗涉及慢性髓细胞白血病。耐药、突变及既往治疗要求见说明书。",
+      "source_url": "https://img.innoventbio.com/5c89f09e539a25191.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "BCR-ABL/KIT",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-olverembatinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313765+00:00",
+      "updated_at": "2026-11-05T13:50:20.313766+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科"
+      ],
+      "name": "佩米替尼片",
+      "brand": "达伯坦",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "小分子 FGFR1/2/3 抑制剂，通过抑制相关信号通路发挥作用。用药前的分子检测及适用人群见说明书。",
+      "source_url": "https://img.innoventbio.com/pmtn3.22.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "FGFR1/2/3",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-pemigatinib",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313745+00:00",
+      "updated_at": "2026-11-05T13:50:20.313746+00:00"
+    },
+    {
+      "practice_departments": [
+        "血液科",
+        "肿瘤科"
+      ],
+      "name": "利妥昔单抗注射液",
+      "brand": "达伯华",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 CD20 的利妥昔单抗生物类似药，相关治疗涉及 B 细胞疾病。具体适应症与联合方案见说明书。",
+      "source_url": "https://img.innoventbio.com/product/HALPRYZAInstructions.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "CD20",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-rituximab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313725+00:00",
+      "updated_at": "2026-11-05T13:50:20.313726+00:00"
+    },
+    {
+      "practice_departments": [
+        "风湿免疫科",
+        "皮肤科",
+        "消化内科"
+      ],
+      "name": "阿达木单抗注射液",
+      "brand": "苏立信",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "阿达木单抗生物类似药，靶向 TNF-α，用于相关自身免疫疾病的治疗。各疾病的适用条件见说明书。",
+      "source_url": "https://img.innoventbio.com/adm3.22.pdf",
+      "ownership": "unknown",
+      "category": "自身免疫",
+      "diseases": [],
+      "mechanism": "TNF-α",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-adalimumab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313703+00:00",
+      "updated_at": "2026-11-05T13:50:20.313704+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科"
+      ],
+      "name": "贝伐珠单抗注射液",
+      "brand": "达攸同",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "靶向 VEGF-A 的抗体类药品，为贝伐珠单抗生物类似药。通过影响血管生成相关信号发挥作用。",
+      "source_url": "https://img.innoventbio.com/7.4/new2.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "VEGF-A",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-bevacizumab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313676+00:00",
+      "updated_at": "2026-11-05T13:50:20.313677+00:00"
+    },
+    {
+      "practice_departments": [
+        "肿瘤科",
+        "呼吸科",
+        "血液科"
+      ],
+      "name": "信迪利单抗注射液",
+      "brand": "达伯舒",
+      "aliases": [],
+      "company": "",
+      "manufacturer": "",
+      "overview": "以 PD-1 为靶点的单克隆抗体，属于肿瘤免疫治疗药物。具体适用肿瘤、联合治疗方案及人群见说明书。",
+      "source_url": "https://img.innoventbio.com/PackageInsert/sintilimab.pdf",
+      "ownership": "unknown",
+      "category": "肿瘤",
+      "diseases": [],
+      "mechanism": "PD-1",
+      "dosage_form": "",
+      "regions": [],
+      "indications": [],
+      "content_ids": [],
+      "comparisons": [],
+      "status": "draft",
+      "created_by": "local",
+      "imported_from": "frontend catalogue 2026-10-29",
+      "id": "seed-drug-sintilimab",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313650+00:00",
+      "updated_at": "2026-11-05T13:50:20.313651+00:00"
+    }
+  ],
+  "doctor": [
+    {
+      "name": "儿科医生",
+      "specialty": "儿科",
+      "hospital": "",
+      "professional_title": "主治医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "儿童用药与依从性场景",
+      "focus": "用药剂量与儿童依从性",
+      "training_style": "故事引导型；用具体患儿场景讲清楚执行步骤，再补充证据和安全边界。",
+      "mood": "neutral",
+      "opening": "儿童用药的剂量、安全性和家属依从性怎么保障？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "pediatrics",
+        "dept": "儿科",
+        "style": "故事引导型",
+        "area": "综合慢病",
+        "role": "主治医师",
+        "tags": [
+          "儿童剂量",
+          "依从性",
+          "家属沟通"
+        ],
+        "entry": "用具体患儿场景讲清楚执行步骤，再补充证据和安全边界。",
+        "question": "儿童用药的剂量、安全性和家属依从性怎么保障？",
+        "match": "儿科相关产品 / 家庭用药资料",
+        "domain": "儿童用药与依从性场景",
+        "modules": [
+          [
+            "负责板块",
+            "儿童剂量、用药安全、家属沟通和儿童依从性。"
+          ],
+          [
+            "医生敏感问题",
+            "剂量如何理解？家属是否容易执行？安全性和依从性如何持续观察？"
+          ],
+          [
+            "推荐证据入口",
+            "儿科相关产品 / 家庭用药资料；优先准备剂量、用法和家属教育内容。"
+          ],
+          [
+            "训练话术入口",
+            "用具体患儿场景讲清楚执行步骤，再补充证据和安全边界。"
+          ]
+        ]
+      },
+      "display_name": "儿科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-pediatrics",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313257+00:00",
+      "updated_at": "2026-11-05T13:50:20.313258+00:00",
+      "practice_department": "儿科",
+      "any_drug": true
+    },
+    {
+      "name": "肿瘤科医生",
+      "specialty": "肿瘤科",
+      "hospital": "",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "肿瘤综合疾病线",
+      "focus": "临床疗效与生存质量",
+      "training_style": "数据对决型；把终点、患者获益和适用人群一一对应，不能用单一数据代表全部患者。",
+      "mood": "neutral",
+      "opening": "临床终点和患者获益之间，具体证据如何对应？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "oncology",
+        "dept": "肿瘤科",
+        "style": "数据对决型",
+        "area": "肿瘤",
+        "role": "主任医师",
+        "tags": [
+          "临床终点",
+          "生存获益",
+          "患者分层"
+        ],
+        "entry": "把终点、患者获益和适用人群一一对应，不能用单一数据代表全部患者。",
+        "question": "临床终点和患者获益之间，具体证据如何对应？",
+        "match": "肿瘤综合产品组合 / 正式研究",
+        "domain": "肿瘤综合疾病线",
+        "modules": [
+          [
+            "负责板块",
+            "临床疗效终点、生存获益、患者分层和生活质量。"
+          ],
+          [
+            "医生敏感问题",
+            "终点是否具有临床意义？不同患者分层的获益是否一致？"
+          ],
+          [
+            "推荐证据入口",
+            "肿瘤综合产品组合；优先准备正式研究、患者分层和获益风险平衡资料。"
+          ],
+          [
+            "训练话术入口",
+            "把终点、患者获益和适用人群一一对应，不能用单一数据代表全部患者。"
+          ]
+        ]
+      },
+      "display_name": "肿瘤科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-oncology",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313239+00:00",
+      "updated_at": "2026-11-05T13:50:20.313240+00:00",
+      "practice_department": "肿瘤科",
+      "any_drug": true
+    },
+    {
+      "name": "心血管内科医生",
+      "specialty": "心血管内科",
+      "hospital": "",
+      "professional_title": "副主任医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "心血管慢病管理场景",
+      "focus": "药物相互作用与长期管理",
+      "training_style": "机制探讨型；先讲机制与安全边界，再落到长期管理和患者可执行动作。",
+      "mood": "neutral",
+      "opening": "这个方案的作用机制、相互作用和长期管理怎么理解？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "cardio",
+        "dept": "心血管内科",
+        "style": "机制探讨型",
+        "area": "综合慢病",
+        "role": "副主任医师",
+        "tags": [
+          "机制理解",
+          "相互作用",
+          "长期管理"
+        ],
+        "entry": "先讲机制与安全边界，再落到长期管理和患者可执行动作。",
+        "question": "这个方案的作用机制、相互作用和长期管理怎么理解？",
+        "match": "心血管相关产品 / 长期管理资料",
+        "domain": "心血管慢病管理场景",
+        "modules": [
+          [
+            "负责板块",
+            "作用机制、药物相互作用、长期管理和用药安全。"
+          ],
+          [
+            "医生敏感问题",
+            "机制与现有方案如何衔接？相互作用和长期管理风险如何解释？"
+          ],
+          [
+            "推荐证据入口",
+            "心血管相关产品 / 长期管理资料；优先准备机制图、相互作用和随访证据。"
+          ],
+          [
+            "训练话术入口",
+            "先讲机制与安全边界，再落到长期管理和患者可执行动作。"
+          ]
+        ]
+      },
+      "display_name": "心血管内科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-cardio",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313221+00:00",
+      "updated_at": "2026-11-05T13:50:20.313222+00:00",
+      "practice_department": "心血管科",
+      "any_drug": true
+    },
+    {
+      "name": "全科门诊医生",
+      "specialty": "全科门诊",
+      "hospital": "",
+      "professional_title": "副主任医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "综合慢病与全科场景",
+      "focus": "药品性价比与患者负担",
+      "training_style": "务实疗效型；先讲结论和临床场景，再补充必要证据，避免长篇学术铺陈。",
+      "mood": "neutral",
+      "opening": "对患者的实际价值是什么？费用和负担怎么样？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "general",
+        "dept": "全科门诊",
+        "style": "务实疗效型",
+        "area": "综合慢病",
+        "role": "副主任医师",
+        "tags": [
+          "使用场景",
+          "费用",
+          "患者负担",
+          "价值"
+        ],
+        "entry": "先讲结论和临床场景，再补充必要证据，避免长篇学术铺陈。",
+        "question": "对患者的实际价值是什么？费用和负担怎么样？",
+        "match": "综合产品组合 / 患者管理工具",
+        "domain": "综合慢病与全科场景",
+        "modules": [
+          [
+            "负责板块",
+            "使用场景、患者负担、费用、依从性与可执行的随访动作。"
+          ],
+          [
+            "医生敏感问题",
+            "患者实际能得到什么价值？费用和操作负担如何？基层场景能不能用？"
+          ],
+          [
+            "推荐证据入口",
+            "肿瘤综合产品组合 / 患者管理资料；优先准备场景化、可执行的证据卡。"
+          ],
+          [
+            "训练话术入口",
+            "先讲患者和场景，再讲产品价值，最后给出清晰的下一步动作。"
+          ]
+        ]
+      },
+      "display_name": "全科门诊医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-general",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313202+00:00",
+      "updated_at": "2026-11-05T13:50:20.313203+00:00",
+      "practice_department": "全科门诊",
+      "any_drug": true
+    },
+    {
+      "name": "内分泌科医生",
+      "specialty": "内分泌科",
+      "hospital": "",
+      "professional_title": "主治医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "代谢管理疾病线",
+      "focus": "患者依从性与代谢指标",
+      "training_style": "案例分享型；先讲患者管理案例，再补充指标变化、观察周期和检测条件。",
+      "mood": "neutral",
+      "opening": "患者能不能坚持？指标变化和依从性如何观察？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "endocrine",
+        "dept": "内分泌科",
+        "style": "案例分享型",
+        "area": "代谢",
+        "role": "主治医师",
+        "tags": [
+          "患者依从性",
+          "指标趋势",
+          "案例分享"
+        ],
+        "entry": "先讲患者管理案例，再补充指标变化、观察周期和检测条件。",
+        "question": "患者能不能坚持？指标变化和依从性如何观察？",
+        "match": "丙酮呼气数据源 / 代谢管理",
+        "domain": "代谢管理疾病线",
+        "modules": [
+          [
+            "负责板块",
+            "患者依从性、代谢指标趋势、随访周期与长期管理场景。"
+          ],
+          [
+            "医生敏感问题",
+            "患者能否坚持？指标变化如何记录？项链数据的检测条件和局限是什么？"
+          ],
+          [
+            "推荐证据入口",
+            "丙酮呼气数据源 / 代谢管理；必须同步说明探索性性质与检测条件。"
+          ],
+          [
+            "训练话术入口",
+            "用患者管理案例切入，把指标趋势作为辅助观察，不把它直接说成药效证明。"
+          ]
+        ]
+      },
+      "display_name": "内分泌科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-endocrine",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313181+00:00",
+      "updated_at": "2026-11-05T13:50:20.313182+00:00",
+      "practice_department": "内分泌科",
+      "any_drug": true
+    },
+    {
+      "name": "乳腺外科医生",
+      "specialty": "乳腺外科",
+      "hospital": "",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "乳腺肿瘤疾病线",
+      "focus": "循证医学证据",
+      "training_style": "数据驱动型；用结构化数据说明问题，再连接真实病例和临床路径。",
+      "mood": "neutral",
+      "opening": "主要终点是什么？结果能落到临床决策吗？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "breast",
+        "dept": "乳腺外科",
+        "style": "数据驱动型",
+        "area": "肿瘤",
+        "role": "主任医师",
+        "tags": [
+          "疗效终点",
+          "证据等级",
+          "临床可操作性"
+        ],
+        "entry": "用结构化数据说明问题，再连接真实病例和临床路径。",
+        "question": "主要终点是什么？结果能落到临床决策吗？",
+        "match": "唯择® / 乳腺癌产品线",
+        "domain": "乳腺肿瘤疾病线",
+        "modules": [
+          [
+            "负责板块",
+            "疗效终点、证据等级、亚组结果与临床可操作性。"
+          ],
+          [
+            "医生敏感问题",
+            "主要终点是什么？结果是否具有临床意义？能否转化到真实诊疗路径？"
+          ],
+          [
+            "推荐证据入口",
+            "唯择® / 乳腺癌产品线；优先准备主要终点、循证等级和临床路径资料。"
+          ],
+          [
+            "训练话术入口",
+            "先确认医生关心的临床决策，再用结构化数据回答，避免只报数字。"
+          ]
+        ]
+      },
+      "display_name": "乳腺外科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-breast",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313157+00:00",
+      "updated_at": "2026-11-05T13:50:20.313158+00:00",
+      "practice_department": "肿瘤科",
+      "any_drug": true
+    },
+    {
+      "name": "血液科医生",
+      "specialty": "血液科",
+      "hospital": "",
+      "professional_title": "教授 / 博导",
+      "honors": [],
+      "background_type": "fictional",
+      "public_facts": "",
+      "sources": [],
+      "population": "血液肿瘤疾病线",
+      "focus": "最新临床试验进展",
+      "training_style": "文献探讨型；先从医生当前关注的患者亚组和临床问题切入，再给研究背景。",
+      "mood": "neutral",
+      "opening": "这个样本量、对照组和终点能支持什么结论？",
+      "research_job_id": null,
+      "ip_profile": {
+        "ip_key": "blood",
+        "dept": "血液科",
+        "style": "文献探讨型",
+        "area": "血液肿瘤",
+        "role": "教授 / 博导",
+        "tags": [
+          "研究设计",
+          "样本量",
+          "终点",
+          "对照组"
+        ],
+        "entry": "先从医生当前关注的患者亚组和临床问题切入，再给研究背景。",
+        "question": "这个样本量、对照组和终点能支持什么结论？",
+        "match": "维复素® / 血液肿瘤产品组合",
+        "domain": "血液肿瘤疾病线",
+        "modules": [
+          [
+            "负责板块",
+            "研究设计、样本量、对照组、主要终点与安全性。"
+          ],
+          [
+            "医生敏感问题",
+            "这项研究的入组标准是什么？样本量是否足够？结果能支持到哪一步？"
+          ],
+          [
+            "推荐证据入口",
+            "维复素® / 血液肿瘤产品线；优先准备正式研究、研究设计和终点定义。"
+          ],
+          [
+            "训练话术入口",
+            "先讲研究设计与证据来源，再解释结果，主动说明不能外推的结论。"
+          ]
+        ]
+      },
+      "display_name": "血液科医生（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "breathon-complete prototype 2026-10-31",
+      "id": "ip-blood",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313127+00:00",
+      "updated_at": "2026-11-05T13:50:20.313128+00:00",
+      "practice_department": "血液科",
+      "any_drug": true
+    },
+    {
+      "name": "纪立农",
+      "specialty": "内分泌科",
+      "hospital": "北京大学人民医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：纪立农\n医院：北京大学人民医院（北京大学第二临床医学院）\n科室：内分泌科（医院官网“寻找科室—内科系统—内分泌科”医生页）\n专业职称：教授、主任医师；医院官网医生页标注职称“教授,主任医师”\n专业方向：专长：糖尿病、内分泌疾病；简介称主要致力于内分泌科临床工作和糖尿病分子遗传学研究\n\n待核对说明（不作为已确认事实）：\n医院官网医生页未标注更新日期；页面所列“现任内分泌科主任”等职务需以医院最新公示为准。\n医院官网医生页所列国际糖尿病联盟副主席、中国医师协会内分泌代谢医师分会副会长等社会兼职，与北医2026年报道及部分第三方页面表述不完全一致，兼职时效需向机构核实。\n常规出诊时间（周一上午、周二下午，300元）为页面所示信息，可能变动，就诊前需以医院挂号系统为准。\n微信公众号专访、医脉通报道及中华医学会糖尿病学分会委员页仅作线索，未作为事实引用。\n核对北京大学人民医院官网内分泌科科室主页最新科室主任名单及医生出诊信息。\n核对北京市医师执业注册信息公示中纪立农的执业机构与执业范围。\n核对北京大学医学部/人民医院官方最新页面，确认“北京大学衰老研究中心副主任”等职务是否仍现任。\n如需引用学会任职，核对中华医学会糖尿病学分会、中国医师协会内分泌代谢医师分会官网现任名单。",
+      "sources": [
+        "https://www.pkuph.cn/Article/Index/teamList/id/630.html",
+        "https://bynews.bjmu.edu.cn/zhxw/2026/9b065e707546409f9d96c513f572cbc3.htm"
+      ],
+      "population": "糖尿病及成人肥胖相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：研究人群、血糖与体重终点、证据局限及安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据纪立农公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "纪立农（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "3bab7722-2e56-4fff-8f04-15d398637ec6",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312650+00:00",
+      "updated_at": "2026-11-05T13:50:20.312651+00:00",
+      "practice_department": "内分泌科",
+      "any_drug": false
+    },
+    {
+      "name": "王建祥",
+      "specialty": "白血病诊疗中心",
+      "hospital": "中国医学科学院血液病医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：王建祥\n医院：中国医学科学院血液病医院（中国医学科学院血液学研究所）；医院官网地址为天津市和平区南京路288号\n科室：白血病诊疗中心（官网页面列其为白血病诊疗中心主任）\n专业职称：教授、博士生导师；官网工作经历列“1999.09-至今 中国医学科学院血液病医院（中国医学科学院血液学研究所），主任医师”\n专业方向：白血病诊疗技术的探索和白血病治疗的顶层设计、全程管理、规范治疗；白血病准确诊断、精准分型、预后危险度分层施治及微量残留白血病监测；研究方向为白血病临床与基础研究、发病机理、靶向治疗、预后危险度分层治疗及自主知识产权CAR-T研发\n\n待核对说明（不作为已确认事实）：\n两份官网页面均无发布日期/更新日期，职务与出诊信息时效性需向医院核实。\n院校2025年教学名师报道（cams.cn/pumc.edu.cn）仅见搜索摘要，未归档原文，未作为引用依据。\n未取得官方执业注册信息页面，执业资质未独立核验。\n本结果仅为公开资料整理，不构成资质认证或医学审核。\n向中国医学科学院血液病医院官网“就医指南/专家门诊”页核对其当前出诊时间与挂号科室。\n核对国家卫生健康委医师执业注册信息（执业地点、执业范围）。\n归档院校2025年教学名师报道原文，核对“临床首席专家”等最新职务表述。\n确认官网“副所院长”“白血病诊疗中心主任”等职务是否有更新版本页面。",
+      "sources": [
+        "https://www.chinablood.com.cn/clinical/organizational/introduction/3550.html",
+        "https://www.chinablood.com.cn/laboratories/scientific/team/4248.html"
+      ],
+      "population": "急性髓系白血病相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：分子分层、治疗阶段、研究人群、疗效终点和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据王建祥公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "王建祥（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "3e6f0ec3-cb88-493e-ac99-5a6f16448549",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312624+00:00",
+      "updated_at": "2026-11-05T13:50:20.312625+00:00",
+      "practice_department": "血液科",
+      "any_drug": false
+    },
+    {
+      "name": "沈琳",
+      "specialty": "消化肿瘤内科",
+      "hospital": "北京大学肿瘤医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：沈琳\n医院：北京大学肿瘤医院（北京大学临床肿瘤学院、北京市肿瘤防治研究所）\n科室：消化肿瘤内科、Ⅰ期临床病区；现任消化肿瘤内科主任、I期临床试验病区主任，实体瘤细胞与基因治疗北京市重点实验室主任；历任北京大学肿瘤医院副院长、北京市肿瘤防治研究所副所长\n专业职称：主任医师、教授、博士生导师，北京学者\n专业方向：专业擅长：消化道肿瘤精准治疗与转化研究，抗肿瘤新药临床研究\n\n待核对说明（不作为已确认事实）：\n医院医生主页与2026-08-07科研新闻对成果数量的表述不一致：主页称促进新药获批适应症16项、SCI论文250余篇、诊疗规范54部、专利18项；新闻稿称18项、270余篇、66部、20项。可能因页面更新时点不同，需向医院核实最新版本。\n医院主页出诊信息显示为动态排班（页面注明每小时更新、以当日门诊为准），本次未据此确认具体出诊时间。\n本次仅核对医院官网来源，未取得医师执业注册信息或大学、专业协会官网的独立佐证。\n向北京大学肿瘤医院消化肿瘤内科或门诊部门核实沈琳当前行政职务（消化肿瘤内科主任、I期临床试验病区主任）及出诊安排的最新状态。\n核对医院医生主页与科研新闻中成果数量差异（获批适应症16项/18项、SCI论文250余篇/270余篇等）的更新时点。\n通过国家医师执业注册信息查询平台核对执业地点与执业范围。\n通过中国抗癌协会、中国临床肿瘤学会官网核对所列学术任职的当前状态（部分标注为“前任”）。",
+      "sources": [
+        "https://www.bjcancer.org/html/doctors/main/index_31049.html?t=1426083773812",
+        "https://www.bjcancer.org/Html/News/Articles/1001318.html"
+      ],
+      "population": "消化系统肿瘤相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：癌种与分子分型、治疗线次、联合方案证据和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据沈琳公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "沈琳（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "c3551751-2cc4-42c5-ab27-10195e32246c",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312597+00:00",
+      "updated_at": "2026-11-05T13:50:20.312598+00:00",
+      "practice_department": "肿瘤科",
+      "any_drug": false
+    },
+    {
+      "name": "江泽飞",
+      "specialty": "肿瘤医学部",
+      "hospital": "解放军总医院第五医学中心",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：江泽飞\n医院：解放军总医院第五医学中心（解放军总医院肿瘤医学部）\n科室：肿瘤医学部（英文署名 Department of Oncology, the Fifth Medical Center, Chinese PLA General Hospital）\n专业职称：主任医师、博士生导师（论文通信作者简介：男，博士，主任医师，博士生导师）\n专业方向：乳腺癌临床研究，涉及HR+/HER2-晚期乳腺癌CDK4/6抑制剂联合内分泌治疗的疗效与安全性研究（作为通信作者参与论文审阅、修订及基金申请）\n\n待核对说明（不作为已确认事实）：\n人民网2023年报道中的“肿瘤医学部副主任”“乳腺肿瘤科主任”等职务为当时表述，未见医院官网当前主页核对，现任职务需向机构核实。\n未检索到医院官网医生主页或官方执业注册信息，医院、科室与职称主要依据《解放军医学院学报》论文署名及通信作者简介（最新录用稿，卷期页码未定）。\n未取得其学历、执业证书编号等官方资质原文，不作推断。\n检索解放军总医院（301医院）官网及第五医学中心肿瘤医学部当前科室/专家主页，核对现任职务与出诊信息。\n核对CSCO官网理事/专委会任职的当前状态。\n核对北京市医学会乳腺疾病分会主任委员任职的当前状态。\n如需执业资质，向国家医师执业注册信息查询平台核对。",
+      "sources": [
+        "https://xuebao.301hospital.com.cn/cn/article/pdf/preview/10.12435/j.issn.2095-5227.25011201.pdf",
+        "http://health.people.com.cn/n1/2023/1025/c14739-40103100.html"
+      ],
+      "population": "乳腺癌相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：HR/HER2分型、复发风险、内分泌治疗证据和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据江泽飞公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "江泽飞（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "312b9821-aa12-4241-a0c5-cec22e6e9f0b",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312567+00:00",
+      "updated_at": "2026-11-05T13:50:20.312568+00:00",
+      "practice_department": "肿瘤科",
+      "any_drug": false
+    },
+    {
+      "name": "江倩",
+      "specialty": "北京大学血液病研究所（血液科）",
+      "hospital": "北京大学人民医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：江倩，女\n医院：北京大学人民医院（北京大学第二临床医学院）\n科室：北京大学血液病研究所（医院官网“寻找科室—研究所、研究中心”栏目）；青岛医院血液中心页面称其现任北京大学人民医院血液科副主任、北京大学人民医院青岛医院副院长、血液中心主任\n专业职称：教授、主任医师；医院简介另称医学博士、博士生导师、血液病房主任\n专业方向：急、慢性白血病、骨髓增殖性疾病（包括真性红细胞增多症、原发性血小板增多症及原发性骨髓纤维化等），尤其对慢性粒细胞白血病的临床研究有深刻造诣\n\n待核对说明（不作为已确认事实）：\n两份来源均为医院官网，但未标注更新时间；职称、职务与兼职以最新官方页面为准，需向医院人事或科室核实。\n微信公众号、医脉通专栏等仅作检索线索，未作为事实依据引用。\n本结果仅为公开资料整理，不构成资质核验或医学评价。\n向北京大学人民医院血液病研究所核实江倩当前行政职务（血液病房主任/血液科副主任）及出诊时间是否仍为周二上午、周四上午。\n核实北京医学会血液学分会任职为“候任主任委员”还是“主任委员”，以及论文与基金数量的最新口径。\n核对北京大学医学部官网血液病学系页面，确认其学系主任任职。\n如需执业资质，可查询北京市医师执业注册信息公示平台（本次未取得原文）。",
+      "sources": [
+        "https://www.pkuph.cn/Article/Index/teamList/id/1976.html",
+        "https://www.pkuphqd.cn/Department/show-163.html"
+      ],
+      "population": "慢性髓性白血病相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：分子监测、治疗反应、耐药突变、长期管理和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据江倩公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "江倩（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "60cebad7-c003-4f58-a982-99a482ef9af8",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312539+00:00",
+      "updated_at": "2026-11-05T13:50:20.312540+00:00",
+      "practice_department": "血液科",
+      "any_drug": false
+    },
+    {
+      "name": "李建军",
+      "specialty": "心血管代谢中心",
+      "hospital": "中国医学科学院阜外医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：李建军\n医院：中国医学科学院阜外医院（医院官网医生主页）\n科室：心血管代谢中心（医院官网当前医生主页所列科室）；阜外学院讲者页标注科室为心内科\n专业职称：主任医师；教授、博士生导师\n专业方向：专长：血脂异常（包括家族性血脂异常、特殊人群的血脂异常）、冠心病（包括介入治疗）、高血压等心血管疾病的诊治；主要科学研究方向为脂代谢异常与炎症和动脉粥样硬化性疾病关系，涉及冠心病发病机制及相关治疗研究\n\n待核对说明（不作为已确认事实）：\n医院官网医生主页未标注页面更新日期；出诊信息页面提示“仅供参考，以门诊公布为准”，本次未归档出诊排班。\n阜外学院讲者页的论文数量、影响因子积分、全球排名等自述性数据未与论文数据库核对，仅作线索。\n第三方平台（如medlive专家页）所列“25B病区主任”“内分泌与心血管代谢中心”等表述与医院官网不一致，未归档，不作事实采用。\n未取得官方执业注册信息（执业地点/执业范围）原文，职称与科室以医院官网为准。\n向阜外医院心血管代谢中心核实李建军当前行政职务（是否仍任血脂中心主任/病区主任）及出诊安排。\n核对医院官网医生主页的最近更新时间，确认科室名称变更时间。\n如需执业资质结论，查询国家卫生健康委医师执业注册信息公示平台原文。\n论文数量与学术任职可通过PubMed/机构官网进一步核对。",
+      "sources": [
+        "https://www.fuwaihospital.org/Hospitals/Doctors/Detail/3969",
+        "https://www.fuwaionline.org.cn/online/video/play/1075?vid=185861"
+      ],
+      "population": "血脂异常及动脉粥样硬化性心血管疾病相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：LDL-C达标、基础降脂治疗、终点区别及安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据李建军公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "李建军（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "08f7c8f9-de49-4089-8cce-c3ef44357dc9",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312511+00:00",
+      "updated_at": "2026-11-05T13:50:20.312512+00:00",
+      "practice_department": "心血管科",
+      "any_drug": false
+    },
+    {
+      "name": "朱军",
+      "specialty": "淋巴肿瘤内科",
+      "hospital": "北京大学肿瘤医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：朱军\n医院：北京大学肿瘤医院（北京大学临床肿瘤学院、北京市肿瘤防治研究所）\n科室：淋巴肿瘤内科（页面同时标注“移植与免疫治疗病区”）；医院新闻中称其为“淋巴肿瘤内科主任”\n专业职称：主任医师；医院主页个人介绍称“主任医师、博士生导师”\n专业方向：专业擅长：淋巴瘤诊疗与转化研究\n\n待核对说明（不作为已确认事实）：\n医院主页出诊信息显示“淋巴肿瘤内科门诊 本部特需”，具体出诊时段随页面每小时更新，就诊前需以当日门诊安排为准。\n第三方平台（人民好医生、人民日报健康客户端评选页、微信公众号）仅作线索，未作为事实依据引用。\n未检索到独立官方执业注册信息页面，执业资格未单独核验。\n核对医院官网“现任领导”页面，确认其当前行政职务（是否仍任党委书记）。\n核对北京大学医学部或医院教育处页面，确认博士生导师资格与招生方向。\n核对CSCO官网指南编写委员会名单，确认其牵头制定CSCO淋巴瘤诊疗指南的角色。\n如需执业信息，可在国家卫生健康委医师执业注册信息查询平台按姓名与机构核对。",
+      "sources": [
+        "https://www.bjcancer.org.cn/Html/Doctors/Main/Index_31053.html"
+      ],
+      "population": "淋巴瘤相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：病理分型、治疗线次、复发难治证据和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据朱军公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "朱军（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "8c709888-a8fb-4436-82c0-446a2196939d",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312479+00:00",
+      "updated_at": "2026-11-05T13:50:20.312480+00:00",
+      "practice_department": "血液科",
+      "any_drug": false
+    },
+    {
+      "name": "曾小峰",
+      "specialty": "风湿免疫科",
+      "hospital": "北京协和医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：曾小峰，男，1962年生\n医院：北京协和医院（国际医疗部名医荟萃·风湿免疫科页面）；1984年始在北京协和医院工作\n科室：风湿免疫科。医院医生主页称其“现任风湿免疫科主任医师”，并称其“曾任风湿免疫科主任”；北京协和医学院导师页则称其“现任北京协和医院风湿免疫科科主任”。两处对现任科主任的表述不一致，需向机构核实\n专业职称：主任医师、博士研究生导师；中国医学科学院北京协和医学院教授，博士生/博士后导师；1999年被破格晋升为主任医师\n专业方向：擅长疑难风湿免疫性疾病，包括系统性红斑狼疮、类风湿关节炎、血管炎、肌炎、皮肌炎、硬皮病、干燥综合征等的诊断与治疗\n专业方向：北京协和医学院导师页列出的研究方向为“风湿免疫病的精准诊治策略研究”\n\n待核对说明（不作为已确认事实）：\n医院医生主页与北京协和医学院导师页对“现任风湿免疫科主任”的表述不一致，且均无页面更新日期，不能据此确认当前行政职务。\n导师页“该职称任职时间：1984-07-27”与医院主页“1999年被破格晋升为主任医师”存在时间差异，可能指不同职称序列，需核实。\n导师页称发表文章“近200余篇”，医院主页称“400余篇”，数字不一致，可能因页面更新时点不同。\n本结果仅为公开原文整理，不构成执业资质核验或医学评价。\n向北京协和医院风湿免疫科或医院官网科室医生列表核实其当前是否担任科主任及出诊信息。\n核对国家卫生健康委医师执业注册信息，确认执业地点与执业范围。\n核实医院主页与导师页的更新日期，以确定各职务表述的时效。\n如需学术成果细节，可进一步查阅其署名论文原文及期刊官网，而非仅依赖机构简介页。",
+      "sources": [
+        "https://www.pumch.cn/department_ims/doctor/detail/4293.html",
+        "https://yzbss.pumc.edu.cn/basicinfo/tutorinfo/tutordetail/J2009020515"
+      ],
+      "population": "风湿免疫疾病相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：疾病活动度、适应症边界、感染风险与长期管理。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据曾小峰公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "曾小峰（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "c5b91601-27bf-46a7-802c-cadc49df82e4",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312455+00:00",
+      "updated_at": "2026-11-05T13:50:20.312456+00:00",
+      "practice_department": "风湿免疫科",
+      "any_drug": false
+    },
+    {
+      "name": "徐兵",
+      "specialty": "血液科",
+      "hospital": "厦门大学附属第一医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：徐兵\n医院：厦门大学附属第一医院\n科室：血液科（医院医师介绍页标注科室：血液科；职务：执行主任）\n专业职称：主任医师、教授、博士生导师、医学博士；医院2026年科研动态页称“二级主任医师、博士生导师”\n专业方向：擅长白血病、淋巴瘤、骨髓瘤、骨髓增生异常综合征等血液系统疾病的诊治；医院血液科亚专业组页面将其列为淋巴瘤亚专业组和白血病亚专业组负责人\n\n待核对说明（不作为已确认事实）：\n医院医师介绍页未标注更新日期，其“执行主任”职务及学会任职（委员/常委）与2026年科研动态页的“血液科主任”“副主任委员”表述存在冲突，不能据此确定现任职务。\n“中国抗癌协会两个专委会副主任委员（2025年当选）”仅见于微信公众号线索，未取得协会官网原文，待核实。\n医院医师介绍页所述“曾在南方医科大学南方医院工作近30年”“两次赴英国任高级访问学者”为个人履历表述，未获独立官方来源交叉核对。\n本结果仅为公开资料整理，不构成资质核验或医学审核。\n核对医院官网血液科“医师介绍”页最新版本，确认徐兵当前职务（主任/执行主任）及出诊信息。\n在中国抗癌协会官网核对血液肿瘤专业委员会、淋巴瘤专业委员会副主任委员任职名单及届次。\n核对厦门大学官网（血液病学系/血液病研究所）关于徐兵任职的页面。\n核对福建省医师执业注册信息公开平台上的执业机构与执业范围。",
+      "sources": [
+        "https://xmfh.com.cn/info/5340/9666.htm",
+        "https://www.xmfh.com.cn/info/3849/16800.htm",
+        "https://xmfh.com.cn/ksdh/nkxt/xyk/jyzn1/yzyz.htm"
+      ],
+      "population": "血液肿瘤及多发性骨髓瘤相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：疾病分型、复发难治、治疗选择与安全性；细胞治疗限有核对资料的场景。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据徐兵公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "徐兵（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "30bf6615-2bcb-4ba6-ab51-d1a43c14f222",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312425+00:00",
+      "updated_at": "2026-11-05T13:50:20.312426+00:00",
+      "practice_department": "血液科",
+      "any_drug": false
+    },
+    {
+      "name": "张建中",
+      "specialty": "皮肤科",
+      "hospital": "北京大学人民医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：张建中\n医院：北京大学人民医院（北京大学第二临床医学院）\n科室：皮肤科（医院医生主页“科室”栏未显示具体名称，简介中称其为北京大学人民医院皮肤科主任）\n专业职称：主任医师；教授，博士生导师\n专业方向：专长：红斑狼疮、银屑病、毛发病和肉芽肿性皮肤病；对特应性皮炎、银屑病、毛发病、皮肤GVHD等有深入研究\n\n待核对说明（不作为已确认事实）：\n医院医生主页的“科室”栏为空，科室名称仅来自简介文字，建议以科室主页或挂号页面再次核对。\n两处官网对学会职务的表述不一致（“现任主任委员”与“第十三届主任委员”），且页面均未标注更新日期，不能据此认定当前任职。\n医院官网简介称发表论文400余篇，研究中心页面称500余篇，数字存在差异。\n本次未取得官方执业注册信息（如执业证书编码）原文，职称与任职以机构官网介绍为准，不构成资质核验结论。\n核对北京大学人民医院皮肤科科室主页的现任科主任名单及更新日期。\n核对中华医学会皮肤性病学分会官网现任主任委员名单，确认届次。\n核对国家卫健委医师执业注册信息，确认执业地点与执业范围。\n确认医院医生主页“常规出诊时间”栏为空是否为页面未加载，需以官方挂号平台为准。",
+      "sources": [
+        "https://www.pkuph.cn/Article/Index/teamList/id/1235.html",
+        "http://derm.pku.edu.cn/info/1074/1242.htm"
+      ],
+      "population": "成人银屑病相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：疾病严重度、系统治疗适用性、长期管理与安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据张建中公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "张建中（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "e1302c0d-1a24-421c-b958-3a7c754d2d33",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312393+00:00",
+      "updated_at": "2026-11-05T13:50:20.312394+00:00",
+      "practice_department": "皮肤科",
+      "any_drug": false
+    },
+    {
+      "name": "周慧芳",
+      "specialty": "眼科",
+      "hospital": "上海交通大学医学院附属第九人民医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：周慧芳\n医院：上海交通大学医学院附属第九人民医院（上海交通大学医学院康复研究院专家组页面同时列示其现任上海交通大学医学院附属上海儿童医学中心党委书记）\n科室：眼科\n专业职称：眼科主任医师；教育部长江学者讲席教授；博士生导师\n专业方向：擅长甲状腺相关性眼病、精准微创眼眶减压手术、眼眶骨折修复手术、重睑及内外眦成形、眼袋矫正、眼部年轻化、上睑下垂矫正、眼睑退缩矫正、活动义眼座植入、眼窝狭窄成形、先天性小眼球整复等\n\n待核对说明（不作为已确认事实）：\n九院官网医生介绍页（https://www.9hospital.com.cn/article/43/8609.html）抓取失败，未取得原文正文；该页搜索摘要显示“主任医师、副教授、硕士研究生导师”，与上海交通大学医学院页面所列“长江学者讲席教授、博士生导师”存在时效差异，需向机构核实当前职称。\n上海交通大学医学院页面（2025-12-25/30发布）同时列示其任上海儿童医学中心党委书记，属行政职务信息，需以机构最新公告核实。\n微信公众号（门诊时间、学会任职等）仅作线索，未归档，不作为事实引用。\n本结果仅为公开资料整理，不构成资质核验或医学审核。\n核对九院官网眼科医生主页（当前职称、出诊时间、科室职务）\n核对上海儿童医学中心官网现任领导页面，确认党委书记任职\n核对上海市医师执业注册信息（执业机构、执业范围）\n核对中华医学会眼科学分会眼免疫学组、亚太眼整形外科学会等学会任职的官方名单\n核对国家科技进步二等奖等获奖的官方公示记录",
+      "sources": [
+        "https://www.shsmu.edu.cn/irm/info/1052/1724.htm",
+        "https://www.shsmu.edu.cn/irm/info/1061/1609.htm"
+      ],
+      "population": "甲状腺相关眼病学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：疾病活动度与严重度、治疗终点、多学科协作和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据周慧芳公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "周慧芳（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "88eb19ff-ca4d-48c0-8fbc-76e2a6ea3a77",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312356+00:00",
+      "updated_at": "2026-11-05T13:50:20.312358+00:00",
+      "practice_department": "眼科",
+      "any_drug": false
+    },
+    {
+      "name": "吴一龙",
+      "specialty": "肺内一科",
+      "hospital": "广东省人民医院",
+      "professional_title": "主任医师",
+      "honors": [],
+      "background_type": "public",
+      "public_facts": "公开资料摘录（2026-10-31核对；页面任职表述不等同当前执业资质核验）：\n姓名：吴一龙\n医院：广东省人民医院（GDPH）；医院官网专家页显示其现任首席专家，曾任副院长\n科室：医院官网专家页位于“肺内一科”栏目下；页面同时载明其任广东省肺癌研究所（GLCI）名誉所长、广东省肺癌转化医学重点实验室主任\n专业职称：教授、主任医师；肿瘤学教授、博士生导师、美国外科学院院士\n专业方向：主要研究方向为肺癌的精准治疗；投身肺癌精准医学治疗研究近40年，组建并带领广东省肺癌研究所团队，参与EGFR突变型肺癌“精准治疗”模式建立\n\n待核对说明（不作为已确认事实）：\n以上事实仅来自广东省人民医院官网专家页（归档于2026-10-31），未核对官方执业注册信息；页面未给出出诊时间、门诊安排及更新日期。\n用户查询中的“肿瘤科”与官网栏目“肺内一科”表述不同，科室归属以官网栏目为准，具体出诊科室需向医院核实。\n搜索摘要中另有第三方平台（医脉通）内容混入其他医院医生简介，未采用；公众号、新闻类报道仅作线索，未作为事实依据。\n向广东省人民医院核实吴一龙当前出诊科室、门诊时间及是否仍以首席专家身份出诊。\n核对国家卫生健康委医师执业注册信息中的执业机构与执业范围。\n如需学术履历细节，可核对广东省肺癌研究所或中国胸部肿瘤研究协作组（CTONG）官网的现任职务页面。",
+      "sources": [
+        "https://www.gdghospital.org.cn/Expertlistt/info_itemid_23176_subjectid_24.html"
+      ],
+      "population": "肺癌精准治疗相关学术交流训练；具体人群以场景及已核对说明书为准。",
+      "focus": "训练设定（非真人偏好）：基因检测、治疗线次、耐药、研究终点和安全性。",
+      "training_style": "训练模拟，非本人或医院授权代表，不作产品背书；每轮围绕学员原话追问一个问题，不推断真人性格、处方偏好或用药体验。",
+      "mood": "neutral",
+      "opening": "你好，这是依据吴一龙公开专业背景设计的训练模拟，非医生本人。今天想讨论什么临床问题？",
+      "research_job_id": null,
+      "ip_profile": null,
+      "display_name": "吴一龙（训练模拟）",
+      "status": "published",
+      "created_by": "local",
+      "imported_from": "doctor_research_agent 2026-10-31",
+      "id": "f74f47e9-71d0-41ac-a946-aabb94ef66ee",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.312304+00:00",
+      "updated_at": "2026-11-05T13:50:20.312307+00:00",
+      "practice_department": "呼吸科",
+      "any_drug": false
+    },
+    {
+      "name": "李小英",
+      "display_name": "李小英（训练模拟）",
+      "specialty": "内分泌科",
+      "background_type": "public",
+      "public_facts": "复旦大学附属中山医院内分泌科主任医师、教授、博士生导师（复旦上医 2025 年介绍）。肥胖、脂肪性肝病与 2 型糖尿病的发病机制及临床干预。",
+      "sources": [
+        "https://shmc.fudan.edu.cn/news/2025/0424/c1893a145093/page.htm",
+        "https://diab.cma.org.cn/cn/weiyuanhuiweiyuan.aspx?Oid=9591"
+      ],
+      "population": "成人超重、肥胖及相关代谢疾病训练人群",
+      "focus": "人群适用性、肝脏与糖代谢终点、临床证据局限",
+      "training_style": "围绕原话，每次追问一个关键点",
+      "mood": "neutral",
+      "opening": "这次先讨论成人体重管理。对于合并脂肪性肝病的人群，你带来的临床证据能支持到什么程度？",
+      "status": "published",
+      "created_by": "local",
+      "id": "li-xiaoying",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.311683+00:00",
+      "updated_at": "2026-11-05T13:50:20.311684+00:00",
+      "practice_department": "内分泌科",
+      "any_drug": false
+    }
+  ],
+  "rubric": [
+    {
+      "name": "学术拜访评价 v1",
+      "status": "draft",
+      "created_by": "local",
+      "dimensions": [
+        {
+          "key": "accuracy",
+          "label": "医学准确性",
+          "weight": 20,
+          "anchors": [
+            "存在关键事实错误或不安全保证",
+            "核心事实多处不清或混淆",
+            "主要事实正确但重要局限遗漏",
+            "事实准确且说明主要局限",
+            "事实、适用范围与不确定性均准确完整"
+          ],
+          "requires_content": true
+        },
+        {
+          "key": "evidence",
+          "label": "证据运用",
+          "weight": 20,
+          "anchors": [
+            "无依据或编造来源",
+            "引用不能支持结论",
+            "提供来源但人群或终点关联不完整",
+            "证据与主张对应且说明局限",
+            "清楚区分证据层级、适用范围和不能推断之处"
+          ],
+          "requires_content": true
+        },
+        {
+          "key": "needs",
+          "label": "需求识别",
+          "weight": 20,
+          "anchors": [
+            "忽略医生问题或拒绝",
+            "泛泛介绍且未回应重点",
+            "部分回应关注点",
+            "直接回应并确认需求",
+            "围绕需求取舍信息且尊重明确的时间或拒绝"
+          ],
+          "requires_content": false
+        },
+        {
+          "key": "expression",
+          "label": "表达逻辑",
+          "weight": 20,
+          "anchors": [
+            "表达矛盾难以理解",
+            "逻辑跳跃且关键概念混乱",
+            "基本清楚但结构有缺口",
+            "结构清楚、措辞审慎",
+            "简洁连贯，信息层次清楚并自然承接"
+          ],
+          "requires_content": false
+        },
+        {
+          "key": "compliance",
+          "label": "合规沟通",
+          "weight": 20,
+          "anchors": [
+            "存在利益交换、信息泄露或明确违规承诺",
+            "出现高风险措辞且未纠正",
+            "措辞基本合规但核实安排不清",
+            "识别风险并给出合规跟进",
+            "主动界定角色、证据和授权渠道且尊重对方决定"
+          ],
+          "requires_content": false
+        }
+      ],
+      "calibration_status": "uncalibrated",
+      "id": "academic-visit-v1",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.313271+00:00",
+      "updated_at": "2026-11-05T13:50:20.313272+00:00"
+    }
+  ],
+  "scenario": [],
+  "taxonomy": [
+    {
+      "kind": "region",
+      "terms": [],
+      "id": "region",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314585+00:00",
+      "updated_at": "2026-11-05T13:50:20.314585+00:00"
+    },
+    {
+      "kind": "dosage_form",
+      "terms": [],
+      "id": "dosage_form",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314577+00:00",
+      "updated_at": "2026-11-05T13:50:20.314578+00:00"
+    },
+    {
+      "kind": "mechanism",
+      "terms": [
+        {
+          "value": "BCMA CAR-T",
+          "status": "pending"
+        },
+        {
+          "value": "BCR-ABL/KIT",
+          "status": "pending"
+        },
+        {
+          "value": "BTK",
+          "status": "pending"
+        },
+        {
+          "value": "CD20",
+          "status": "pending"
+        },
+        {
+          "value": "CDK4/6",
+          "status": "pending"
+        },
+        {
+          "value": "CTLA-4",
+          "status": "pending"
+        },
+        {
+          "value": "EGFR",
+          "status": "pending"
+        },
+        {
+          "value": "FGFR1/2/3",
+          "status": "pending"
+        },
+        {
+          "value": "FLT3",
+          "status": "pending"
+        },
+        {
+          "value": "GCG/GLP-1",
+          "status": "pending"
+        },
+        {
+          "value": "IGF-1R",
+          "status": "pending"
+        },
+        {
+          "value": "IL-23p19",
+          "status": "pending"
+        },
+        {
+          "value": "KRAS G12C",
+          "status": "pending"
+        },
+        {
+          "value": "PCSK9",
+          "status": "pending"
+        },
+        {
+          "value": "PD-1",
+          "status": "pending"
+        },
+        {
+          "value": "RET",
+          "status": "pending"
+        },
+        {
+          "value": "ROS1",
+          "status": "pending"
+        },
+        {
+          "value": "TNF-α",
+          "status": "pending"
+        },
+        {
+          "value": "VEGF-A",
+          "status": "pending"
+        },
+        {
+          "value": "VEGFR-2",
+          "status": "pending"
+        }
+      ],
+      "id": "mechanism",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314562+00:00",
+      "updated_at": "2026-11-05T13:50:20.314563+00:00"
+    },
+    {
+      "kind": "disease",
+      "terms": [],
+      "id": "disease",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314550+00:00",
+      "updated_at": "2026-11-05T13:50:20.314551+00:00"
+    },
+    {
+      "kind": "category",
+      "terms": [
+        {
+          "value": "新陈代谢",
+          "status": "pending"
+        },
+        {
+          "value": "眼科",
+          "status": "pending"
+        },
+        {
+          "value": "肿瘤",
+          "status": "pending"
+        },
+        {
+          "value": "自身免疫",
+          "status": "pending"
+        }
+      ],
+      "id": "category",
+      "version": 1,
+      "created_at": "2026-11-05T13:50:20.314537+00:00",
+      "updated_at": "2026-11-05T13:50:20.314538+00:00"
+    }
+  ]
+}

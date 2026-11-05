@@ -1,6 +1,6 @@
 # 医生与同类药品检索助手
 
-两个 AgentScope 助手查找公开原文、整理带引用的事实，并保存可阅读的 HTML 和原始文件。医生助手核对公开职业背景；药品助手按机制和获批范围寻找同类候选。结果保留核验时间和待核对项，由使用者核对后再加入训练资料。
+两个 Pi 助手查找公开原文、整理带引用的事实，并保存可阅读的 HTML 和原始文件。医生助手核对公开职业背景；药品助手按机制和获批范围寻找同类候选。结果保留核验时间和待核对项，由使用者核对后再加入训练资料。
 
 ## 页面入口
 
@@ -16,26 +16,26 @@
 
 ## Agent 和 Skill 配置
 
-运行配置位于 [agents.json](../backend/medvisit/research/agents.json)，AgentScope 实现在 [agents.py](../backend/medvisit/research/agents.py)。每次运行使用 `LocalSkillLoader` 实际加载对应 Skill，保存 Skill 内容哈希、模型用量、搜索查询及来源检查记录。
+运行配置位于 [research.json](../backend/resources/research.json)，Pi 实现在 [research.ts](../backend/src/research.ts)。每次运行读取对应 Skill 的 Markdown，保存 Skill 内容哈希、模型用量、搜索查询及来源检查记录。
 
 | 助手 | Agent 名称 | Skill | 核对内容 |
 | --- | --- | --- | --- |
-| 医生 | `doctor_research_agent` | [doctor-source-research](../backend/medvisit/agents/skills/doctor-source-research/SKILL.md) | 姓名、医院、科室、专业职称、公开学术背景、专业方向、同名或时效疑点 |
-| 同类药品 | `similar_drug_research_agent` | [drug-source-research](../backend/medvisit/agents/skills/drug-source-research/SKILL.md) | 通用名、商品名、厂家、机制、获批地区、适应症与人群、说明书版本、同类依据和比较边界 |
+| 医生 | `doctor_research_agent` | [doctor-source-research](../backend/resources/skills/doctor-source-research/SKILL.md) | 姓名、医院、科室、专业职称、公开学术背景、专业方向、同名或时效疑点 |
+| 同类药品 | `similar_drug_research_agent` | [drug-source-research](../backend/resources/skills/drug-source-research/SKILL.md) | 通用名、商品名、厂家、机制、获批地区、适应症与人群、说明书版本、同类依据和比较边界 |
 
 药品事实需要配置中认可的政府、监管或厂家官网原文；转载与新闻用于发现线索。增加厂家的来源域名时应核对其官方身份。医生优先医院、大学及专业协会的公开页面，保留同名、历史任职和来源性质的疑点；公开简介不等同执业资质认证，也不用于推断私人联系方式或真实医生的性格。
 
-每次至少完成两次不同查询，单次最多搜索 4 次，每次最多 5 条结果，最多尝试归档 8 个来源。AgentScope 推理最多 12 轮，总运行限时 240 秒（这些上限在 `agents.json` 的 `run` 中配置）；同时运行的任务数由 `RESEARCH_MAX_CONCURRENCY` 限制，超出的排队；未完整完成的来源与已落盘原件分别保留。
+每次至少完成两次不同查询，单次最多搜索 4 次，每次最多 5 条结果，最多尝试归档 8 个来源。Pi 推理最多 12 轮，总运行限时 240 秒（这些上限在 `research.json` 的 `run` 中配置）；同时运行的任务数由 `RESEARCH_MAX_CONCURRENCY` 限制，超出的排队；未完整完成的来源与已落盘原件分别保留。
 
 ## MCP 配置
 
-两个助手共用项目内的有状态 STDIO MCP 服务，无需额外部署通用浏览器或文件系统 MCP。运行时以当前 Python 环境启动：
+两个助手在 Pi 中使用同一组进程内受限工具，无需额外部署通用浏览器或文件系统 MCP。独立 MCP 客户端可使用同一实现的 STDIO 入口；宿主必须配置 `MEDVISIT_RESEARCH_ARCHIVES` 和 `MEDVISIT_RESEARCH_JOB` 私有目录，可选 `MEDVISIT_RESEARCH_SEEDS`：
 
 ```sh
-python -m medvisit.research.mcp_server
+npm --prefix backend run mcp:research
 ```
 
-AgentScope 使用 `StdioMCPConfig` 传入当前任务的归档路径、查询预算及现有 DeepSeek 配置。服务不提供 Shell、任意文件读写或本机网络访问，只公开三项工具：
+应用将当前任务的归档目录、查询预算及现有 DeepSeek 配置传给受限工具。服务不提供 Shell、任意文件读写或本机网络访问，只公开三项工具：
 
 | 工具 | 用途与范围 |
 | --- | --- |
@@ -43,7 +43,7 @@ AgentScope 使用 `StdioMCPConfig` 传入当前任务的归档路径、查询预
 | `archive_source` | 下载本次搜索发现、已知复查来源或已获取页面中的链接，保存原件与 HTML，返回版本及证据片段 |
 | `read_archive` | 在当前任务已经归档的正文中按关键词找片段；最多调用 8 次，不发起网络请求 |
 
-实际工具名包含 `mcp__medvisit_research__` 前缀。权限只放行这三个工具；网页内容和查询文本不能添加工具或改变任务权限。MCP 子进程只接收所需配置，文档解析子进程不继承应用密钥。
+实际工具名包含 `mcp__medvisit_research__` 前缀。权限只放行这三个工具；网页内容和查询文本不能添加工具或改变任务权限。独立 MCP 由宿主管理配置，文档解析子进程不继承应用密钥。
 
 归档限制为每个文件 20 MB、最多 6 次重定向，只允许公开 HTTP/HTTPS 标准端口。每次跳转重新核对 DNS，并使用验证后的公网地址连接、保留原始 Host 和 TLS 校验，防止公开页面转向本机或内网。本地 TUN 返回 `198.18.0.0/15` 假地址时，通过固定地址的 TLS DNS 查询获取公网地址；私网或混合 DNS 答案仍拒绝。
 
@@ -108,12 +108,6 @@ DOCX 使用标准库读取正文、脚注和尾注；旧 DOC 在 macOS 使用系
 
 真实模型、搜索、STDIO MCP 与归档验收见 验收报告（本机证据：`backend/data/validation/research-live-r6/summary.json`）。三个助手均产出带原文引用的结果：政策 2 份原文、医生 3 份、同类药品 2 份；包含药监局 DOC 附件与厂家 PDF。三条链路均为部分完成状态，访问失败或正文不足的来源继续列为待核对。报告的 `functional_pass` 仅表示取得归档和带引用结果，不代表所有来源成功、绝对最新、医学或法律审核通过。
 
-需要真实服务配置且会产生用量的复现命令：
-
-```sh
-uv run --directory backend python -m tools.live_research --live --output data/validation/research-live-new
-# 只复验一个助手
-uv run --directory backend python -m tools.live_research --live --kind doctor --output data/validation/research-doctor-new
-```
+以上为迁移前 Python 版本的历史验收，复现脚本请查看 [迁移前工具](https://github.com/shenyankm/BreathOn/tree/0786e225848635de55c2c3a827bb8bd4429818de/backend/tools)。当前 TypeScript 版使用管理端显式发起检索；真实供应商链路尚未重新验收。
 
 验收使用独立数据库和记录目录，不把合成验收内容写入用户的演练历史。真实麦克风、真人听感和专业审核与此项资料检索验收分别记录。

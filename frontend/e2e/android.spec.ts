@@ -106,7 +106,7 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
     }
     if(process.env.E2E_LIVE==='1') {
       const audioPath=path.resolve('test-results/synthetic-input.pcm')
-      if(!existsSync(audioPath))execFileSync('uv',['run','--directory','../backend','--locked','python','-m','tools.e2e_audio','--live','--output',audioPath],{timeout:60_000})
+      if(!existsSync(audioPath))execFileSync(process.execPath,['--experimental-transform-types','--env-file-if-exists=../backend/.env','../backend/src/e2e-assets.ts','--live','--output',audioPath],{timeout:60_000})
       const audio=readFileSync(audioPath).toString('base64')
       for(const mode of ['辅助练习','实战练习']) {
         await page!.evaluate(()=>{location.hash='practice'});await page!.reload()

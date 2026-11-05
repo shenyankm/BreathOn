@@ -176,7 +176,7 @@ for path in root.rglob('*'):
   with path.open('rb') as stream: files[str(path.relative_to(root))]=hashlib.file_digest(stream,'sha256').hexdigest()
 print(json.dumps(files))
 """
-    actual = command([*compose, 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'python', 'api', '-c', check_files])
+    actual = command([*compose, 'run', '--rm', '--no-deps', '-T', '--entrypoint', 'python3', 'api', '-c', check_files])
     if json.loads(actual) != manifest['files'] or json.loads(db(compose, 'psql', '-Atc', COUNTS)) != manifest['database']:
         raise ValueError('Restored database or filesystem verification failed; API remains stopped.')
 

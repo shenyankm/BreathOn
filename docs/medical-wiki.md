@@ -2,7 +2,7 @@
 
 按 [Karpathy LLM Wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 的三层方法实现：不可变原件、持久 Markdown 知识条目、维护规则与追加日志。不安装或依赖桌面应用。
 
-`backend/medvisit/knowledge/snapshot/` 包含可运行的文字快照、20 个产品的编译要点、来源清单、索引及日志。新安装可直接读取此快照；本地导入后优先读取 `RECORDS_DIR/medical-wiki/`。已存在但损坏的运行快照会报资料不可用，不悄悄切换旧版。
+`backend/resources/medical/` 包含可运行的文字快照、20 个产品的编译要点、来源清单、索引及日志。新安装可直接读取此快照；本地导入后优先读取 `RECORDS_DIR/medical-wiki/`。已存在但损坏的运行快照会报资料不可用，不悄悄切换旧版。
 
 原始 PDF / 图片保存在运行目录，按 SHA-256 命名，不加入 Git。来源清单保留下载地址、哈希和时间。导出 ZIP 包含 Wiki、来源清单与当前环境已有的原件，不包含个人演练记录或账号信息。
 
@@ -21,16 +21,16 @@
 ## 导入和维护
 
 ```sh
-uv run --directory backend python tools/ingest_medical.py --compile-wiki
+npm --prefix backend run medical:ingest -- --compile-wiki
 ```
 
-编译调用已配置的 DeepSeek；按原文、模型和编译规则缓存，重复编译使用同版本缓存。`--refresh` 重新获取来源，旧原件仍按原哈希保留。PDF 解析在无服务凭据的子进程中执行。
+维护命令根据当前快照清单下载或刷新已登记来源；新增研究线索通过管理端检索或人工更新清单，不自动重跑旧 Python 的 PubMed 发现脚本。编译通过 Pi 调用已配置的 DeepSeek；按原文、模型和编译规则缓存，重复编译使用同版本缓存。`--refresh` 重新获取来源，旧原件仍按原哈希保留。PDF 解析在无服务凭据的子进程中执行。
 
 可选的本地 macOS Vision OCR：
 
 ```sh
-swiftc backend/tools/ocr_medical.swift -o /tmp/breathon-medical-ocr
-uv run --directory backend python tools/ingest_medical.py --ocr-command /tmp/breathon-medical-ocr --compile-wiki
+swiftc backend/parsers/ocr_medical.swift -o /tmp/breathon-medical-ocr
+npm --prefix backend run medical:ingest -- --ocr-command /tmp/breathon-medical-ocr --compile-wiki
 ```
 
 OCR 无需下载应用，识别内容始终保留待复核标记。检查引用与原件完整性使用 `POST /api/medical/audit`；它不调用模型，也不进行医学审核。
@@ -48,11 +48,10 @@ OCR 无需下载应用，识别内容始终保留待复核标记。检查引用�
 常规测试不调用真实模型。真实模型本地验收使用公开原文及预设合成表述，无真实患者或学员数据：
 
 ```sh
-uv run --directory backend pytest -q
-uv run --directory backend python tools/validate_medical.py
+npm --prefix backend test
 ```
 
-后一个命令会产生模型费用，验证研究人群、HR / 绝对风险、随访年份、医保范围、地方比例证据缺失及提示注入。验收报告写入 `backend/data/validation/`；有限测试通过不构成临床验证。
+迁移前的真实模型脚本与报告保存在 Git 历史；本轮 TypeScript 测试使用合成模型，不声称已重新完成真实医学判断验收。真实模型有限测试也不构成临床验证。
 
 ## 2026-10-31：竞品资料与教练参考
 
@@ -61,10 +60,10 @@ LLM Wiki 是知识维护模式，并无强制格式标准。本项目落实不�
 首批竞品为美国厂家说明书：HUMIRA（阿达木单抗原研参考）、OZEMPIC（玛仕度肽的糖尿病讨论参考）、KEYTRUDA（信迪利单抗的 PD-1 讨论参考）。这些关联只是话题导航，不是可替换性、国内获批或疗效优劣结论。品牌、制剂和地区分别建实体，未合并到本公司药品名下。原始 PDF 留在运行目录，仓库保存逐页文本和引用快照。
 
 ```sh
-uv run --directory backend python tools/ingest_competitors.py --root data/sessions/medical-wiki --compile-wiki
+npm --prefix backend run medical:ingest -- --manifest competitors --compile-wiki
 ```
 
-该命令只增量更新 `knowledge/competitors.json` 中的竞品；相同原件保留原抓取时间，修改版保存历史 receipt 并使旧编译结果失效。本公司目录重新导入会保留独立归档的竞品。原件归档失败时不替换现有 corpus；PDF 支持无需密码即可阅读的公开文件，不处理需要密码的文件。
+该命令只增量更新 `backend/resources/competitors.json` 中的竞品；相同原件保留原抓取时间，修改版保存历史 receipt 并使旧编译结果失效。本公司目录重新导入会保留独立归档的竞品。原件归档失败时不替换现有 corpus；PDF 支持无需密码即可阅读的公开文件，不处理需要密码的文件。
 
 ### 实时教练的实际使用
 
@@ -76,4 +75,4 @@ uv run --directory backend python tools/ingest_competitors.py --root data/sessio
 
 ### 维护与验收
 
-`MedicalCorpus.audit()` 现同时检查 Wiki 断链与孤立页。原件缺失单独报告，不能把文字快照检查通过描述为原件齐全。`schema.md` 明确 ingest/query/lint、业务比较边界与隐私隔离；共享 Wiki 不保存个人对话。增加来源后应重新编译受影响条目并运行审核，不得把自动编译状态改写成人工批准。
+`POST /api/medical/audit` 现同时检查 Wiki 断链与孤立页。原件缺失单独报告，不能把文字快照检查通过描述为原件齐全。`schema.md` 明确 ingest/query/lint、业务比较边界与隐私隔离；共享 Wiki 不保存个人对话。增加来源后应重新编译受影响条目并运行审核，不得把自动编译状态改写成人工批准。

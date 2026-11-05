@@ -1,19 +1,25 @@
-FROM python:3.13-slim
+FROM node:24-bookworm-slim AS build
+WORKDIR /build/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
+RUN npm run build && npm prune --omit=dev --ignore-scripts
+
+FROM node:24-bookworm-slim
 ARG DEBIAN_MIRROR=http://deb.debian.org
-RUN sed -i "s|http://deb.debian.org|${DEBIAN_MIRROR}|g" /etc/apt/sources.list.d/debian.sources && apt-get update && apt-get install -y --no-install-recommends antiword ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN sed -i "s|http://deb.debian.org|${DEBIAN_MIRROR}|g" /etc/apt/sources.list.d/debian.sources && apt-get update && apt-get install -y --no-install-recommends python3 python3-venv antiword ffmpeg && rm -rf /var/lib/apt/lists/*
 ARG PIP_INDEX_URL=https://pypi.org/simple
-RUN pip install --no-cache-dir uv==0.12.13
 WORKDIR /app
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
-COPY backend/pyproject.toml backend/uv.lock ./
-ARG PYPI_DOWNLOAD_BASE=https://files.pythonhosted.org
-RUN cp uv.lock /tmp/uv.lock && \
-    python -c 'import os; from pathlib import Path; p=Path("uv.lock"); p.write_text(p.read_text().replace("https://files.pythonhosted.org", os.environ["PYPI_DOWNLOAD_BASE"].rstrip("/")))' && \
-    uv sync --locked --no-dev --no-install-project && \
-    mv /tmp/uv.lock uv.lock
-COPY backend/medvisit ./medvisit
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8000 PYTHONDONTWRITEBYTECODE=1
+COPY backend/parsers ./parsers
+RUN python3 -m venv /app/.venv && /app/.venv/bin/pip install --no-cache-dir --require-hashes -r parsers/requirements.txt
+COPY --from=build /build/backend/package.json /build/backend/package-lock.json ./
+COPY --from=build /build/backend/node_modules ./node_modules
+COPY --from=build /build/backend/dist ./dist
+COPY backend/resources ./resources
 COPY backend/migrations ./migrations
 RUN useradd --uid 10001 --user-group --create-home app && install -d -m 0700 -o app -g app /app/data/sessions /app/data/visit-audio
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "medvisit.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--ws-max-size", "4096", "--ws-max-queue", "16", "--timeout-graceful-shutdown", "45", "--no-access-log"]
+CMD ["node", "dist/main.js"]

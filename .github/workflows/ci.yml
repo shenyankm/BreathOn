@@ -61,16 +61,23 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - run: python -m pip install uv==0.12.13
-      - run: uv sync --directory backend --locked
-      - run: uv run --directory backend --locked pytest -q --junitxml=data/validation/ci.xml
-      - name: Require PostgreSQL tests to run
-        run: |
-          python - <<'PY'
-          from xml.etree import ElementTree
-          report = ElementTree.parse('backend/data/validation/ci.xml')
-          assert sum(int(s.attrib.get('skipped', 0)) for s in report.iter('testsuite')) == 0
-          PY
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: python -m pip install --require-hashes -r backend/parsers/requirements.txt
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg antiword
+      - run: npm --prefix backend ci --ignore-scripts
+      - run: npm --prefix backend run build
+      - run: npm --prefix backend test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: EviSpeak-server-dist-${{ github.sha }}
+          path: backend/dist/
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false
 
   android:
     runs-on: ubuntu-24.04
@@ -149,8 +156,17 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - run: python -m pip install uv==0.12.13
-      - run: uv sync --directory backend --locked
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: python -m pip install --require-hashes -r backend/parsers/requirements.txt
+      - run: npm --prefix backend ci --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: EviSpeak-server-dist-${{ github.sha }}
+          path: backend/dist
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: EviSpeak-admin-dist-${{ github.sha }}
@@ -170,7 +186,7 @@ jobs:
           NATIVE_DISPOSABLE: '1'
           NATIVE_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/postgres
           NATIVE_DB_CONTAINER: ${{ job.services.postgres.id }}
-        run: uv run --directory backend --locked python ../deploy/check-native.py
+        run: python deploy/check-native.py
 
   production:
     needs: [frontend, backend, android, deployment]
@@ -203,6 +219,11 @@ jobs:
         with:
           name: EviSpeak-admin-dist-${{ github.sha }}
           path: frontend/dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        if: steps.latest.outputs.deploy == 'true'
+        with:
+          name: EviSpeak-server-dist-${{ github.sha }}
+          path: backend/dist
       - name: Deploy production after all checks
         if: steps.latest.outputs.deploy == 'true'
         env:
@@ -219,8 +240,11 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > "$transport/key"
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$transport/known_hosts"
           printf '%s\n' "$GITHUB_SHA" > "$payload/REVISION"
-          # Native releases contain Python source and the tested, prebuilt admin assets.
-          git archive --format=tar.gz HEAD -- backend/medvisit backend/migrations backend/pyproject.toml backend/uv.lock deploy LICENSE > "$payload/source.tar"
+          # Native releases contain compiled TypeScript, parser resources and prebuilt admin assets.
+          git archive --format=tar HEAD -- backend/resources backend/parsers backend/migrations backend/package.json backend/package-lock.json backend/pyproject.toml backend/uv.lock deploy LICENSE > "$payload/source.uncompressed.tar"
+          tar -rf "$payload/source.uncompressed.tar" backend/dist
+          gzip -c "$payload/source.uncompressed.tar" > "$payload/source.tar"
+          rm "$payload/source.uncompressed.tar"
           tar -czf "$payload/web.tar.gz" -C frontend/dist .
           python - "$payload/source.tar" <<'PYCODE'
           import sys
@@ -230,7 +254,7 @@ jobs:
           required = {'LICENSE', 'deploy/native-deploy.sh', 'deploy/native-backup.py',
                       'deploy/Caddyfile.native', 'deploy/database.compose.yaml',
                       'deploy/medvisit-coach.service', 'backend/pyproject.toml',
-                      'backend/uv.lock', 'backend/medvisit/api/app.py'}
+                      'backend/uv.lock', 'backend/dist/main.js', 'backend/package.json', 'backend/package-lock.json'}
           assert required <= names, 'Incomplete native server source archive'
           assert not any(name.startswith('frontend/') for name in names)
           PYCODE

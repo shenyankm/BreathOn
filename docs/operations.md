@@ -1,12 +1,12 @@
 # 部署运维
 
-生产由单进程 FastAPI / Uvicorn（`medvisit-coach.service`）和原生 Caddy 提供 API、WebSocket 与静态 Web 管理端，只有 PostgreSQL 使用 Docker。Android 用户端为 React + Tauri 2，页面内置 APK。本机免登录模式仅供本机访问；公网须启用账号登录、管理员权限与用户数据隔离，见[服务器与原生 CI/CD](server-deployment.md)。
+本分支的目标部署由单进程 Node.js / TypeScript（`medvisit-coach.service`）和原生 Caddy 提供 API、WebSocket 与静态 Web 管理端，只有 PostgreSQL 使用 Docker。Android 用户端为 React + Tauri 2，页面内置 APK。本机免登录模式仅供本机访问；公网须启用账号登录、管理员权限与用户数据隔离，见[服务器与原生 CI/CD](server-deployment.md)。
 
 PostgreSQL 保存演练与平台元数据，`RECORDS_DIR` 保存检索原件、HTML 阅读副本、任务文件及恢复副本。备份和恢复必须覆盖数据库与记录目录；独立私有 `visit-audio` 不纳入长期备份。不要对需要保留的数据执行 `docker compose down -v`。本文描述运行接口，不代表首次原生迁移或生产恢复已经验收。
 
 ## 启动与排查
 
-原生初始化、受限 SSH 部署入口、systemd 环境文件与 Caddy 配置按[服务器与 CI/CD](server-deployment.md)维护。部署主流程使用 `deploy/native-deploy.sh` 接收后端源码和 CI 构建的管理端静态文件；服务器只按 Python 锁文件安装依赖，不运行 npm 构建或 API / Web 容器。受限部署入口不是手动执行完整 Compose 的替代命令。
+原生初始化、受限 SSH 部署入口、systemd 环境文件与 Caddy 配置按[服务器与 CI/CD](server-deployment.md)维护。首次从 Python 切换必须按 [迁移与回退步骤](typescript-pi-migration.md) 手工执行；当前未切换线上服务。后续部署主流程使用 `deploy/native-deploy.sh` 接收后端源码和 CI 构建的管理端静态文件；服务器按 npm 锁文件安装运行依赖、按 uv 锁文件安装文档解析依赖，使用 CI 编译好的服务端和管理端，不运行 API / Web 容器。受限部署入口不是手动执行完整 Compose 的替代命令。
 
 常规只读检查：
 
@@ -28,7 +28,7 @@ PostgreSQL 保存演练失败时，后端会尝试把完整记录原子写入 `R
 数据库恢复、`/api/ready` 正常后，以原生 API 的运行用户和相同环境配置执行 `python -m medvisit.storage.import_records <RECORDS_DIR的recovery子目录>`；不要启动旧 API 容器做生产导入。本地开发使用 PostgreSQL 且保持默认记录目录时，从项目根目录执行：
 
 ```sh
-uv run --directory backend python -m medvisit.storage.import_records data/sessions/recovery
+npm --prefix backend run import:records -- data/sessions/recovery
 ```
 
 导入先验证所有文件，再在事务中写入；重复运行不覆盖已有数据库记录，也不删除恢复副本。核对记录详情后再按原始资料的要求备份或清理副本。该命令恢复演练记录，不会重新调用模型，也不会自动重放重练任务状态变更。JSON 本地存储模式写入失败仍需修复目录权限或磁盘问题。
@@ -69,7 +69,7 @@ sudo python3 /srv/medvisit-coach/current/deploy/native-backup.py \
 
 ## 依赖与持续集成
 
-前端使用 `npm --prefix frontend ci`，后端使用 `uv sync --directory backend --locked` 安装锁定版本。CI 配置检查前端测试、lint 与两端模块边界，使用独立 PostgreSQL 跑后端测试并拒绝跳过，编译真实 Android ARM64 APK；部署集成使用原生 Uvicorn / Caddy 和 Docker PostgreSQL，覆盖服务重启持久化、数据库断连恢复与账号隔离。自动生产部署当前已关闭，`production` 作业固定跳过；完整流程见[服务器与 CI/CD](server-deployment.md)。这些检查与原生生产迁移、真实语音或恢复演练应分别确认。
+前端使用 `npm --prefix frontend ci`，后端使用 `npm --prefix backend ci` 安装运行与构建依赖，`uv sync --directory backend --locked` 仅安装文档解析依赖。CI 配置检查前端测试、lint 与两端模块边界，使用独立 PostgreSQL 跑后端测试并拒绝跳过，编译真实 Android ARM64 APK；部署集成使用原生 Node / Caddy 和 Docker PostgreSQL，覆盖服务重启持久化、数据库断连恢复与账号隔离。自动生产部署当前已关闭，`production` 作业固定跳过；完整流程见[服务器与 CI/CD](server-deployment.md)。这些检查与原生生产迁移、真实语音或恢复演练应分别确认。
 
 原生发布沿用管理员维护的 `/etc/medvisit-coach/compose.env` 中的 `PYPI_DOWNLOAD_BASE` 下载源；仅替换锁文件中的下载地址，保留版本和 SHA-256 校验，安装完成后恢复原始锁文件。腾讯官方源的具体配置由服务器部署说明维护，不在文档中复制私有环境文件。
 

@@ -10,7 +10,7 @@ Android 用户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.med
 
 存储回归可在具备 Tauri 桌面编译依赖的开发机运行 `cargo test --manifest-path frontend/src-tauri/Cargo.toml --lib --locked`；Android 另需编译和安装验证。验收时选择实战练习、强制停止并重开应用，确认选项恢复，再验证其他账号使用独立选项。
 
-移动端共用 Python + FastAPI + AgentScope 服务端，通过 API 访问 PostgreSQL 中的服务端数据；后端本地开发使用的 SQLite 不属于移动端实现。端内数据库不替代服务端登录、权限校验或记录归属检查。
+移动端共用 TypeScript + Fastify + Pi 服务端，通过 API 访问 PostgreSQL 中的服务端数据；后端本地开发使用的 SQLite 不属于移动端实现。端内数据库不替代服务端登录、权限校验或记录归属检查。
 
 ## 页面与 API
 
@@ -20,7 +20,7 @@ Android 用户端位于 `frontend/src-tauri`，应用 ID 为 `cloud.openwook.med
 
 首次打开时会在原生 WebView 初始化后重新载入一次，确保资源拦截器包在 Tauri 已安装的客户端外层。页面资源可随 APK 离线读取；登录、资料与语音功能仍依赖后端网络。更新用户页面需要重新构建并安装 APK，发布 Web 管理页不会更新用户端。
 
-Python 后端、数据库和服务密钥不打入 APK。Manifest 保留 `RECORD_AUDIO` 与 `MODIFY_AUDIO_SETTINGS`，麦克风由现有 WebView 请求系统权限，无需新增录音插件。
+Node.js 后端、数据库和服务密钥不打入 APK。Manifest 保留 `RECORD_AUDIO` 与 `MODIFY_AUDIO_SETTINGS`，麦克风由现有 WebView 请求系统权限，无需新增录音插件。
 
 调试版额外允许 `localhost` 与 `127.0.0.1` 的 HTTP 同源地址，供 `adb reverse` 使用；发布版资源拦截只接受生产域名的 HTTPS。
 
@@ -36,7 +36,7 @@ Android 使用官方 shadcn/ui `radix-luma` 组件与 neutral 主题，底部为
 
 后端目录返回药品 `practice_departments` 和医生归一后的 `practice_department`，前端只负责筛选；自由练习预览、WebSocket 启动和绑定了药品的评分场景均在服务端校验。既有记录不重写。后台药品草稿中可编辑多个对口科室，发布后生效；显式空清单表示不开放该药品的科室匹配。
 
-内置20种药品的默认科室在 `backend/medvisit/platform/departments.py`；旧目录缺少此字段时按通用名读取默认值，未知药品不会自动匹配全部医生。科室别名统一处理，例如“心内科／心血管代谢中心”和“血液科／白血病诊疗中心”。这里只表示模拟练习的科室领域对口，不判断个人处方权、医院准入或具体患者适用性。药品来源入口沿用 `catalog_seed.json`，医生专业来源沿用 `doctor_profiles.json`。
+内置20种药品的默认科室在 `backend/resources/constants.json 的 departments`；旧目录缺少此字段时按通用名读取默认值，未知药品不会自动匹配全部医生。科室别名统一处理，例如“心内科／心血管代谢中心”和“血液科／白血病诊疗中心”。这里只表示模拟练习的科室领域对口，不判断个人处方权、医院准入或具体患者适用性。药品来源入口沿用 `catalog_seed.json`，医生专业来源沿用 `doctor_profiles.json`。
 
 本次更新需先部署后端及管理端，再更新用户 APK；旧后端未提供科室字段时，新版用户端不会放行未经匹配的组合。
 
@@ -76,7 +76,7 @@ APK 位于 `frontend/src-tauri/gen/android/app/build/outputs/apk/`。调试签�
 
 先用 `emulator -list-avds` 和 `adb devices` 选择本机 AVD；未启动时用 `emulator -avd AVD_NAME` 启动。每个 adb 命令都应指定实际模拟器序列号。
 
-本机 Android 验收后端也必须设置 `AUTH_REQUIRED=true`，并配置仅用于隔离验收的一次性账号。使用 `uv run --directory backend python -m medvisit.api.auth` 交互生成密码哈希，再通过后端环境配置指定账号；凭据不要写进源码或提交 Git。Android 检测到 `enabled: false` 会显示“服务器未启用账号登录”，不会沿用 Web 的本机免登录入口。
+本机 Android 验收后端也必须设置 `AUTH_REQUIRED=true`，并配置仅用于隔离验收的一次性账号。使用 `npm --prefix backend run password` 交互生成密码哈希，再通过后端环境配置指定账号；凭据不要写进源码或提交 Git。Android 检测到 `enabled: false` 会显示“服务器未启用账号登录”，不会沿用 Web 的本机免登录入口。
 
 启动已启用认证的本机后端与一个前端 API 代理。例如前端监听 `127.0.0.1:5176`，Vite 的 `API_TARGET` 指向本机后端：
 
