@@ -120,7 +120,7 @@ npm run android:build -- --debug --apk --target aarch64 --ci -- --locked
 
 GitHub Actions 的工件 `EviSpeak-android-arm64-debug-<commit>` 中只上传可安装 APK，保留 14 天。它使用调试签名，用户页面来自 APK，默认连接真实服务器的 HTTPS API；安装后仍须使用服务器已有的合法账号登录。私钥、发布 keystore 和 CI 认证测试账号不会进入工件。Web 和 Android 两次构建都会检查实际模块图，阻止管理页面与用户页面交叉打包。
 
-该编译任务是生产 CD 的前置条件，编译失败会阻止 Web 管理后台和后端部署。CI 不会自动安装到用户手机或发布应用商店，也不能代替 AVD 与真实设备的操作验收。
+自动生产部署当前已关闭，APK 编译与工件上传继续执行。CI 不会自动安装到用户手机或发布应用商店，也不能代替 AVD 与真实设备的操作验收。
 
 ## 发布与验证边界
 

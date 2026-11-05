@@ -69,7 +69,7 @@ sudo python3 /srv/medvisit-coach/current/deploy/native-backup.py \
 
 ## 依赖与持续集成
 
-前端使用 `npm --prefix frontend ci`，后端使用 `uv sync --directory backend --locked` 安装锁定版本。CI 配置检查前端测试、lint 与两端模块边界，使用独立 PostgreSQL 跑后端测试并拒绝跳过，编译真实 Android ARM64 APK；部署集成使用原生 Uvicorn / Caddy 和 Docker PostgreSQL，覆盖服务重启持久化、数据库断连恢复与账号隔离。生产作业串行执行并检查最新 `main` SHA，接收同次 CI 的管理端静态构建产物；完整流程见[服务器与 CI/CD](server-deployment.md)。这些检查与原生生产迁移、真实语音或恢复演练应分别确认。
+前端使用 `npm --prefix frontend ci`，后端使用 `uv sync --directory backend --locked` 安装锁定版本。CI 配置检查前端测试、lint 与两端模块边界，使用独立 PostgreSQL 跑后端测试并拒绝跳过，编译真实 Android ARM64 APK；部署集成使用原生 Uvicorn / Caddy 和 Docker PostgreSQL，覆盖服务重启持久化、数据库断连恢复与账号隔离。自动生产部署当前已关闭，`production` 作业固定跳过；完整流程见[服务器与 CI/CD](server-deployment.md)。这些检查与原生生产迁移、真实语音或恢复演练应分别确认。
 
 原生发布沿用管理员维护的 `/etc/medvisit-coach/compose.env` 中的 `PYPI_DOWNLOAD_BASE` 下载源；仅替换锁文件中的下载地址，保留版本和 SHA-256 校验，安装完成后恢复原始锁文件。腾讯官方源的具体配置由服务器部署说明维护，不在文档中复制私有环境文件。
 
