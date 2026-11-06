@@ -1,0 +1,17 @@
+--- a/backend/benchmarks/performance-twenty.ts
++++ b/backend/benchmarks/performance-twenty.ts
+@@ -104,6 +104,14 @@
+     const documents = Array.from({ length: count }, (_, i) => ({ id: `doc-${String(i).padStart(4, '0')}`, version: 2, version_label: 'v2', status: 'approved', title: '合成材料', source_url: name === 'medical_url' ? `https://example.org/${i}` : 'https://example.org/shared', pages: pages(pageCount, pageLength) }))
+     const sources = Array.from({ length: small ? 2 : name === 'medical_url' ? 1500 : name === 'medical_facts' ? 1 : 18 }, (_, i) => ({ id: `source-${i}`, title: '合成原始来源', url: name === 'medical_url' ? `https://example.org/${i}` : 'https://example.org/shared', kind: 'label', product_ids: ['synthetic'], trials: ['study-2026'], published_at: '2026-01-01', pages: pages(pageCount, pageLength) }))
+     if (name === 'medical_unmatched') for (const document of documents) document.source_url = 'https://unmatched.example.org/'
++    if (name === 'medical_unique') {
++      sources.splice(documents.length)
++      documents.forEach((document, i) => {
++        document.source_url = sources[i].url = `https://example.org/unique-${i}`
++        document.pages.forEach(page => { page.text += ` unique-document-${i}-page-${page.number}` })
++        sources[i].pages = document.pages.map(page => ({ ...page }))
++      })
++    }
+     const data = { version: 'synthetic', products: [{ id: 'synthetic', name: '合成药品', aliases: [] }], sources,
+       compiled: { synthetic: { facts: Array.from({ length: small ? 2 : name === 'medical_facts' ? 160 : name === 'medical_claims' ? 80 : 0 }, () => ({ source_id: 'source-0', page: 1, claim: '原文依据与安全人群需要核实，' + '合成文本 '.repeat(name === 'medical_claims' && !small ? 1000 : 20) })) } } }
+     const store = { config: { records: folder }, transaction: async (_tenant: string, callback: any) => callback({ list: async () => documents }) }

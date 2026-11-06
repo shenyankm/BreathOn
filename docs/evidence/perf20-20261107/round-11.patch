@@ -1,0 +1,14 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -198,7 +198,10 @@
+             (fact: Doc) => {
+               if (fact.source_id !== source.id || fact.page !== page.number) return false
+               const claim = compact(fact.claim)
+-              return tokens.filter((t) => claim.includes(t)).length >= 2
++              let matches = 0
++              for (const token of tokens)
++                if (claim.includes(token) && ++matches === 2) return true
++              return false
+             },
+           ),
+         )

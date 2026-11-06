@@ -1,0 +1,18 @@
+--- a/frontend/src/lib/medical.ts
++++ b/frontend/src/lib/medical.ts
+@@ -21,7 +21,12 @@
+ 
+ export function indexProductSources<T extends { id: string }>(products: { id: string; sources: string[] }[], sources: T[]) {
+   const byId = new Map(sources.map((source, index) => [source.id, { source, index }]))
+-  return new Map(products.map(product => [product.id, [...new Set(product.sources)]
+-    .flatMap(id => { const entry = byId.get(id); return entry ? [entry] : [] })
+-    .sort((a, b) => a.index - b.index).map(entry => entry.source)]))
++  return new Map(products.map(product => {
++    const entries: { source: T; index: number }[] = []
++    for (const id of new Set(product.sources)) {
++      const entry = byId.get(id)
++      if (entry) entries.push(entry)
++    }
++    return [product.id, entries.sort((a, b) => a.index - b.index).map(entry => entry.source)]
++  }))
+ }

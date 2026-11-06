@@ -1,0 +1,12 @@
+assessment: 0.77851 -> 0.05047 ms (93.5%)
+medical_metadata: 82.31673 -> 71.63525 ms (13.0%)
+medical_blank: 78.34523 -> 25.23711 ms (67.8%)
+medical_unmatched: 37.92071 -> 36.06844 ms (4.9%)
+medical_claims: 3.54919 -> 1.90075 ms (46.4%)
+speech_observe: 0.05981 -> 0.04257 ms (28.8%)
+frontend_update: 0.00455 -> 0.00117 ms (74.4%)
+frontend_sources: 2.58231 -> 1.37421 ms (46.8%)
+retrieve: 7.54553 -> 8.13226 ms (-7.8%)
+asr: 2.26738 -> 2.35342 ms (-3.8%)
+records: 13.36039 -> 12.86856 ms (3.7%)
+patch chain verified

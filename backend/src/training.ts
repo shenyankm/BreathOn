@@ -228,6 +228,7 @@ export async function checkMaterials(store: Store, user: User, training?: Doc, f
   )
 }
 export function retrieve(documents: Doc[], query: string, limit = 10): Doc[] {
+  if (limit === 0) return []
   const chinese = query.match(/[\u4e00-\u9fff]+/gu) ?? [],
     terms = unique([
       ...(query.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) ?? []),
@@ -370,6 +371,15 @@ export function validateAssessment(
   history: Doc[],
   model: string,
 ): Doc {
+  const normalized = new Map<string, string>()
+  const normalizedText = (text: string) => {
+    let value = normalized.get(text)
+    if (value === undefined) {
+      value = normalize(text)
+      normalized.set(text, value)
+    }
+    return value
+  }
   const errors: string[] = [],
     supplied = new Map<string, Doc>(),
     trainees = new Map(
@@ -411,7 +421,7 @@ export function validateAssessment(
           quote.quote.length < 1 ||
           quote.quote.length > 600 ||
           !trainees.has(quote.message_id) ||
-          !normalize(trainees.get(quote.message_id)).includes(normalize(quote.quote))
+          !normalizedText(trainees.get(quote.message_id)).includes(normalize(quote.quote))
         ) {
           valid = false
           errors.push(`${key}学员引文无法核对。`)
@@ -426,7 +436,7 @@ export function validateAssessment(
           typeof citation.quote !== 'string' ||
           citation.quote.length < 6 ||
           citation.quote.length > 500 ||
-          !normalize(source.text).includes(normalize(citation.quote))
+          !normalizedText(source.text).includes(normalize(citation.quote))
         ) {
           valid = false
           errors.push(`${key}资料引文无法核对。`)

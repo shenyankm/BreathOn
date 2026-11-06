@@ -1,0 +1,32 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -186,6 +186,7 @@
+         year = (text.match(/\b20\d{2}\b/g) ?? []).some((year) =>
+           String(source.published_at ?? '').includes(year),
+         )
++      const sourceRanked: Doc[] = []
+       for (const page of source.pages ?? []) {
+         const receipt = approvals.get(`${source.id}:${page.number}`)
+         if (
+@@ -226,7 +227,7 @@
+           if (factMatch) score += 5
+           if (score > (related ? 8 : 3)) {
+             const { pages, original_path, ...metadata } = source
+-            ranked.push({
++            sourceRanked.push({
+               id: `${source.id}:p${page.number}:${offset}`,
+               source_id: source.id,
+               page: page.number,
+@@ -235,9 +236,12 @@
+               score: Math.round(score * 100) / 100,
+               source: metadata,
+             })
++            sourceRanked.sort((a, b) => b.score - a.score)
++            if (sourceRanked.length > 4) sourceRanked.pop()
+           }
+         }
+       }
++      ranked.push(...sourceRanked)
+     }
+     ranked.sort((a, b) => b.score - a.score)
+     const per = new Map<string, number>(),

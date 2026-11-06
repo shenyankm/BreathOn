@@ -1,0 +1,11 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -436,7 +436,7 @@
+           typeof citation.quote !== 'string' ||
+           citation.quote.length < 6 ||
+           citation.quote.length > 500 ||
+-          !normalize(source.text).includes(normalize(citation.quote))
++          !normalizedText(source.text).includes(normalize(citation.quote))
+         ) {
+           valid = false
+           errors.push(`${key}资料引文无法核对。`)

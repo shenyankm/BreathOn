@@ -1,0 +1,16 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -250,6 +250,13 @@
+             score++
+             start = found + term.length
+           }
++        }
++        if (bounded && candidates.length === limit) {
++          const last = candidates[candidates.length - 1]
++          const order = score === last.score
++            ? doc.id.localeCompare(last.doc.id) || page.number - last.page
++            : last.score - score
++          if (order >= 0) continue
+         }
+         const candidate = {
+           score,

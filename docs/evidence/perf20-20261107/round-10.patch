@@ -1,0 +1,16 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -195,8 +195,11 @@
+           continue
+         const factMatch = products.some((p: Doc) =>
+           (data.compiled?.[p.id]?.facts ?? []).some(
+-            (fact: Doc) => fact.source_id === source.id && fact.page === page.number &&
+-              tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
++            (fact: Doc) => {
++              if (fact.source_id !== source.id || fact.page !== page.number) return false
++              const claim = compact(fact.claim)
++              return tokens.filter((t) => claim.includes(t)).length >= 2
++            },
+           ),
+         )
+         for (let offset = 0; offset < page.text.length; offset += 1000) {

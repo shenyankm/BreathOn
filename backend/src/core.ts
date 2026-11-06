@@ -15,7 +15,7 @@ export const identity = new AsyncLocalStorage<User>()
 export const now = () => new Date().toISOString()
 export const uuid = () => randomUUID()
 export const sha = (value: string | Buffer) => createHash('sha256').update(value).digest('hex')
-export const normalize = (value: string) => value.replace(/\s/gu, '')
+export const normalize = (value: string) => value.replace(/\s+/gu, '')
 export const resource = (name: string) =>
   JSON.parse(readFileSync(new URL(`../resources/${name}.json`, import.meta.url), 'utf8')) as Doc
 export const constants = resource('constants')

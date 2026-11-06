@@ -1,0 +1,27 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -371,6 +371,15 @@
+   history: Doc[],
+   model: string,
+ ): Doc {
++  const normalized = new Map<string, string>()
++  const normalizedText = (text: string) => {
++    let value = normalized.get(text)
++    if (value === undefined) {
++      value = normalize(text)
++      normalized.set(text, value)
++    }
++    return value
++  }
+   const errors: string[] = [],
+     supplied = new Map<string, Doc>(),
+     trainees = new Map(
+@@ -412,7 +421,7 @@
+           quote.quote.length < 1 ||
+           quote.quote.length > 600 ||
+           !trainees.has(quote.message_id) ||
+-          !normalize(trainees.get(quote.message_id)).includes(normalize(quote.quote))
++          !normalizedText(trainees.get(quote.message_id)).includes(normalize(quote.quote))
+         ) {
+           valid = false
+           errors.push(`${key}学员引文无法核对。`)

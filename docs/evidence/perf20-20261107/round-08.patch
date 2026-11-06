@@ -1,0 +1,11 @@
+--- a/backend/src/core.ts
++++ b/backend/src/core.ts
+@@ -21,7 +21,7 @@
+ export const constants = resource('constants')
+ export const pick = (row: Doc, keys: string[]) =>
+   Object.fromEntries(keys.map((key) => [key, row[key] ?? null]))
+-export const unique = <T>(values: T[]) => [...new Set(values)]
++export const unique = <T>(values: T[]) => values.length < 2 ? values.slice() : [...new Set(values)]
+ export function assert(condition: unknown, status: number, detail: string): asserts condition {
+   if (!condition) throw new HttpError(status, detail)
+ }

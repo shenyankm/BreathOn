@@ -1,0 +1,17 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -229,11 +229,9 @@
+ }
+ export function retrieve(documents: Doc[], query: string, limit = 10): Doc[] {
+   if (limit === 0) return []
+-  const chinese = query.match(/[\u4e00-\u9fff]+/gu) ?? [],
+-    terms = unique([
+-      ...(query.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) ?? []),
+-      ...chinese.flatMap((s) => Array.from({ length: s.length - 1 }, (_, i) => s.slice(i, i + 2))),
+-    ])
++  const terms = new Set(query.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) ?? [])
++  for (const text of query.match(/[\u4e00-\u9fff]+/gu) ?? [])
++    for (let i = 0; i + 1 < text.length; i++) terms.add(text.slice(i, i + 2))
+   const candidates: Doc[] = []
+   const compare = (a: Doc, b: Doc) => b.score - a.score || a.doc.id.localeCompare(b.doc.id) || a.page - b.page
+   const bounded = Number.isInteger(limit) && limit > 0

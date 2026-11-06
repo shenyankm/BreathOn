@@ -1,0 +1,8 @@
+lint 0
+unit-tests 0
+build 0
+android-frontend-build 0
+training-browser 0
+web-e2e 1
+diff-check 0
+web-e2e final 0 (temporary real ffprobe tool available in PATH)

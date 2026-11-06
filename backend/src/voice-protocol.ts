@@ -347,8 +347,9 @@ export class SpeechEvidence {
   frames: { power: number; playing?: boolean; muted: boolean }[] = []
   observe(pcm: Buffer, playing?: boolean, muted = false) {
     let power = 0
+    const view = new DataView(pcm.buffer, pcm.byteOffset, pcm.byteLength)
     for (let i = 0; i < 320; i++) {
-      const sample = pcm.readInt16LE(i * 2)
+      const sample = view.getInt16(i * 2, true)
       power += sample * sample
     }
     this.frames.push({ power: power / 320, playing, muted })

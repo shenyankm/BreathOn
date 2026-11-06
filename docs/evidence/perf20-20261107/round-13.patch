@@ -1,0 +1,11 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -101,7 +101,7 @@
+     }
+     for (const doc of documents) {
+       const normalizedPages = new Map<number, Set<string>>()
+-      if (doc.source_url)
++      if (doc.source_url && sourcesByURL.has(doc.source_url))
+         for (const page of doc.pages) {
+           const texts = normalizedPages.get(page.number) ?? new Set<string>()
+           texts.add(normalize(page.text))

@@ -91,7 +91,7 @@ export class Medical {
         false,
       ),
       approvals = new Map<string, Doc>(),
-      normalizedSources = new Map<Doc, string>(),
+      normalizedSources = new Map<string, string>(),
       sourcesByURL = new Map<string, Doc[]>(),
       derived: Doc[] = []
     for (const source of data.sources) {
@@ -101,7 +101,7 @@ export class Medical {
     }
     for (const doc of documents) {
       const normalizedPages = new Map<number, Set<string>>()
-      if (doc.source_url)
+      if (doc.source_url && sourcesByURL.has(doc.source_url))
         for (const page of doc.pages) {
           const texts = normalizedPages.get(page.number) ?? new Set<string>()
           texts.add(normalize(page.text))
@@ -135,10 +135,10 @@ export class Medical {
       })
       for (const source of doc.source_url ? sourcesByURL.get(doc.source_url) ?? [] : []) {
         for (const page of source.pages ?? []) {
-          let text = normalizedSources.get(page)
+          let text = normalizedSources.get(page.text)
           if (text === undefined) {
             text = normalize(page.text)
-            normalizedSources.set(page, text)
+            normalizedSources.set(page.text, text)
           }
           if (text && normalizedPages.get(page.number)?.has(text)) {
             const key = `${source.id}:${page.number}`,
@@ -149,6 +149,8 @@ export class Medical {
         }
       }
     }
+    if (!text.trim() && !context.trim())
+      return { data, approvals, rows: [], sources: [...data.sources, ...derived] }
     const query = compact(text),
       background = compact(context),
       matches = (p: Doc, input: string) =>
@@ -195,8 +197,11 @@ export class Medical {
           continue
         const factMatch = products.some((p: Doc) =>
           (data.compiled?.[p.id]?.facts ?? []).some(
-            (fact: Doc) => fact.source_id === source.id && fact.page === page.number &&
-              tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
+            (fact: Doc) => {
+              if (fact.source_id !== source.id || fact.page !== page.number) return false
+              const claim = compact(fact.claim)
+              return tokens.filter((t) => claim.includes(t)).length >= 2
+            },
           ),
         )
         for (let offset = 0; offset < page.text.length; offset += 1000) {

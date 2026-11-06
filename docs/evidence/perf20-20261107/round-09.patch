@@ -1,0 +1,20 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -184,7 +184,8 @@
+         year = (text.match(/\b20\d{2}\b/g) ?? []).some((year) =>
+           String(source.published_at ?? '').includes(year),
+         )
+-      for (const page of source.pages ?? []) {
++      const { pages: sourcePages, original_path, ...metadata } = source
++      for (const page of sourcePages ?? []) {
+         const receipt = approvals.get(`${source.id}:${page.number}`)
+         if (
+           !receipt ||
+@@ -220,7 +221,6 @@
+             score += 8
+           if (factMatch) score += 5
+           if (score > (related ? 8 : 3)) {
+-            const { pages, original_path, ...metadata } = source
+             ranked.push({
+               id: `${source.id}:p${page.number}:${offset}`,
+               source_id: source.id,

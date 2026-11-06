@@ -5,7 +5,10 @@ export const medicalLabels: Record<MedicalStatus, string> = { checking: '正在�
 
 export function updateMedicalChecks(previous: MedicalCheck[], check: MedicalCheck) {
   const index = previous.findIndex(row => row.message_id === check.message_id)
-  return index < 0 ? [...previous, check] : previous.map((row, i) => i === index ? check : row)
+  if (index < 0) return [...previous, check]
+  const updated = previous.slice()
+  updated[index] = check
+  return updated
 }
 
 export function invalidateMedicalCheck(previous: MedicalCheck[], id: string, text: string) {
@@ -18,7 +21,12 @@ export function invalidateMedicalCheck(previous: MedicalCheck[], id: string, tex
 
 export function indexProductSources<T extends { id: string }>(products: { id: string; sources: string[] }[], sources: T[]) {
   const byId = new Map(sources.map((source, index) => [source.id, { source, index }]))
-  return new Map(products.map(product => [product.id, [...new Set(product.sources)]
-    .flatMap(id => { const entry = byId.get(id); return entry ? [entry] : [] })
-    .sort((a, b) => a.index - b.index).map(entry => entry.source)]))
+  return new Map(products.map(product => {
+    const entries: { source: T; index: number }[] = []
+    for (const id of new Set(product.sources)) {
+      const entry = byId.get(id)
+      if (entry) entries.push(entry)
+    }
+    return [product.id, entries.sort((a, b) => a.index - b.index).map(entry => entry.source)]
+  }))
 }

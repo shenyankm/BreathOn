@@ -1,0 +1,105 @@
+diff --git a/backend/benchmarks/performance-twenty.ts b/backend/benchmarks/performance-twenty.ts
+index 1951163..6e7914a 100644
+--- a/backend/benchmarks/performance-twenty.ts
++++ b/backend/benchmarks/performance-twenty.ts
+@@ -5,6 +5,7 @@ import { resolve, join } from 'node:path'
+ import { pathToFileURL } from 'node:url'
+ import { createHash } from 'node:crypto'
+ import { performance } from 'node:perf_hooks'
++import { gunzipSync } from 'node:zlib'
+ 
+ // Synthetic local workloads only. --root selects an immutable backend source snapshot.
+ const arg = (name: string) => process.argv[process.argv.indexOf(name) + 1]
+@@ -26,9 +27,55 @@ async function storeFixture() {
+   return store
+ }
+ try {
+-  if (name === 'retrieve') {
++  if (name.startsWith('retrieve')) {
+     const documents = Array.from({ length: small ? 2 : 24 }, (_, i) => ({ id: `doc-${String(i).padStart(3, '0')}`, version: 2, title: '合成资料', pages: pages(small ? 2 : 24, small ? 180 : 8000) }))
+-    work = () => training.retrieve(documents, '原文依据 人群 安全 evidence study 2026', 10)
++    const query = name === 'retrieve_terms' ? '研究适用人群需要核对安全边界'.repeat(small ? 1 : 250) : '原文依据 人群 安全 evidence study 2026'
++    work = () => training.retrieve(documents, query, name === 'retrieve_zero' ? 0 : 10)
++  } else if (name === 'assessment') {
++    const quote = '请先核对研究原文与适用人群，再讨论后续安排。'
++    const history = [{ id: 'u', speaker: 'trainee', final: true, text: (quote + ' \n').repeat(small ? 2 : 160) }]
++    const evidence = [{ id: 'D1', text: history[0].text, title: '合成依据' }]
++    const dimensions = Array.from({ length: small ? 1 : 6 }, (_, i) => ({ key: `d${i}`, weight: i === 5 ? 20 : 16, requires_content: true, anchors: ['0', '1', '2', '3', '4'] }))
++    const captured = { rubric: { id: 'r', name: '合成量表', dimensions }, evidence }
++    const raw = { dimensions: dimensions.map(d => ({ key: d.key, score: 3, reason: '合成评价', utterances: Array.from({ length: 4 }, () => ({ message_id: 'u', quote })), citations: Array.from({ length: 3 }, () => ({ source_id: 'D1', quote })) })) }
++    work = () => training.validateAssessment(raw, captured, history, 'synthetic')
++  } else if (name === 'normalize') {
++    const value = ('原文 \t\n\r  依据\u00a0\u3000 人群 安全。').repeat(small ? 2 : 1000)
++    work = () => core.normalize(value)
++    assert.equal(work(), value.split(/\s/u).join(''))
++  } else if (name === 'unique') {
++    const values = Array.from({ length: small ? 1 : 1000 }, (_, i) => i % 100)
++    work = () => core.unique(values)
++    assert.notEqual(work(), values)
++  } else if (name === 'speech_observe') {
++    const speech = new voice.SpeechEvidence(), pcm = Buffer.alloc(641)
++    for (let i = 0; i < 320; i++) pcm.writeInt16LE((i * 173) % 65536 - 32768, 1 + i * 2)
++    work = () => {
++      speech.frames = []
++      for (let i = 0; i < (small ? 1 : 100); i++) speech.observe(pcm.subarray(1), i % 2 === 0, i % 7 === 0)
++      return speech.frames
++    }
++  } else if (name === 'asr_packet') {
++    const pcm = Buffer.alloc(small ? 640 : 6400)
++    for (let i = 0; i < pcm.length / 2; i++) pcm.writeInt16LE(Math.round(Math.sin(i / 7) * 5000), i * 2)
++    work = () => {
++      const packet = voice.asrPacket(pcm, true, true)
++      assert.equal(packet.readUInt32BE(4), packet.length - 8)
++      return [packet.subarray(0, 4).toString('hex'), gunzipSync(packet.subarray(8)).toString('base64')]
++    }
++  } else if (name === 'frontend_update' || name === 'frontend_sources') {
++    const frontend = await import(pathToFileURL(join(root, '..', 'frontend', 'src', 'lib', 'medical.ts')).href)
++    if (name === 'frontend_update') {
++      const rows = Array.from({ length: small ? 3 : 1500 }, (_, i) => ({ message_id: `u${i}`, text: '合成原话', status: 'checking', statements: [] }))
++      const updated = { ...rows[0], status: 'supported' }
++      work = () => frontend.updateMedicalChecks(rows, updated)
++      assert.equal((work() as any[])[0], updated)
++      assert.equal(rows[0].status, 'checking')
++    } else {
++      const sources = Array.from({ length: small ? 5 : 1200 }, (_, i) => ({ id: `s${i}` }))
++      const products = Array.from({ length: small ? 2 : 60 }, (_, i) => ({ id: `p${i}`, sources: sources.filter((_, j) => j % 4 === i % 4).map(s => s.id).reverse() }))
++      work = () => [...frontend.indexProductSources(products, sources)]
++    }
+   } else if (name === 'asr' || name === 'asr_disk') {
+     const { Dialogue } = await load('live'), count = name === 'asr_disk' ? (small ? 1 : 20) : (small ? 10 : 2000)
+     const initial = Array.from({ length: count }, (_, i) => ({ id: `combat-u-${i}`, role: 'trainee', text: `旧的合成原话${i}`, final: true, annotation: 'preserved' }))
+@@ -51,13 +98,22 @@ try {
+     }
+     validation = () => ({ durable_acknowledgements: durable, checkpoint_calls: name === 'asr_disk' ? undefined : checkpointCalls > 0 })
+   } else if (name.startsWith('medical_')) {
+-    const count = small ? 2 : name === 'medical_url' ? 200 : name === 'medical_facts' ? 1 : 12
+-    const pageCount = small ? 2 : name === 'medical_url' || name === 'medical_facts' ? 1 : 18
++    const count = small ? 2 : name === 'medical_url' ? 200 : name === 'medical_facts' || name === 'medical_claims' ? 1 : 12
++    const pageCount = small ? 2 : name === 'medical_url' || name === 'medical_facts' || name === 'medical_claims' ? 1 : 18
+     const pageLength = small ? 200 : name === 'medical_url' ? 300 : name === 'medical_facts' ? 180000 : 6000
+     const documents = Array.from({ length: count }, (_, i) => ({ id: `doc-${String(i).padStart(4, '0')}`, version: 2, version_label: 'v2', status: 'approved', title: '合成材料', source_url: name === 'medical_url' ? `https://example.org/${i}` : 'https://example.org/shared', pages: pages(pageCount, pageLength) }))
+     const sources = Array.from({ length: small ? 2 : name === 'medical_url' ? 1500 : name === 'medical_facts' ? 1 : 18 }, (_, i) => ({ id: `source-${i}`, title: '合成原始来源', url: name === 'medical_url' ? `https://example.org/${i}` : 'https://example.org/shared', kind: 'label', product_ids: ['synthetic'], trials: ['study-2026'], published_at: '2026-01-01', pages: pages(pageCount, pageLength) }))
++    if (name === 'medical_unmatched') for (const document of documents) document.source_url = 'https://unmatched.example.org/'
++    if (name === 'medical_unique') {
++      sources.splice(documents.length)
++      documents.forEach((document, i) => {
++        document.source_url = sources[i].url = `https://example.org/unique-${i}`
++        document.pages.forEach(page => { page.text += ` unique-document-${i}-page-${page.number}` })
++        sources[i].pages = document.pages.map(page => ({ ...page }))
++      })
++    }
+     const data = { version: 'synthetic', products: [{ id: 'synthetic', name: '合成药品', aliases: [] }], sources,
+-      compiled: { synthetic: { facts: Array.from({ length: small ? 2 : name === 'medical_facts' ? 160 : 0 }, () => ({ source_id: 'source-0', page: 1, claim: '原文依据与安全人群需要核实，' + '合成文本 '.repeat(20) })) } } }
++      compiled: { synthetic: { facts: Array.from({ length: small ? 2 : name === 'medical_facts' ? 160 : name === 'medical_claims' ? 80 : 0 }, () => ({ source_id: 'source-0', page: 1, claim: '原文依据与安全人群需要核实，' + '合成文本 '.repeat(name === 'medical_claims' && !small ? 1000 : 20) })) } } }
+     const store = { config: { records: folder }, transaction: async (_tenant: string, callback: any) => callback({ list: async () => documents }) }
+     const medical = new medicalModule.Medical(store, { config: {} })
+     medical.load = async () => data
+@@ -66,7 +122,7 @@ try {
+       work = async () => { const checks = [{ status: 'checking', statements: [] }, { status: 'insufficient', statements: [] }]; await medical.invalidate(user, checks); return checks }
+     } else {
+       work = async () => {
+-        const result = await medical.evidence(user, query)
++        const result = await medical.evidence(user, name === 'medical_blank' ? '' : query)
+         return { approvals: [...result.approvals], rows: result.rows }
+       }
+     }

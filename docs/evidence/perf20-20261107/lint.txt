@@ -1,0 +1,16 @@
+
+> evispeak@0.0.0 lint
+> npm --prefix frontend run lint --
+
+
+> @evispeak/frontend@0.0.0 lint
+> oxlint
+
+src/components/ui/badge.tsx:45:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/main.tsx:6:7: warning react(only-export-components): Fast refresh only works when a file has exports. Move your component(s) to a separate file.
+src/components/ui/toggle.tsx:46:18: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/components/ui/button.tsx:64:18: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/components/ui/navigation-menu.tsx:162:3: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/components/ui/tabs.tsx:87:52: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/main.android.tsx:6:7: warning react(only-export-components): Fast refresh only works when a file has exports. Move your component(s) to a separate file.
+src/pages/visits-page.tsx:89:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders help: Effects should synchronize React with external systems. Calling setState synchronously inside an effect starts another render and is usually unnecessary. Derive the value during render, initialize state directly, or update it from the event that caused the change. Use an effect only when synchronizing with an external system.

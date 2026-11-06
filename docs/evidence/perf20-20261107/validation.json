@@ -1,0 +1,121 @@
+{
+  "checks": [
+    {
+      "name": "unit-tests",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 9.053,
+      "log": "unit-tests.txt"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 11.529,
+      "log": "build.txt"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.734,
+      "log": "lint.txt"
+    },
+    {
+      "name": "android-frontend-build",
+      "command": [
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 4.565,
+      "log": "android-frontend-build.txt"
+    },
+    {
+      "name": "training-browser",
+      "command": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "run",
+        "test:training"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 16.115,
+      "log": "training-browser.txt"
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.026,
+      "log": "diff-check.txt"
+    },
+    {
+      "name": "web-e2e",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 43.988,
+      "log": "web-e2e.txt",
+      "environment": "temporary ffprobe environment prepended to PATH"
+    }
+  ],
+  "database": "disposable PostgreSQL 17-alpine container on loopback",
+  "paid_providers": false,
+  "physical_android": false,
+  "database_container_removed": true,
+  "ffprobe_version": "ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers",
+  "ffprobe_setup": "temporary isolated Conda prefix installed offline from 92 cached packages; project dependencies unchanged",
+  "summary": {
+    "backend_passed": 54,
+    "frontend_passed": 203,
+    "unit_skipped": 0,
+    "training_browser_passed": 5,
+    "web_e2e_passed": 22,
+    "web_e2e_skipped": 6,
+    "web_e2e_failed": 0,
+    "lint_errors": 0,
+    "lint_existing_warnings": 8
+  },
+  "initial_environment_failures": [
+    {
+      "name": "web-e2e-initial",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "exit_code": 1,
+      "elapsed_seconds": 44.83,
+      "log": "web-e2e-initial.txt",
+      "environment_failure": "ffprobe absent from PATH"
+    },
+    {
+      "name": "web-e2e-environment-retry",
+      "exit_code": 1,
+      "log": "web-e2e-environment-retry.txt",
+      "environment_failure": "ffprobe environment setup not yet complete; same 503 media validation failure"
+    }
+  ],
+  "local_acceptance_passed": true
+}

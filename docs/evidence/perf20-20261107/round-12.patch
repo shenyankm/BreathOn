@@ -1,0 +1,11 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -149,6 +149,8 @@
+         }
+       }
+     }
++    if (!text.trim() && !context.trim())
++      return { data, approvals, rows: [], sources: [...data.sources, ...derived] }
+     const query = compact(text),
+       background = compact(context),
+       matches = (p: Doc, input: string) =>

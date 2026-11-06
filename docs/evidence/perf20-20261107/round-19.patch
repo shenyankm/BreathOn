@@ -1,0 +1,14 @@
+--- a/frontend/src/lib/medical.ts
++++ b/frontend/src/lib/medical.ts
+@@ -5,7 +5,10 @@
+ 
+ export function updateMedicalChecks(previous: MedicalCheck[], check: MedicalCheck) {
+   const index = previous.findIndex(row => row.message_id === check.message_id)
+-  return index < 0 ? [...previous, check] : previous.map((row, i) => i === index ? check : row)
++  if (index < 0) return [...previous, check]
++  const updated = previous.slice()
++  updated[index] = check
++  return updated
+ }
+ 
+ export function invalidateMedicalCheck(previous: MedicalCheck[], id: string, text: string) {

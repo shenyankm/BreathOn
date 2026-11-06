@@ -1,0 +1,10 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -228,6 +228,7 @@
+   )
+ }
+ export function retrieve(documents: Doc[], query: string, limit = 10): Doc[] {
++  if (limit === 0) return []
+   const chinese = query.match(/[\u4e00-\u9fff]+/gu) ?? [],
+     terms = unique([
+       ...(query.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) ?? []),

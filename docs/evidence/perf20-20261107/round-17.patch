@@ -1,0 +1,11 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -373,7 +373,7 @@
+       if (frame.muted) continue
+       count++
+       power += frame.power
+-      peak = Math.max(peak, frame.power)
++      if (frame.power > peak) peak = frame.power
+       if (frame.playing) overlap++
+     }
+     if (!count) return { available: false }
