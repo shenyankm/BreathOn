@@ -110,3 +110,45 @@ test('progress ignores late superseded responses and shows recoverable current f
   assert.ok(text(app.render()).includes('current failure'))
   assert.ok(button(app.render(), '重试统计'))
 })
+
+test('a retraining record shows its parent comparison and prepares another assigned task without duplicate starts', async()=>{
+  const started:unknown[]=[];let nextCalls=0,finish!:(value:unknown)=>void
+  const app=mount('components/review-panel.tsx','ReviewPanel',async(path)=>{
+    if(path.endsWith('/reviews'))return {reviews:[],responses:[]}
+    if(path.endsWith('/remediations'))return [{id:'next-plan',parent_record_id:'child',status:'assigned',focus_label:'需求确认',note:'再次确认',attempts:0,comparable:false,dimensions:[]}]
+    if(path.endsWith('/progress'))return {id:'parent-plan',parent_record_id:'baseline',status:'completed',focus_label:'需求确认',note:'聚焦沟通',attempts:1,comparable:true,same_stage:true,latest_record_id:'child',dimensions:[{key:'communication',label:'沟通',before:2,after:3,delta:1}]}
+    if(path.endsWith('/next')){nextCalls++;return new Promise(resolve=>{finish=resolve})}
+    assert.fail(path)
+  },{record:{id:'child',remediation_id:'parent-plan',messages:[]},onStart:(choice:unknown)=>started.push(choice)})
+  app.render();await settle();let tree=app.render()
+  assert.match(text(tree),/原记录与最新重练/)
+  assert.match(text(tree),/2.*3.*\+1/)
+  assert.equal(nodes(tree,'a').find(node=>text(node)==='查看原训练记录')?.props.href,'#records?session=baseline')
+  button(tree,'开始针对性重练').props.onClick();button(tree,'开始针对性重练').props.onClick()
+  assert.equal(nextCalls,1)
+  finish({scenario_id:'scene',stage:'full',remediation_id:'next-plan',experience:'practice',mode:'assisted'});await settle()
+  assert.equal(started.length,1)
+})
+
+test('pending retraining can recover from a failed read and only starts assigned tasks',async()=>{
+  let offline=true;const started:unknown[]=[]
+  const app=mount('components/retraining-list.tsx','RetrainingList',async path=>{
+    if(offline)throw new Error('任务加载失败')
+    if(path==='/remediations')return ['assigned','completed'].map(status=>({id:status,status,focus_label:status,stage:'full',parent_record_id:'baseline'}))
+    return {remediation_id:'assigned'}
+  },{onStart:(choice:unknown)=>started.push(choice)})
+  app.render();await settle()
+  assert.match(text(app.render()),/任务加载失败/)
+  offline=false;button(app.render(),'重新读取重练任务').props.onClick();app.render();await settle()
+  const tree=app.render()
+  assert.equal(nodes(tree,'article').length,1)
+  button(tree,'开始重练').props.onClick();await settle()
+  assert.equal(started.length,1)
+})
+
+test('representative progress exposes practice changes without provider usage details',async()=>{
+  const app=mount('components/training-progress.tsx','TrainingProgress',async()=>({days:30,session_count:0,completed_count:0,valid_practice_count:0,duration_seconds:0,unknown_duration_count:0,groups:[],sessions:[],cost_totals:{CNY:'999'},unpriced_session_count:0}),{refresh:0})
+  app.render();await settle();const tree=app.render()
+  assert.match(text(tree),/暂无可评分训练/)
+  assert.doesNotMatch(text(tree),/计价|用量|999|token/)
+})

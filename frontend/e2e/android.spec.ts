@@ -32,6 +32,7 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
     await page!.locator('input[name="password"]').fill('local-e2e-only-password')
     await page!.getByRole('button', { name: '登录', exact: true }).click()
     async function chooseDoctor() {
+      await page!.getByRole('tab', { name: '自由练习', exact: true }).click()
       await page!.getByRole('combobox', { name: '模拟医生', exact: true }).click()
       await page!.getByRole('option').first().click()
       await expect(page!.getByRole('button', { name: '开始练习', exact: true })).toBeEnabled()
@@ -156,7 +157,7 @@ test('installed Android app: practice, records, settings, native Back, SQLite pr
     if(process.env.E2E_ADB) await test.info().attach('native-frame',{body:execFileSync(process.env.E2E_ADB,
       ['-s',process.env.E2E_SERIAL??'emulator-5554','exec-out','screencap','-p']),contentType:'image/png'})
     expect(errors).toEqual([])
-    expect(userRequests.filter(path => ['/api/home','/api/curriculum','/api/me/settings','/api/me/review-queue','/api/health-observations','/api/progress'].includes(path))).toEqual([])
+    expect(userRequests.filter(path => ['/api/home','/api/curriculum','/api/me/settings','/api/me/review-queue','/api/health-observations'].includes(path))).toEqual([])
   } catch(error) {
     await page!.screenshot({path:test.info().outputPath('android-failure.png'),fullPage:true}).then(body=>test.info().attach('android-failure',{body,contentType:'image/png'})).catch(()=>{})
     throw error

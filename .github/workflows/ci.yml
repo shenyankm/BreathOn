@@ -29,6 +29,12 @@ jobs:
       - run: npm --prefix frontend run lint
       - run: npm --prefix frontend run build
       - run: npm --prefix frontend run build:android
+      - run: npm --prefix backend ci --ignore-scripts
+      - name: Verify representative training loop
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chrome
+          npm run test:training
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: EviSpeak-admin-dist-${{ github.sha }}

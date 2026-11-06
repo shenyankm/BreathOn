@@ -15,7 +15,8 @@
     "android:build": "tauri android build",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "build:android": "tsc -b && vite build --mode android",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:training": "playwright test --config playwright.training.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "^5.3.0",

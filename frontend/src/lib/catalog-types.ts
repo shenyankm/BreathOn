@@ -17,7 +17,7 @@ export const stages: Record<string, string> = { opening: '开场', needs: '需�
 export { situations } from './scenario-templates.ts'
 export function titleOf(item: CatalogRecord) { return 'title' in item ? item.title : 'display_name' in item ? item.display_name : item.name }
 export type TrainingSnapshot = {
-  scenario: { id:string; title:string; product:string; disease:string; objective:string; duration_seconds:number; background?:string; situation?:string }
+  scenario: { id:string; title:string; product:string; disease:string; objective:string; duration_seconds:number; background?:string; situation?:string; success_criteria?:string[] }
   doctor: { id:string; display_name:string; specialty:string; public_facts:string; population:string; focus:string; training_style:string; mood:string; sources:string[]; honors?:DoctorHonor[] }
   rubric: { id:string; name:string; calibration_status:string }
   documents: { id:string; title:string; version_label:string }[]

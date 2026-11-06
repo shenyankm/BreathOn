@@ -64,7 +64,7 @@ test('real browser login, every admin section and training tool render without J
   await page.locator('input[name="username"]').fill('e2e-admin')
   await page.locator('input[name="password"]').fill(password)
   await page.getByRole('button', { name: '登录', exact: true }).click()
-  await expect(page.locator('main').getByRole('heading', { name: '管理后台', exact: true })).toBeVisible()
+  await expect(page.locator('main').getByRole('heading', { name: '总览', exact: true })).toBeVisible()
   for (const section of ['drug','doctor','audiences','policy','training','review','records','settings']) {
     await page.goto(`/admin#admin?section=${section}`)
     await expect(page.locator('main')).toBeVisible()
@@ -72,9 +72,9 @@ test('real browser login, every admin section and training tool render without J
     await expect(page.locator('main').getByRole('heading').first()).toBeVisible()
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
   }
-  for (const tab of ['scenario','doctor','content','rubric','cases','pricing','research']) {
+  for (const [tab,title] of [['scenario','训练场景'],['doctor','医生角色'],['content','训练资料'],['rubric','评分标准'],['cases','经验案例'],['pricing','用量计价'],['research','资料检索']]) {
     await page.goto(`/admin#workspace?tab=${tab}`)
-    await expect(page.getByRole('heading', { name: '训练管理', exact: true })).toBeVisible()
+    await expect(page.locator('main').getByRole('heading', { name: title, exact: true })).toBeVisible()
     await expect(page.getByText('正在加载管理内容…')).toHaveCount(0)
     await expect(page.locator('main [role="alert"]')).toHaveCount(0)
   }

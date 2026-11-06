@@ -92,7 +92,7 @@ const scenes = [
 const freeContext = (drugId: string, doctorId: string) => ({ drug: drugs.find(drug => drug.id === drugId), doctor: doctors.find(doctor => doctor.id === doctorId) })
 const scenePreview = { scenario: { id: 'scene-a', title: '固定组合场景', objective: '回应医生问题', duration_seconds: 180 }, doctor: doctors[0], rubric: { name: '训练量表', calibration_status: 'calibrated' }, documents: [], stage: 'full' }
 
-function picker(preview: Api = async path => { throw new Error(`Unexpected preview: ${path}`) }, initial: Choice = { scenario_id: '', stage: 'full' }, catalog = { drugs, doctors, scenes }) {
+function picker(preview: Api = async path => { throw new Error(`Unexpected preview: ${path}`) }, initial: Choice = { scenario_id: '', stage: 'full', drug_id:'drug-a' }, catalog = { drugs, doctors, scenes }) {
   let value = initial
   const readiness: boolean[] = [], calls: string[] = []
   const api: Api = async (path, options) => {
@@ -110,6 +110,7 @@ function picker(preview: Api = async path => { throw new Error(`Unexpected previ
   return {
     render, readiness, calls,
     get value() { return value },
+    switchTo(kind:string) { find(render(),'Tabs')[0].props.onValueChange(kind) },
     async flush() { await settle(); render(); await settle(); return render() },
     choose(label: string, id: string) {
       const select = find(render(), 'Select').find(node => find(node, 'SelectTrigger').some(trigger => trigger.props['aria-label'] === label))
@@ -128,7 +129,7 @@ test('free practice starts with published drugs and enables matching doctors aft
   })
   app.render()
   let view = await app.flush()
-  assert.equal(find(view, 'Tabs').length, 0)
+  assert.equal(find(view, 'Tabs').length, 1)
   assert.equal(app.calls.includes('/catalog/scenario'), false)
   const options = find(view, 'SelectItem').map(node => node.props.value)
   for (const id of ['drug-a', 'drug-b', 'doctor-a', 'doctor-b']) assert.ok(options.includes(id), id)
@@ -207,13 +208,54 @@ for (const result of ['resolve', 'reject'] as const) {
   })
 }
 
-test('new practice exposes only free pairing with no scored scenario selector', async () => {
-  const app = picker()
-  app.render(); const view = await app.flush()
-  assert.equal(find(view, 'Tabs').length, 0)
+test('new practice defaults to a published scenario, exposes its goal and supports a focused stage', async () => {
+  const app = picker(async path=>({...scenePreview,stage:new URLSearchParams(path.split('?')[1]).get('stage')}),{scenario_id:'',stage:'full'})
+  app.render(); await app.flush(); const view = await app.flush()
+  assert.equal(find(view, 'Tabs').length, 1)
   assert.equal(find(view, 'Select').length, 2)
-  assert.doesNotMatch(textOf(view), /评分场景|自由练习 · 不评分|本次训练场景/)
-  assert.equal(app.calls.includes('/catalog/scenario'), false)
+  assert.equal(app.value.scenario_id,'scene-a')
+  assert.match(textOf(view),/回应医生问题/)
+  assert.ok(!find(view,'SelectItem').some(node=>node.props.value==='draft-scene'))
+  assert.equal(app.readiness.at(-1),true)
+  app.choose('训练环节','evidence');await app.flush()
+  assert.ok(app.calls.some(path=>path.endsWith('/preview?stage=evidence')))
+  assert.equal(app.readiness.at(-1),true)
+  app.switchTo('free');await app.flush()
+  assert.equal(app.value.scenario_id,'')
+  assert.equal(app.readiness.at(-1),false)
+  app.choose('模拟医生','doctor-a')
+  await app.flush()
+  assert.ok(app.calls.some(path=>path.startsWith('/practice/preview')))
+})
+
+test('an empty or retired scene cannot become ready and free practice remains available', async () => {
+  const app=picker(async()=>assert.fail('unavailable scene preview'),{scenario_id:'missing',stage:'full'},{drugs,doctors,scenes:[scenes[1]]})
+  app.render();const view=await app.flush()
+  assert.equal(app.readiness.at(-1),false)
+  assert.match(textOf(view),/所选场景已不可用/)
+  app.switchTo('free');await app.flush()
+  assert.ok(app.calls.includes('/catalog/drug'))
+  assert.equal(app.value.scenario_id,'')
+})
+
+test('unsupported restored stages stay unavailable with an explanation', async()=>{
+  const app=picker(async()=>assert.fail('invalid stage preview'),{scenario_id:'scene-a',stage:'safety'})
+  app.render();const view=await app.flush()
+  assert.equal(app.readiness.at(-1),false)
+  assert.match(textOf(view),/不支持所选环节/)
+})
+
+test('switching to free practice rejects a late scenario preview', async()=>{
+  let finish!:(value:unknown)=>void
+  const app=picker(async path=>path.startsWith('/scenarios/')?new Promise(resolve=>{finish=resolve}):freeContext('drug-a','doctor-a'),{scenario_id:'scene-a',stage:'full'})
+  app.render();await app.flush()
+  app.switchTo('free');await app.flush()
+  app.choose('模拟医生','doctor-a');await app.flush()
+  assert.equal(app.readiness.at(-1),true)
+  finish(scenePreview);const view=await app.flush()
+  assert.equal(app.readiness.at(-1),true)
+  assert.equal(app.value.scenario_id,'')
+  assert.doesNotMatch(textOf(view),/回应医生问题/)
 })
 
 test('empty published choices keep free practice unavailable and direct the user to an administrator', async () => {
@@ -262,6 +304,9 @@ test('an existing scene or remediation keeps its binding and does not request a 
   assert.equal(app.calls.filter(path => path.startsWith('/practice/preview')).length, 0)
   assert.ok(app.calls.some(path => path.includes('/scenarios/scene-a/preview?stage=evidence')))
   assert.equal(app.readiness.at(-1), true)
+  const view=app.render()
+  assert.equal(find(view,'Tabs').length,0)
+  assert.ok(find(view,'Select').every(select=>select.props.disabled))
 })
 
 test('the home page preserves a restored free pair through the start callback', () => {
