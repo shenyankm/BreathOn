@@ -14,7 +14,7 @@ export type TrainingCase = Entity & { title:string;situation:string;approach:str
 export const kindLabels: Record<Kind, string> = { content: '训练资料', doctor: '医生角色', rubric: '评分标准', scenario: '训练场景' }
 export const statusLabels: Record<string, string> = { draft: '草稿', submitted: '待核对', approved: '已核对', rejected: '待修改', retired: '已停用', published: '已发布' }
 export const stages: Record<string, string> = { opening: '开场', needs: '需求探询', evidence: '研究介绍', objections: '异议处理', safety: '安全沟通', closing: '收尾' }
-export const situations: Record<string, string> = { first_visit:'首次拜访', follow_up:'复访', time_pressure:'时间紧张', evidence_challenge:'证据质疑' }
+export { situations } from './scenario-templates.ts'
 export function titleOf(item: CatalogRecord) { return 'title' in item ? item.title : 'display_name' in item ? item.display_name : item.name }
 export type TrainingSnapshot = {
   scenario: { id:string; title:string; product:string; disease:string; objective:string; duration_seconds:number; background?:string; situation?:string }

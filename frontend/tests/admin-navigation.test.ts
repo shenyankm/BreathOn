@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { adminHref, adminRoute, adminSections } from '../src/lib/admin-navigation.ts'
+import { adminHref, adminRoute, adminSections, adminGroups, adminNavigation } from '../src/lib/admin-navigation.ts'
 import { overviewSummary, overviewSources, pendingReview } from '../src/lib/admin-overview.ts'
 
 test('admin sections deep link and old workspace URLs retain the matching sidebar', () => {
@@ -11,6 +11,20 @@ test('admin sections deep link and old workspace URLs retain the matching sideba
   assert.equal(adminRoute('#workspace?tab=content').section, 'training')
   assert.equal(adminRoute('#workspace?tab=pricing').section, 'settings')
   assert.equal(adminRoute('#settings').page, 'settings')
+})
+test('five module groups own every destination and retain context for legacy editor links', () => {
+  assert.equal(adminGroups.length, 5)
+  const destinations = adminGroups.flatMap(group=>group.items.map(item=>item.href))
+  assert.equal(new Set(destinations).size, destinations.length)
+  for (const group of adminGroups) for (const item of group.items) {
+    assert.equal(adminNavigation(item.href).group.id, group.id)
+    assert.equal(adminNavigation(item.href).item.href, item.href)
+  }
+  assert.equal(adminNavigation('#workspace?tab=doctor&doctor=existing').item.href, adminHref('doctor'))
+  assert.equal(adminNavigation('#workspace?tab=research&job=existing').group.id, 'library')
+  assert.equal(adminNavigation('#workspace?tab=rubric').group.id, 'training')
+  assert.equal(adminNavigation('#settings').group.id, 'settings')
+  assert.equal(adminNavigation('#workspace?tab=unknown').item.href, '#workspace?tab=scenario')
 })
 test('overview counts reviewable states and sorts valid timestamps without fabricated activity', () => {
   const groups = Object.fromEntries(overviewSources.map(source => [source.key, [] as any[]]))

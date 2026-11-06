@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
 import ts from 'typescript'
+import * as scenarioLibrary from '../src/lib/scenario-templates.ts'
 
 function page(file: string, name: string, api: (path: string, options?: RequestInit) => Promise<unknown>, hash = '') {
   const slots: any[] = [], effects: (() => void)[] = []
@@ -62,6 +63,7 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
       if (module === '@/lib/platform-api') return { api }
+      if (module === '@/lib/scenario-templates') return scenarioLibrary
       if (module === '@/lib/catalog-types') return { kindLabels: {}, statusLabels: {}, titleOf: (row: any) => row.title ?? row.name }
       if (module === '@/lib/progress') return { costLabel: () => '' }
       assert.ok(module.startsWith('@/components/') || module.startsWith('@/pages/') || module.startsWith('./ui/') || module === 'lucide-react', module)

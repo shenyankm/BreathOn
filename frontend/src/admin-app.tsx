@@ -17,7 +17,7 @@ export function AdminApp({ onLogout, username }: { onLogout?: () => void; userna
     window.addEventListener('hashchange', navigate)
     return () => window.removeEventListener('hashchange', navigate)
   }, [])
-  return <AdminShell section={route.section} username={username} onLogout={onLogout} mainRef={main}>
+  return <AdminShell hash={hash} username={username} onLogout={onLogout} mainRef={main}>
     <Suspense fallback={<Item role="status"><Spinner aria-hidden="true" /><ItemContent><ItemDescription>{"正在加载管理内容…"}</ItemDescription></ItemContent></Item>}>
       {route.page === 'workspace' ? <PlatformPage /> : route.page === 'settings' ? <ServiceSettings /> :
         <AdminPage key={route.section} section={route.section} onSettings={() => { window.location.hash = 'settings' }} onWorkspace={tab => { window.location.hash = `workspace?tab=${encodeURIComponent(tab)}` }} />}

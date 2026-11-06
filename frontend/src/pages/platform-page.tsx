@@ -11,15 +11,16 @@ import { ScenarioTransfer } from '@/components/scenario-transfer'
 import { Alert,AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
+import { Card,CardContent } from '@/components/ui/card'
 import { Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog'
-import { Item,ItemActions,ItemContent,ItemDescription,ItemTitle } from '@/components/ui/item'
+import { Item,ItemActions,ItemContent,ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
-import { Select,SelectContent,SelectGroup,SelectItem,SelectLabel,SelectTrigger,SelectValue } from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { kindLabels,statusLabels,titleOf,type CatalogRecord,type Content,type Doctor,type DoctorDraft,type Kind,type ManagedDrug,type Policy,type Rubric,type Scenario,type TrainingCase,type TrainingSnapshot } from '@/lib/catalog-types'
 import { api } from '@/lib/platform-api'
+import { scenarioTemplates,scenarioGroups,situations } from '@/lib/scenario-templates'
+import { Input } from '@/components/ui/input'
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from '@/components/ui/select'
 import { costLabel } from '@/lib/progress'
 import { CasesPage } from '@/pages/cases-page'
 import { useEffect,useRef,useState } from 'react'
@@ -81,6 +82,15 @@ function CatalogPage({ kind }: { kind: Kind }) {
   }
   function transition(action:string){if(item)void mutate(`/catalog/content/${item.id}/review`,{version:item.version,action,reason})}
   async function showPreview(){if(!item)return;setBusy(true);setError('');try{setPreview(await api<TrainingSnapshot>(`/scenarios/${item.id}/preview`))}catch(cause){setError(failure(cause))}finally{setBusy(false)}}
+  const [scenarioQuery,setScenarioQuery]=useState('')
+  const [scenarioGroup,setScenarioGroup]=useState('all')
+  const [scenarioDifficulty,setScenarioDifficulty]=useState('all')
+  const visibleRows=kind==='scenario'?rows.filter(row=>{
+    const scene=row as Scenario
+    return (scenarioGroup==='all'||scenarioTemplates[scene.situation??'first_visit']?.group===scenarioGroup)
+      &&(scenarioDifficulty==='all'||scene.difficulty===scenarioDifficulty)
+      &&[scene.title,scene.product,scene.disease,scene.objective,situations[scene.situation??'first_visit']].join(' ').toLowerCase().includes(scenarioQuery.trim().toLowerCase())
+  }):rows
   const disabled=Boolean(item && !['draft',...(kind==='content'?['rejected']:[])].includes(item.status))
   const researchJobId=kind==='doctor'?(doctorDraft?.id??(item as Doctor|undefined)?.research_job_id):undefined
   const missingPreparation=[
@@ -89,21 +99,22 @@ function CatalogPage({ kind }: { kind: Kind }) {
     {label:'评分标准',tab:'rubric',ready:bindings.rubrics.some(row=>row.status==='published')},
   ].filter(step=>!step.ready)
   return <div className="@container/catalog space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{kindLabels[kind]}</h2><p className="mt-1 text-sm text-muted-foreground">{loading?'读取中':`${rows.length} 项`}</p></div><Button variant={kind==='scenario'?'outline':'default'} disabled={busy} onClick={()=>{detailRequest.current?.abort();setItem(undefined);setDoctorDraft(undefined);setSelection(null);setError('');setNotice('')}}>{kind==='scenario'?'手动创建场景':`添加${kindLabels[kind]}`}</Button></div>
+    <header className="flex flex-wrap items-start justify-between gap-3"><div className="space-y-2"><h1>{kindLabels[kind]}</h1><p className="text-sm text-muted-foreground">{loading?'读取中…':`${visibleRows.length}${kind==='scenario'?` / ${rows.length}`:''} 项`}</p></div><div className="flex flex-wrap gap-2">{kind==='doctor'&&<Button asChild variant="outline"><a href="#admin?section=doctor">返回医生列表</a></Button>}<Button variant={kind==='scenario'?'outline':'default'} disabled={busy} onClick={()=>{detailRequest.current?.abort();setItem(undefined);setDoctorDraft(undefined);setSelection(null);setError('');setNotice('')}}>{kind==='scenario'?'手动创建场景':`添加${kindLabels[kind]}`}</Button></div></header>
     {kind==='doctor'&&selection===undefined&&<DoctorGenerator onOpen={id=>void select(id)} onGenerated={(id,fields)=>{detailRequest.current?.abort();setDoctorDraft({id,fields});setItem(undefined);setSelection(null);setError('');setNotice('请核对公开事实与来源，并调整训练设定；保存草稿后再发布。')}}/>}
     {kind==='scenario'&&bindingsLoaded&&missingPreparation.length>0&&<section className="space-y-2 pl-4 text-sm" aria-label="场景准备提示"><p className="font-medium">生成场景前，还需要准备</p><div className="flex flex-wrap gap-4">{missingPreparation.map(step=><a className="inline-flex min-h-11 items-center underline underline-offset-4" href={`#workspace?tab=${step.tab}`} key={step.tab}>{step.label}<span aria-hidden="true" className="ml-1">→</span></a>)}</div></section>}
     {kind==='scenario'&&<ScenarioGenerator {...bindings} onGenerated={scene=>{listChanges.current.add(scene.id);setLoading(false);setItem(scene);setSelection(scene.id);setRows(rows=>[scene,...rows.filter(row=>row.id!==scene.id)]);setPreview(undefined);setNotice('已生成草稿，请核对背景、异议、完成标准和引用，再发布。')}}/>}
     {kind==='doctor'&&item?.status==='published'&&<Card role="region" className="space-y-2 text-sm" aria-label="医生发布后续步骤"><CardContent className="space-y-4"><p>已可在用户端搭配已发布药品进行自由练习。评分练习需创建并发布场景。</p><a href="#workspace?tab=scenario" className="inline-flex min-h-11 items-center underline">创建评分场景</a></CardContent></Card>}
     {notice&&<p role="status" className="text-sm">{notice}</p>}
     {error&&!deleteOpen&&<Alert variant="destructive" role="alert"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="ghost" size="sm" onClick={()=>{setLoading(true);setError('');setItem(undefined);setSelection(undefined);setRefresh(v=>v+1)}}>刷新数据</Button></AlertDescription></Alert>}
+    {kind==='scenario'&&<div className="grid gap-3 sm:grid-cols-[minmax(0,1.5fr)_1fr_1fr]" role="search" aria-label="筛选训练场景"><Label className="grid gap-2">搜索场景<Input value={scenarioQuery} onChange={event=>setScenarioQuery(event.target.value)} placeholder="名称、产品或训练目标"/></Label><Label className="grid gap-2">训练方向<Select value={scenarioGroup} onValueChange={setScenarioGroup}><SelectTrigger aria-label="训练方向" className="w-full min-h-11"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">全部方向</SelectItem>{scenarioGroups.map(group=><SelectItem key={group} value={group}>{group}</SelectItem>)}</SelectContent></Select></Label><Label className="grid gap-2">难度筛选<Select value={scenarioDifficulty} onValueChange={setScenarioDifficulty}><SelectTrigger aria-label="难度筛选" className="w-full min-h-11"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="all">全部难度</SelectItem><SelectItem value="basic">基础</SelectItem><SelectItem value="intermediate">中等</SelectItem><SelectItem value="advanced">进阶</SelectItem></SelectContent></Select></Label></div>}
     {/* 240px doctor list (280px otherwise) + 24px gutter + editor = full canvas width. */}
     <div className={`grid items-start gap-6 ${kind === "doctor" ? "@min-[48rem]/catalog:grid-cols-[240px_minmax(0,1fr)]" : "@min-[48rem]/catalog:grid-cols-[280px_minmax(0,1fr)]"}`}>
-      <Card role="region" aria-label={`${kindLabels[kind]}列表`} className={`gap-0 overflow-hidden py-0 ${kind === "doctor" ? "@min-[48rem]/catalog:sticky @min-[48rem]/catalog:top-6" : ""} ${selection !== undefined ? "hidden @min-[48rem]/catalog:block" : ""}`}>
-        <CardHeader ><CardTitle >{kindLabels[kind]}列表</CardTitle></CardHeader>
-        <CardContent >{loading?<Item role="status" className="p-5"><Spinner aria-hidden="true" /><ItemContent><ItemDescription>{"正在加载…"}</ItemDescription></ItemContent></Item>:rows.length===0?<p className="p-5 text-sm leading-6 text-muted-foreground">暂无{kindLabels[kind]}</p>:<ul className="max-h-[65vh] overflow-auto">{rows.map(row=><li key={row.id} ><Button variant="ghost" disabled={busy} aria-current={selection===row.id?'true':undefined} className={`h-auto w-full flex-col items-start justify-start gap-1 whitespace-normal px-4 py-4 text-left ${selection === row.id ? "" : ""}`} onClick={()=>void select(row.id)}><span className="block break-words text-sm font-medium">{titleOf(row)}</span><span className="block text-xs leading-5 text-muted-foreground">{statusLabels[row.status]??row.status}{'version_label'in row?` · ${row.version_label}`:''}</span></Button></li>)}</ul>}</CardContent>
-      </Card>
+      <section role="region" aria-label={`${kindLabels[kind]}列表`} className={`min-w-0 space-y-2 ${kind === "doctor" ? "@min-[48rem]/catalog:sticky @min-[48rem]/catalog:top-6" : ""} ${selection !== undefined ? "hidden @min-[48rem]/catalog:block" : ""}`}>
+        <h2 className="px-3 text-sm font-medium">{kindLabels[kind]}列表</h2>
+        {loading?<p role="status" className="p-3 text-sm">正在加载…</p>:visibleRows.length===0?<p className="p-3 text-sm text-muted-foreground">{rows.length?'没有匹配项，请调整筛选。':`暂无${kindLabels[kind]}`}</p>:<ul className="max-h-[65vh] space-y-1 overflow-auto">{visibleRows.map(row=><li key={row.id}><Button variant={selection===row.id?'secondary':'ghost'} disabled={busy} aria-current={selection===row.id?'true':undefined} className="h-auto min-h-16 w-full flex-col items-start justify-start gap-1 whitespace-normal p-3 text-left" onClick={()=>void select(row.id)}><span className="block break-words text-sm font-medium">{titleOf(row)}</span><span className="block text-sm leading-5 text-muted-foreground">{kind==='scenario'&&`${situations[(row as Scenario).situation??'first_visit']} · ${Math.round((row as Scenario).duration_seconds/60*10)/10} 分钟 · `}{statusLabels[row.status]??row.status}{'version_label'in row?` · ${row.version_label}`:` · 修订 ${row.version}`}</span></Button></li>)}</ul>}
+      </section>
       <Card className={`min-w-0 gap-0 py-0 ${selection === undefined ? "hidden @min-[48rem]/catalog:block" : ""}`}><CardContent >
-        {selection===undefined?<div className="flex min-h-56 flex-col items-center justify-center gap-2 text-center"><h3 className="text-sm font-medium">请选择{kindLabels[kind]}</h3></div>:<>
+        {selection===undefined?<div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">从左侧选择{kindLabels[kind]}查看详情</div>:<>
           <Button className={`mb-4 ${kind === "doctor" ? "" : "@min-[48rem]/catalog:hidden"}`} variant="ghost" onClick={()=>{setSelection(undefined);setItem(undefined);setDoctorDraft(undefined)}}>返回列表</Button>
           {selection!==null&&!item?<p role="status" className="text-sm text-muted-foreground">正在读取详情…</p>:<>
             <div className={`mb-6 flex flex-wrap items-center justify-between gap-3 ${kind === "doctor" ? " pb-5" : ""}`}>
@@ -153,9 +164,7 @@ export function PlatformPage() {
   const readTab=()=>{const value=new URLSearchParams(location.hash.split('?')[1]).get('tab');return ['scenario','doctor','content','rubric','cases','pricing','research'].includes(value??'')?value!:'scenario'}
   const [tab,setTab]=useState(readTab)
   useEffect(()=>{function change(){setTab(readTab())}window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change)},[])
-  const groups=[{label:'训练内容',items:[['scenario','训练场景'],['cases','经验案例']]},{label:'内容准备',items:[['content','训练资料'],['doctor','医生角色'],['rubric','评分标准'],['research','资料检索']]},{label:'使用成本',items:[['pricing','用量计价']]}]
-  return <div className="space-y-6"><Item><ItemContent><ItemTitle><h1>{"训练管理"}</h1></ItemTitle></ItemContent><ItemActions>{<Button asChild variant="outline"><a href="#admin">返回管理后台</a></Button>}</ItemActions></Item>
-    <div className="space-y-2 md:hidden"><Label htmlFor="workspace-section" className="block">管理内容</Label><Select value={tab} onValueChange={value=>{window.location.hash=`workspace?tab=${value}`}}><SelectTrigger id="workspace-section" className="w-full min-h-11"><SelectValue /></SelectTrigger><SelectContent position="popper" align="start">{groups.map(group=><SelectGroup key={group.label}><SelectLabel>{group.label}</SelectLabel>{group.items.map(([key,label])=><SelectItem value={key} key={key}>{label}</SelectItem>)}</SelectGroup>)}</SelectContent></Select></div>
-    <nav aria-label="训练管理导航" className="hidden flex-wrap gap-x-7 gap-y-4 pb-4 md:flex">{groups.map(group=><div className="space-y-2" key={group.label}><p className="px-3 text-xs text-muted-foreground">{group.label}</p><div className="flex gap-1">{group.items.map(([key,label])=><Button key={key} variant={tab===key?'secondary':'ghost'} aria-current={tab===key?'page':undefined} onClick={()=>{window.location.hash=`workspace?tab=${key}`}}>{label}</Button>)}</div></div>)}</nav>
+  const label = { cases:'经验案例', pricing:'用量计价', research:'资料检索' }[tab]
+  return <div className="space-y-6">{label&&<Item className="p-0"><ItemContent><ItemTitle><h1>{label}</h1></ItemTitle></ItemContent>{tab==='pricing'&&<ItemActions><Button asChild variant="outline"><a href="#admin?section=settings">返回系统设置</a></Button></ItemActions>}</Item>}
     {tab==='cases'?<CasesPage/>:tab==='pricing'?<PricingPanel/>:tab==='research'?<ResearchPanel/>:<CatalogPage key={tab} kind={tab as Kind}/>}</div>
 }

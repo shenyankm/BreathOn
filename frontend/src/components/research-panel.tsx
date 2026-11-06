@@ -15,17 +15,18 @@ type Kind = 'doctor' | 'drug'
 type Profile = { kind: Kind; label: string; description: string }
 type Version = { raw_sha256: string; retrieved_at: string; kind: 'html' | 'pdf' | 'doc' | 'docx' }
 type Source = { id: string; title: string; url: string; latest: Version; versions: Version[]; last_checked_at: string; last_check_error: string }
+export type DoctorIdentity = { name: string; hospital: string; department: string }
 type Detail = { label: string; value: string; source_id: string; source_version?: string; quote: string; honor?:Pick<DoctorHonor,'name'|'organization'|'year'> }
 export type Job = { id: string; kind: Kind | 'policy'; query: string; status: string; created_at: string; finished_at?: string; error: string; source_ids: string[];
-  doctor_identity?: { name: string; hospital: string; department: string }; doctor_draft?: DoctorDraft; doctor_draft_error?: string; doctor_id?: string;
+  doctor_identity?: DoctorIdentity; doctor_draft?: DoctorDraft; doctor_draft_error?: string; doctor_id?: string;
   source_metadata?: { id: string; raw_sha256: string; url: string; resolved_url: string; title: string; kind: string; retrieved_at: string }[];
   progress?: { searches: number; archives: number }; search_queries?: string[]; currency_notice?: string;
   source_errors?: { operation: string; url?: string; message: string }[];
   changes: { source_id: string; status: string; version: string }[];
-  result: { findings: { title: string; details: Detail[]; caveats: string[] }[]; further_checks: string[] } | null }
+  result: { doctor_candidates?: (DoctorIdentity & { source_url: string })[]; findings: { title: string; details: Detail[]; caveats: string[] }[]; further_checks: string[] } | null }
 type Watch = { id: string; kind: Kind | 'policy'; query: string; enabled: boolean; source_ids: string[]; next_check_at: string; last_job_id: string; last_error?: string }
 type ResearchState = { profiles: Profile[]; jobs: Job[]; sources: Source[]; watches: Watch[]; configured: boolean }
-const statuses: Record<string, string> = { running: '正在检索', completed: '已整理，待专业核对', partial: '部分完成，仍有待核对项', failed: '未完成', interrupted: '已停止' }
+const statuses: Record<string, string> = { needs_selection: '待选择同名医生', running: '正在检索', completed: '已整理，待专业核对', partial: '部分完成，仍有待核对项', failed: '未完成', interrupted: '已停止' }
 const changes: Record<string, string> = { first_archive: '首次归档', unchanged: '原件未变', page_changed: '页面变更，文字未变', content_changed: '原文文字有变化，需核对' }
 const examples: Record<Kind, string> = { doctor: '例如：上海 内分泌科 李小英 医院官方公开背景', drug: '例如：玛仕度肽 中国 成人体重管理 同类药品及当前说明书' }
 const date = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false })
@@ -33,7 +34,7 @@ const archiveUrl = (id: string, version: string, format = 'html') => `/api/resea
 
 export function ResearchFindings({ job }: { job: Job }) {
   return <>
-    <p className="text-sm leading-7 text-muted-foreground">归档仅证明原文已读取，不代表原文支持结论。请逐项核对身份、机构来源与时效；抓取时间不是发布日期。</p>
+    {job.status !== 'needs_selection' && <p className="text-sm leading-7 text-muted-foreground">请核对身份、来源与时效；归档不代表结论已核实。</p>}
     {job.result?.findings.map((finding, index) => <Card className="space-y-4" key={index}><CardContent className="space-y-4">
       <h4 className="text-base font-medium">{finding.title}</h4>
       {finding.caveats.length > 0 && <Card role="note" className="text-sm"><CardContent className="space-y-4"><p className="font-medium">身份、来源与时效待核对</p><ul className="list-inside list-disc">{finding.caveats.map((text, i) => <li key={i}>{text}</li>)}</ul></CardContent></Card>}
@@ -52,6 +53,18 @@ export function ResearchFindings({ job }: { job: Job }) {
     </CardContent></Card>)}
     {job.result && job.result.further_checks.length > 0 && <section><h4 className="text-sm font-medium">还需核对</h4><ul className="mt-2 list-inside list-disc space-y-2 text-sm leading-7 text-muted-foreground">{job.result.further_checks.map((text, i) => <li key={i}>{text}</li>)}</ul></section>}
   </>
+}
+
+export function DoctorIdentityChoice({ job, busy, onSelect }: { job: Job; busy: boolean; onSelect: (identity: DoctorIdentity) => void }) {
+  if (job.kind !== 'doctor' || job.status !== 'needs_selection' || !job.result?.doctor_candidates?.length) return null
+  return <section className="space-y-4" aria-label="同名医生选择" aria-live="polite">
+    <div className="space-y-2"><h4 className="text-base font-medium">请选择要查询的医生</h4><p className="text-sm leading-7 text-muted-foreground">候选身份尚未核实。请按医院、科室选择，再核对原文。</p></div>
+    <ul className="divide-y">{job.result.doctor_candidates.map((candidate, index) => <li key={index} className="flex min-w-0 flex-wrap items-center justify-between gap-4 py-4">
+      <div className="min-w-0 space-y-1 break-words"><p className="font-medium">{candidate.name}</p><p className="text-sm leading-7">{candidate.hospital} · {candidate.department}</p><a className="inline-flex min-h-11 items-center text-sm underline underline-offset-4" href={candidate.source_url} target="_blank" rel="noreferrer">查看候选来源</a></div>
+      <Button variant="outline" disabled={busy} onClick={() => onSelect({ name: candidate.name, hospital: candidate.hospital, department: candidate.department })}>选择并继续检索</Button>
+    </li>)}</ul>
+    <p className="text-sm leading-7 text-muted-foreground">都不是？补充医院或科室后重试。继续检索会产生用量。</p>
+  </section>
 }
 
 export function DoctorCandidates({ job, busy, onConfirm }: { job: Job; busy: boolean; onConfirm: (index: number, name: string) => void }) {
@@ -116,7 +129,7 @@ export function ResearchPanel({ initialKind }: { initialKind?: Kind } = {}) {
     setBusy(true); setError(''); setNotice('')
     try {
       const result = await api<Job>(path, { method, ...(body ? { body: JSON.stringify(body) } : {}) })
-      if (path === '/research/jobs') setSelected(result.id)
+      if (path === '/research/jobs' || path === '/research/doctor-jobs') setSelected(result.id)
       if (path.endsWith('/doctor-draft')) setNotice('医生草稿已创建，请在医生管理中核对并发布。')
       if (path.endsWith('/policy-draft')) setNotice('政策原文已导入草稿，请在政策管理中核对、提交审核。')
       setRefresh(value => value + 1)
@@ -130,7 +143,7 @@ export function ResearchPanel({ initialKind }: { initialKind?: Kind } = {}) {
       <div className="max-w-sm space-y-2"><Label htmlFor="research-kind" className="block">查找什么</Label><Select value={kind} onValueChange={value => setKind(value as Kind)}><SelectTrigger id="research-kind" className="w-full min-h-11"><SelectValue/></SelectTrigger><SelectContent>{(data?.profiles ?? [{kind:'doctor',label:'医生公开资料检索'},{kind:'drug',label:'同类药品检索'}]).map(profile => <SelectItem key={profile.kind} value={profile.kind}>{profile.label}</SelectItem>)}</SelectContent></Select></div>
       {profile && <p className="text-sm leading-7 text-muted-foreground">{profile.description}</p>}
       <div className="space-y-2"><Label htmlFor="research-query" className="block">检索主题</Label><Textarea id="research-query" rows={2} maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={examples[kind]} required minLength={2}/></div>
-      <div className="flex flex-wrap items-center gap-4"><Button type="submit" disabled={busy || Boolean(running) || !data?.configured || query.trim().length < 2}><Search/>{running ? '检索进行中' : '开始检索并归档'}</Button><p className="text-sm leading-6 text-muted-foreground">仅检索公开资料，会产生模型与搜索用量。</p></div>
+      <div className="flex flex-wrap items-center gap-4"><Button type="submit" disabled={busy || Boolean(running) || !data?.configured || query.trim().length < 2}><Search/>{running ? '检索进行中' : kind === 'doctor' ? '查找医生' : '开始检索并归档'}</Button><p className="text-sm leading-6 text-muted-foreground">{kind === 'doctor' ? '先列出医生基础信息，选择身份后再详细查找。' : '仅检索公开资料。'}检索会产生模型与搜索用量。</p></div>
       {data && !data.configured && <p className="text-sm leading-7 text-muted-foreground">请配置 DeepSeek 并开启公开搜索，再开始检索。<a href="#settings" className="ml-2 underline underline-offset-4">查看服务设置</a></p>}
     </form>
     {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm"><p className="text-destructive">{error}</p><Button variant="outline" onClick={() => { setError(''); setRefresh(value => value + 1) }}>重新读取</Button></div>}
@@ -141,6 +154,7 @@ export function ResearchPanel({ initialKind }: { initialKind?: Kind } = {}) {
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-medium">{job.query}</h3><p className="mt-2 text-sm text-muted-foreground" role="status">{statuses[job.status]}{job.finished_at ? ` · 核验时间 ${date(job.finished_at)}` : ` · 已搜索 ${job.progress?.searches ?? 0} 次，已归档 ${job.progress?.archives ?? 0} 份`}</p></div>{job.status === 'running' ? <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/cancel`)}><Square/>停止检索</Button> : job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && (job.kind !== 'policy' || watch?.enabled) && <Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/watch`, {enabled:!watch?.enabled}, 'PUT')}><Clock3/>{watch?.enabled ? '暂停每日追踪' : '开启每日追踪'}</Button>}</div>
       {job.kind !== 'policy' && job.source_ids.length > 0 && ['completed','partial'].includes(job.status) && <p className="text-sm leading-7 text-muted-foreground">每日复查最多 5 份来源，需后端持续运行，会产生用量。</p>}
       {job.error && <p role="alert" className="text-sm leading-7 text-destructive">{job.error}</p>}
+      <DoctorIdentityChoice job={job} busy={busy || Boolean(running)} onSelect={identity => void mutate('/research/doctor-jobs', identity)}/>
       <ResearchFindings job={job}/>
       <DoctorCandidates job={job} busy={busy} onConfirm={(index, name) => void mutate(`/research/jobs/${job.id}/doctor-draft`, {finding_index:index, confirmed_identity:true, confirmed_name:name})}/>
       {job.kind === 'policy' && job.source_ids.length > 0 && <Card className="space-y-2"><CardContent className="space-y-4"><h4 className="text-sm font-medium">导入官方原文</h4><p className="text-sm text-muted-foreground">将归档正文导入待审核草稿；文件效力和适用范围需人工核对。</p>{job.source_ids.map(id => { const source = data?.sources.find(item => item.id === id); const change = job.changes.find(item => item.source_id === id); return source && change ? <div key={id} className="flex flex-wrap items-center gap-3"><span className="text-sm">{source.title}</span><Button variant="outline" disabled={busy} onClick={() => void mutate(`/research/jobs/${job.id}/policy-draft`, {source_id:id, source_version:change.version})}>创建政策草稿</Button></div> : null })}</CardContent></Card>}

@@ -14,7 +14,7 @@ import {
 import { Store, Transaction, activity } from './store.ts'
 import { Catalog } from './catalog.ts'
 import { parse, usable, stages } from './validation.ts'
-import { prepareTraining, snapshot, retrieve, checkMaterials } from './training.ts'
+import { prepareTraining, snapshot, retrieve, checkMaterials, scenarioTemplates } from './training.ts'
 import { Models, generateReply } from './agents.ts'
 import { Tasks } from './tasks.ts'
 import { route } from './http.ts'
@@ -506,7 +506,8 @@ export function registerOperations(
             doctor: prepared.doctor,
             rubric: prepared.rubric,
             evidence: evidence.map((row) => pick(row, ['id', 'document_id', 'page', 'text'])),
-            situation_rule: constants.training.SITUATION_RULES[b.situation],
+            situation_rule: scenarioTemplates[b.situation].doctor_rule,
+            training_focus: { stages: scenarioTemplates[b.situation].stages, success_criteria: scenarioTemplates[b.situation].success_criteria },
             difficulty_rule: constants.training.DIFFICULTY_RULES[b.difficulty],
             ...(reference
               ? { case_reference: { ...pick(reference, caseKeys), is_medical_evidence: false } }
@@ -529,7 +530,7 @@ export function registerOperations(
         scene = parse('platform.models.Scenario', {
           ...brief,
           ...pick(outline, ['title', 'background', 'opening', 'objections', 'success_criteria']),
-          stages: stages.slice(1),
+          stages: scenarioTemplates[b.situation].stages,
         }),
         generation = {
           model: models.config.model,

@@ -1,0 +1,286 @@
+{
+  "first_visit": {
+    "label": "首次拜访",
+    "group": "拜访与需求",
+    "difficulty": "basic",
+    "duration_seconds": 180,
+    "stages": [
+      "opening",
+      "needs",
+      "closing"
+    ],
+    "objective": "在开场获得交流许可，确认医生关注点，并约定一个后续话题。",
+    "background": "首次交流，医生尚不了解此次拜访目的。",
+    "opening": "你今天主要想和我交流什么？",
+    "objections": [
+      "现在没有太多时间。",
+      "这个话题和我的工作有什么关系？"
+    ],
+    "success_criteria": [
+      "说明身份与交流目的并确认可用时间",
+      "用开放问题确认一个具体需求",
+      "复述需求并征得后续交流同意"
+    ],
+    "doctor_rule": "先确认交流目的和医生关注点，不假定已有合作或产品认可。"
+  },
+  "needs_discovery": {
+    "label": "需求探询",
+    "group": "拜访与需求",
+    "difficulty": "basic",
+    "duration_seconds": 240,
+    "stages": [
+      "needs",
+      "closing"
+    ],
+    "objective": "从模糊诉求中确认临床问题、已有做法与未满足需求，避免急于推荐产品。",
+    "background": "医生只表达了笼统关注，尚未明确人群、问题或期望。",
+    "opening": "这类问题你想先了解我的哪些实际关注点？",
+    "objections": [
+      "你还没问清楚我遇到的问题。",
+      "不同患者的情况不一样。"
+    ],
+    "success_criteria": [
+      "先询问人群与实际困难，不索取患者身份信息",
+      "追问并区分已有做法与未满足需求",
+      "总结一个优先需求并请医生确认"
+    ],
+    "doctor_rule": "逐步透露训练设定中的需求；学员未问清前不替其总结，不编造临床事实。"
+  },
+  "time_pressure": {
+    "label": "限时沟通",
+    "group": "拜访与需求",
+    "difficulty": "intermediate",
+    "duration_seconds": 90,
+    "stages": [
+      "opening",
+      "needs",
+      "closing"
+    ],
+    "objective": "在有限时间内确认一个需求、传达一个有依据的信息点并简洁收尾。",
+    "background": "医生即将离开，只能进行一次短交流。",
+    "opening": "我只有一分多钟，你今天想交流的一个重点是什么？",
+    "objections": [
+      "请直接说重点。",
+      "这个问题先留到下次。"
+    ],
+    "success_criteria": [
+      "先确认一个最重要的问题",
+      "只介绍与该问题相关的信息并交代依据边界",
+      "时间不足时停止展开并约定跟进"
+    ],
+    "doctor_rule": "明确时间有限，只接收一个核心信息点；长篇介绍时要求概括，结束后不继续追问。"
+  },
+  "evidence_challenge": {
+    "label": "研究证据质疑",
+    "group": "循证沟通",
+    "difficulty": "intermediate",
+    "duration_seconds": 300,
+    "stages": [
+      "evidence",
+      "objections"
+    ],
+    "objective": "依据已核对资料解释研究人群、对照、主要终点和局限，区分研究结果与推断。",
+    "background": "医生要求核对学员主张的证据基础。",
+    "opening": "支持这个说法的研究，主要终点和入组人群是什么？",
+    "objections": [
+      "这是主要终点还是探索性分析？",
+      "统计差异能说明什么，不能说明什么？"
+    ],
+    "success_criteria": [
+      "指出可核对的研究来源、人群与主要终点",
+      "准确回应对照或随访问题，不补造数字",
+      "主动说明适用范围及研究局限"
+    ],
+    "doctor_rule": "围绕具体主张追问来源、人群、终点与局限；回答有据时认可，不反复无理由质疑。"
+  },
+  "population_fit": {
+    "label": "适用人群与外推",
+    "group": "循证沟通",
+    "difficulty": "advanced",
+    "duration_seconds": 300,
+    "stages": [
+      "needs",
+      "evidence",
+      "safety"
+    ],
+    "objective": "核对研究人群与讨论对象是否一致，识别亚组、合并症和适应症外推边界。",
+    "background": "医生询问研究结果是否适用于另一类人群。",
+    "opening": "你介绍的研究纳入了我们现在讨论的这类人群吗？",
+    "objections": [
+      "亚组结果能代表整体人群吗？",
+      "研究排除了这类情况，你的结论从哪里来？"
+    ],
+    "success_criteria": [
+      "区分入组、排除及亚组信息",
+      "不把机制或相关指标等同于临床获益",
+      "证据不足时明确暂停外推并提出核实路径"
+    ],
+    "doctor_rule": "只用已绑定资料讨论人群适用性，不给真实患者个体诊疗建议；证据不足允许学员明确不知道。"
+  },
+  "competitor_comparison": {
+    "label": "同类方案比较",
+    "group": "循证沟通",
+    "difficulty": "advanced",
+    "duration_seconds": 300,
+    "stages": [
+      "evidence",
+      "objections"
+    ],
+    "objective": "用可比的人群、终点与研究设计讨论同类方案，明确直接比较与间接线索的差别。",
+    "background": "医生询问与另一方案的差异，尚未给出可比条件。",
+    "opening": "你说两种方案有差别，依据是头对头研究还是不同研究？",
+    "objections": [
+      "研究人群和终点一致吗？",
+      "没有直接比较，为什么可以说更好？"
+    ],
+    "success_criteria": [
+      "先确认比较问题及可比条件",
+      "区分头对头证据与跨研究信息",
+      "不从机制或不同试验直接推导优效与替代性"
+    ],
+    "doctor_rule": "追问比较依据，不能自行编造竞品结论；不诱导无依据的优效、贬低或替代性承诺。"
+  },
+  "safety_concern": {
+    "label": "安全性疑问",
+    "group": "安全与合规",
+    "difficulty": "intermediate",
+    "duration_seconds": 240,
+    "stages": [
+      "safety",
+      "objections",
+      "closing"
+    ],
+    "objective": "平衡介绍获益与风险，依据有效资料回答安全性问题，未核实事项转交专业支持。",
+    "background": "医生对安全性信息提出疑问，需要核对依据。",
+    "opening": "除了获益，这份资料报告了哪些需要关注的风险？",
+    "objections": [
+      "发生率的分母和观察时长是什么？",
+      "资料没说明的情况，你准备怎么核实？"
+    ],
+    "success_criteria": [
+      "先确认具体安全性疑问并引用有效资料",
+      "不使用绝对安全或零风险承诺",
+      "区分资料说明与待核实信息并约定专业跟进"
+    ],
+    "doctor_rule": "就资料已列风险提出问题，不虚构禁忌或不良反应发生率；不要求学员替患者作处置决定。"
+  },
+  "off_label_request": {
+    "label": "超说明书问题",
+    "group": "安全与合规",
+    "difficulty": "advanced",
+    "duration_seconds": 180,
+    "stages": [
+      "safety",
+      "objections",
+      "closing"
+    ],
+    "objective": "识别超出有效说明书或现有证据的问题，明确沟通边界并转交医学支持。",
+    "background": "医生主动提出一个可能超出现有批准范围的问题。",
+    "opening": "这个用途在你提供的当前说明书里有依据吗？",
+    "objections": [
+      "没有写在说明书里，能否直接按研究结果介绍？",
+      "我需要更多资料，你会怎么处理？"
+    ],
+    "success_criteria": [
+      "先核对有效说明书及所问用途",
+      "不把研究探索改写为获批结论或推广承诺",
+      "说明未知与边界，记录学术问题并转医学支持"
+    ],
+    "doctor_rule": "不编造获批范围，不提供超说明书推广话术；认可学员界定边界和转交专业支持的回应。"
+  },
+  "compliance_boundary": {
+    "label": "合规边界回应",
+    "group": "安全与合规",
+    "difficulty": "advanced",
+    "duration_seconds": 180,
+    "stages": [
+      "objections",
+      "safety",
+      "closing"
+    ],
+    "objective": "识别不当利益、处方数据或个人信息要求，拒绝越界并提出合规的后续交流方式。",
+    "background": "沟通出现需要辨别的利益或数据边界问题，均为虚构训练设定。",
+    "opening": "如果讨论涉及不该提供的信息或条件，你会怎么回应？",
+    "objections": [
+      "你能否用额外条件换取合作？",
+      "能否提供个体处方或患者信息？"
+    ],
+    "success_criteria": [
+      "识别具体越界请求并清楚拒绝",
+      "不收集或发送真实患者、处方等敏感数据",
+      "给出公开资料交流或内部专业核实的替代路径"
+    ],
+    "doctor_rule": "仅以虚构情境检验边界，不索取真实敏感信息，不教唆或提供规避方式，不作法律定性。"
+  },
+  "follow_up": {
+    "label": "复访与承诺跟进",
+    "group": "推进与跟进",
+    "difficulty": "intermediate",
+    "duration_seconds": 240,
+    "stages": [
+      "needs",
+      "evidence",
+      "closing"
+    ],
+    "objective": "核对上次约定与尚未解决的问题，按新增证据推进，不编造既往承诺。",
+    "background": "复访中需先确认上次沟通内容；未提供的历史必须询问。",
+    "opening": "你想先核对上次的哪个待办问题？",
+    "objections": [
+      "上次的问题是否真正解决了？",
+      "你没有记录的承诺，不能当作我们已经约定。"
+    ],
+    "success_criteria": [
+      "确认真实提供的上次待办，不补造历史",
+      "说明本次补充资料及仍未核实之处",
+      "形成具体、双方认可的下一项跟进"
+    ],
+    "doctor_rule": "先核对历史与本次重点，缺少上次细节先询问，不编造医生同意、合作或问题已解决。"
+  },
+  "access_barrier": {
+    "label": "准入与可及性异议",
+    "group": "推进与跟进",
+    "difficulty": "intermediate",
+    "duration_seconds": 240,
+    "stages": [
+      "needs",
+      "objections",
+      "closing"
+    ],
+    "objective": "区分医院流程、供应与支付问题，核对公开依据和适用范围，不作准入或报销承诺。",
+    "background": "医生关注实际使用条件，现有材料未必能覆盖当地与院内流程。",
+    "opening": "即使资料有依据，实际可及性和院内流程你了解吗？",
+    "objections": [
+      "全国信息能直接代表我们医院的情况吗？",
+      "没有核实的支付条件，你能保证吗？"
+    ],
+    "success_criteria": [
+      "先澄清是供应、院内流程还是支付条件问题",
+      "区分已核实资料与地方或机构待核实信息",
+      "不保证准入、供应或报销，明确核实对象与跟进事项"
+    ],
+    "doctor_rule": "不编造地方政策、院内流程、价格或报销比例；不提出利益交换，将未知事项留作核实。"
+  },
+  "action_plan": {
+    "label": "收尾与行动约定",
+    "group": "推进与跟进",
+    "difficulty": "basic",
+    "duration_seconds": 120,
+    "stages": [
+      "needs",
+      "closing"
+    ],
+    "objective": "总结已讨论的重点与未解问题，形成具体可执行的资料跟进，尊重医生拒绝。",
+    "background": "交流即将结束，需要核对共识并安排合适的后续事项。",
+    "opening": "今天先到这里，你准备如何跟进还没核实的问题？",
+    "objections": [
+      "下次具体补充什么？",
+      "我现在不需要继续了解。"
+    ],
+    "success_criteria": [
+      "简要总结医生确认的需求与未解问题",
+      "明确资料、责任人及可协商的跟进时间",
+      "确认对方意愿，尊重拒绝，不暗示处方或采购承诺"
+    ],
+    "doctor_rule": "只约定合理的资料与学术跟进，未获同意不假定承诺；医生明确拒绝时自然结束。"
+  }
+}

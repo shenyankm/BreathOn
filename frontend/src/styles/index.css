@@ -111,3 +111,21 @@
   [data-slot="button"], [data-slot="dialog-close"], [data-slot="sheet-close"], [data-slot="select-trigger"] { min-width: 3rem; }
   [data-slot="tabs-list"] { min-height: 3.5rem; }
 }
+
+/* Keep management surfaces compact without changing the Android interface. */
+.admin-workspace [data-slot="card"] {
+  --card-spacing: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: none;
+}
+.admin-workspace :is([data-slot="button"], [data-slot="input"], [data-slot="select-trigger"], [data-slot="tabs-list"]) {
+  border-radius: 0.5rem;
+}
+.admin-workspace :is([data-slot="card-header"], [data-slot="card-footer"]) {
+  border-radius: 0;
+}
+.admin-workspace [data-slot="input"], .admin-workspace [data-slot="select-trigger"] {
+  background-color: var(--background);
+  border: 1px solid var(--input);
+}

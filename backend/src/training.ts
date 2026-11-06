@@ -2,6 +2,7 @@ import {
   type Doc,
   type User,
   constants,
+  resource,
   assert,
   pick,
   now,
@@ -12,6 +13,8 @@ import {
 } from './core.ts'
 import { Store } from './store.ts'
 import { stages, usable, policyUsable, matchDepartment } from './validation.ts'
+
+export const scenarioTemplates = resource('scenario-templates')
 
 export async function prepareTraining(
   store: Store,
@@ -314,7 +317,7 @@ export function doctorInstructions(training?: Doc, free?: Doc): string {
     configuration: Doc
   if (training) {
     behavior =
-      constants.training.SITUATION_RULES[training.scenario.situation ?? 'first_visit'] +
+      (scenarioTemplates[training.scenario.situation ?? 'first_visit'] ?? scenarioTemplates.first_visit).doctor_rule +
       '\n' +
       constants.training.DIFFICULTY_RULES[training.scenario.difficulty]
     configuration = pick(training, ['scenario', 'doctor', 'stage'])

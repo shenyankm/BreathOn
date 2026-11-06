@@ -2704,9 +2704,17 @@
         "default": "first_visit",
         "enum": [
           "first_visit",
-          "follow_up",
+          "needs_discovery",
           "time_pressure",
-          "evidence_challenge"
+          "evidence_challenge",
+          "population_fit",
+          "competitor_comparison",
+          "safety_concern",
+          "off_label_request",
+          "compliance_boundary",
+          "follow_up",
+          "access_barrier",
+          "action_plan"
         ],
         "title": "Situation",
         "type": "string"
@@ -2871,9 +2879,17 @@
         "default": "first_visit",
         "enum": [
           "first_visit",
-          "follow_up",
+          "needs_discovery",
           "time_pressure",
-          "evidence_challenge"
+          "evidence_challenge",
+          "population_fit",
+          "competitor_comparison",
+          "safety_concern",
+          "off_label_request",
+          "compliance_boundary",
+          "follow_up",
+          "access_barrier",
+          "action_plan"
         ],
         "title": "Situation",
         "type": "string"
@@ -4648,9 +4664,17 @@
         "default": "first_visit",
         "enum": [
           "first_visit",
-          "follow_up",
+          "needs_discovery",
           "time_pressure",
-          "evidence_challenge"
+          "evidence_challenge",
+          "population_fit",
+          "competitor_comparison",
+          "safety_concern",
+          "off_label_request",
+          "compliance_boundary",
+          "follow_up",
+          "access_barrier",
+          "action_plan"
         ],
         "title": "Situation",
         "type": "string"
@@ -4786,9 +4810,17 @@
         "default": "first_visit",
         "enum": [
           "first_visit",
-          "follow_up",
+          "needs_discovery",
           "time_pressure",
-          "evidence_challenge"
+          "evidence_challenge",
+          "population_fit",
+          "competitor_comparison",
+          "safety_concern",
+          "off_label_request",
+          "compliance_boundary",
+          "follow_up",
+          "access_barrier",
+          "action_plan"
         ],
         "title": "Situation",
         "type": "string"
@@ -6725,9 +6757,17 @@
         "default": "first_visit",
         "enum": [
           "first_visit",
-          "follow_up",
+          "needs_discovery",
           "time_pressure",
-          "evidence_challenge"
+          "evidence_challenge",
+          "population_fit",
+          "competitor_comparison",
+          "safety_concern",
+          "off_label_request",
+          "compliance_boundary",
+          "follow_up",
+          "access_barrier",
+          "action_plan"
         ],
         "title": "Situation",
         "type": "string"
@@ -7370,9 +7410,17 @@
             "default": "first_visit",
             "enum": [
               "first_visit",
-              "follow_up",
+              "needs_discovery",
               "time_pressure",
-              "evidence_challenge"
+              "evidence_challenge",
+              "population_fit",
+              "competitor_comparison",
+              "safety_concern",
+              "off_label_request",
+              "compliance_boundary",
+              "follow_up",
+              "access_barrier",
+              "action_plan"
             ],
             "title": "Situation",
             "type": "string"
@@ -8040,6 +8088,42 @@
         "maxItems": 8,
         "title": "Further Checks",
         "type": "array"
+      },
+      "doctor_candidates": {
+        "type": "array",
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "hospital": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "department": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "source_url": {
+              "type": "string",
+              "maxLength": 8192,
+              "format": "uri"
+            }
+          },
+          "required": [
+            "name",
+            "hospital",
+            "department",
+            "source_url"
+          ]
+        }
       }
     },
     "required": [
