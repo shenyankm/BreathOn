@@ -43,7 +43,10 @@ const visible = (kind: string, item: Doc) => {
   return !user?.authenticated || !key || item[key] === user.id
 }
 export class Transaction {
-  constructor(private execute: (sql: string, values?: any[]) => Promise<Doc[]>) {}
+  constructor(
+    private execute: (sql: string, values?: any[]) => Promise<Doc[]>,
+    private postgres = false,
+  ) {}
   async all(kind: string): Promise<{ tenant: string; item: Doc }[]> {
     return (
       await this.execute('SELECT tenant_id,document FROM platform_entities WHERE kind=?', [kind])
@@ -63,9 +66,12 @@ export class Transaction {
       throw new HttpError(404, '记录不存在或不属于当前工作区。')
     return item
   }
-  async list(tenant: string, kind: string): Promise<Doc[]> {
+  async list(tenant: string, kind: string, withoutPages = false): Promise<Doc[]> {
+    const document = withoutPages
+      ? this.postgres ? "(document::jsonb - 'pages')::text" : "json_remove(document,'$.pages')"
+      : 'document'
     const rows = await this.execute(
-      'SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC,id',
+      `SELECT ${document} AS document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC,id`,
       [tenant, kind],
     )
     return rows.map((row) => JSON.parse(row.document)).filter((row) => visible(kind, row))
@@ -113,6 +119,7 @@ export class Transaction {
 }
 export class Store {
   private db?: DatabaseSync
+  private statements = new Map<string, ReturnType<DatabaseSync['prepare']>>()
   private pool?: Pool
   private lock = new Semaphore(1)
   workspace = 'local'
@@ -164,7 +171,7 @@ export class Store {
               values,
             )
           ).rows
-        })
+        }, true)
         const value = await work(tx)
         await client.query('COMMIT')
         return value
@@ -179,7 +186,12 @@ export class Store {
       this.db!.exec(write ? 'BEGIN IMMEDIATE' : 'BEGIN')
       try {
         const tx = new Transaction(async (sql, values = []) => {
-          const statement = this.db!.prepare(sql)
+          let statement = this.statements.get(sql)
+          if (!statement) {
+            statement = this.db!.prepare(sql)
+            if (this.statements.size >= 64) this.statements.clear()
+            this.statements.set(sql, statement)
+          }
           return /^(SELECT|.*RETURNING )/is.test(sql)
             ? (statement.all(...values) as Doc[])
             : (statement.run(...values), [])
@@ -205,18 +217,33 @@ export class Store {
   }
   async close() {
     if (this.pool) await this.pool.end()
-    if (this.db) await this.lock.run(async () => this.db!.close())
+    if (this.db) await this.lock.run(async () => {
+      this.statements.clear()
+      this.db!.close()
+    })
   }
-  async saveRecord(record: Doc, status: string) {
+  async saveRecord(record: Doc, status: string, onlyIfAbsent = false): Promise<Doc> {
     record.status = status
-    record.ended_at = now()
+    record.ended_at ??= now()
     record.activity = activity(record)
-    if (this.pool)
+    if (this.pool) {
       await this.pool.query(
-        'INSERT INTO sessions (id,document) VALUES ($1,$2) ON CONFLICT (id) DO UPDATE SET document=EXCLUDED.document,saved_at=now()',
+        `INSERT INTO sessions (id,document) VALUES ($1,$2) ON CONFLICT (id) ${onlyIfAbsent ? 'DO NOTHING' : 'DO UPDATE SET document=EXCLUDED.document,saved_at=now()'}`,
         [record.id, record],
       )
-    else await privateWrite(join(this.config.records, `${record.id}.json`), JSON.stringify(record))
+      if (!onlyIfAbsent) return record
+      const saved = await this.record(record.id)
+      assert(saved, 503, '恢复记录尚未确认写入。')
+      return saved
+    }
+    return this.lock.run(async () => {
+      if (onlyIfAbsent) {
+        const existing = await this.record(record.id)
+        if (existing) return existing
+      }
+      await privateWrite(join(this.config.records, `${record.id}.json`), JSON.stringify(record))
+      return record
+    })
   }
   async record(id: string): Promise<Doc | null> {
     if (!/^[0-9a-f-]{36}$/i.test(id)) return null
@@ -247,21 +274,22 @@ export class Store {
           limit === null ? values : [...values, limit],
         )
       ).rows.map((row) => row.document)
-    } else
-      for (const file of await readdir(this.config.records)) {
-        if (!/^[0-9a-f-]{36}\.json$/i.test(file)) continue
-        try {
-          const row = await this.record(file.slice(0, -5))
-          if (
-            row?.id === file.slice(0, -5) &&
-            Array.isArray(row.messages) &&
-            typeof row.started_at === 'string'
-          )
-            rows.push(row)
-        } catch (error) {
-          if (!(error instanceof SyntaxError)) throw error
-        }
+    } else {
+      const files = (await readdir(this.config.records)).filter(file => /^[0-9a-f-]{36}\.json$/i.test(file))
+      for (let offset = 0; offset < files.length; offset += 8) {
+        const batch = await Promise.all(files.slice(offset, offset + 8).map(async file => {
+          try {
+            const row = await this.record(file.slice(0, -5))
+            if (row?.id === file.slice(0, -5) && Array.isArray(row.messages) && typeof row.started_at === 'string')
+              return row
+          } catch (error) {
+            if (!(error instanceof SyntaxError)) throw error
+          }
+          return null
+        }))
+        rows.push(...batch.filter((row): row is Doc => row !== null))
       }
+    }
     rows = rows
       .filter(
         (row) =>
@@ -346,8 +374,18 @@ export function trainingFingerprint(training: Doc | undefined): string | null {
     if (!item.id || !item.version) return null
     captured[kind] = [item.id, item.version]
   }
+  const rubric = training.rubric
+  if (!rubric?.id || !Array.isArray(rubric.dimensions) || !rubric.dimensions.length) return null
+  // Calibration bookkeeping changes the entity version, but not the training conditions.
+  captured.rubric = [rubric.id, sha(canonical(rubric.dimensions))]
+  for (const kind of ['drugs', 'policies']) {
+    const items = training[kind] ?? []
+    if (!Array.isArray(items) || items.some((item: Doc) => !item?.id || !item.version)) return null
+    captured[kind] = items.map((item: Doc) => [item.id, item.version])
+      .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))
+  }
   const documents = training.documents ?? []
-  if (documents.some((doc: Doc) => !doc.id || !doc.version || !doc.sha256)) return null
+  if (!Array.isArray(documents) || documents.some((doc: Doc) => !doc?.id || !doc.version || !doc.sha256)) return null
   captured.documents = documents
     .map((doc: Doc) => [doc.id, doc.version, doc.sha256])
     .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))

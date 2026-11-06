@@ -1,0 +1,34 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -193,6 +193,12 @@
+               receipt.document_sha256 !== source.sha256))
+         )
+           continue
++        const factMatch = products.some((p: Doc) =>
++          (data.compiled?.[p.id]?.facts ?? []).some(
++            (fact: Doc) => fact.source_id === source.id && fact.page === page.number &&
++              tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
++          ),
++        )
+         for (let offset = 0; offset < page.text.length; offset += 1000) {
+           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
+             lower = compact(body)
+@@ -212,17 +218,7 @@
+             score += 3
+           if (['reimbursement', 'policy'].includes(source.kind) && /医保|报销|支付|商保/.test(text))
+             score += 8
+-          if (
+-            products.some((p: Doc) =>
+-              (data.compiled?.[p.id]?.facts ?? []).some(
+-                (fact: Doc) =>
+-                  fact.source_id === source.id &&
+-                  fact.page === page.number &&
+-                  tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
+-              ),
+-            )
+-          )
+-            score += 5
++          if (factMatch) score += 5
+           if (score > (related ? 8 : 3)) {
+             const { pages, original_path, ...metadata } = source
+             ranked.push({

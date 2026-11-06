@@ -16,12 +16,15 @@ for (const width of [1440, 768, 390]) test(`UI hierarchy, selection and form siz
     await expect(main.getByRole('heading', { level: 1 })).toBeVisible()
     for (const hash of ['admin', 'admin?section=drug', 'admin?section=doctor', 'admin?section=audiences',
       'admin?section=policy', 'admin?section=training', 'admin?section=review', 'admin?section=records',
-      'admin?section=settings', 'workspace?tab=doctor', 'settings']) {
+      'admin?section=settings', 'workspace?tab=doctor', 'settings', 'workspace?tab=scenario',
+      'workspace?tab=content', 'workspace?tab=rubric', 'workspace?tab=cases',
+      'workspace?tab=pricing', 'workspace?tab=research']) {
       await page.goto(`http://127.0.0.1:5187/admin#${hash}`)
       const heading = main.getByRole('heading', { level: 1 })
       await expect(heading).toHaveCount(1)
       await expect(heading).toHaveCSS('font-size', '24px')
       await expect(heading).toHaveCSS('font-weight', '600')
+      await expect(heading).toHaveCSS('font-family', /Playfair Display/)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
     }
     await page.goto('http://127.0.0.1:5187/admin#admin?section=doctor')
@@ -36,7 +39,7 @@ for (const width of [1440, 768, 390]) test(`UI hierarchy, selection and form siz
     await expect(doctor).toHaveAttribute('aria-pressed', 'false')
     const doctorDetail = page.getByRole('region', { name: '医生画像详情', exact: true })
     await expect(doctorDetail).toBeVisible()
-    await expect(doctorDetail).toHaveCSS('box-shadow', 'none')
+    await expect(doctorDetail).toHaveCSS('border-radius', '0px')
     await page.screenshot({ path: test.info().outputPath(`doctors-${width}.png`), fullPage: true })
     await page.goto('http://127.0.0.1:5187/admin#workspace?tab=doctor')
     await expect(main.getByRole('heading', { level: 1 })).toHaveText('医生角色')
@@ -58,6 +61,48 @@ for (const width of [1440, 768, 390]) test(`UI hierarchy, selection and form siz
     expect(await list.evaluate(element => element.parentElement!.closest('[data-slot="card"]') === null)).toBeTruthy()
     if (width === 390) expect((await list.boundingBox())!.width).toBeGreaterThan(300)
     await page.screenshot({ path: test.info().outputPath(`catalogue-${width}.png`), fullPage: true })
+    await page.getByRole('button', { name: '添加药品', exact: true }).click()
+    await expect(main.getByRole('button', { name: '添加同类关系', exact: true })).toHaveCount(1)
+    await page.getByRole('button', { name: '并列查看两种药品', exact: true }).click()
+    for (const label of ['主药品', '对比药品']) {
+      await page.getByRole('combobox', { name: label, exact: true }).click()
+      await page.getByRole('option').nth(label === '主药品' ? 1 : 2).click()
+    }
+    const comparison = page.locator('[data-slot="accordion-content"]').filter({ has: page.locator('table') })
+    await expect(comparison.locator('table')).toBeAttached()
+    await expect.poll(() => comparison.evaluate(element => element.scrollHeight - element.clientHeight)).toBeLessThanOrEqual(1)
+    await comparison.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: test.info().outputPath(`comparison-expanded-${width}.png`), fullPage: true })
+
+    await page.goto('http://127.0.0.1:5187/admin#admin')
+    await page.getByRole('button', { name: '添加内容', exact: true }).click()
+    await expect(page.locator('[data-slot="dropdown-menu-content"]')).toHaveCSS('border-radius', '0px')
+    await page.keyboard.press('Escape')
+
+    await page.goto('http://127.0.0.1:5187/admin#admin?section=audiences')
+    await page.getByRole('button', { name: '创建画像', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toHaveCSS('border-radius', '0px')
+    const name = dialog.getByRole('textbox', { name: '画像名称', exact: true })
+    await expect(name).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await expect(name).toHaveCSS('border-radius', '0px')
+    await expect(name).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)')
+    await dialog.getByRole('combobox', { name: '用户类型', exact: true }).click()
+    const options = page.getByRole('listbox')
+    await expect(options).toBeVisible()
+    await expect(options).toHaveCSS('border-radius', '0px')
+    const bounds = (await options.boundingBox())!
+    expect(bounds.x).toBeGreaterThanOrEqual(0)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width)
+    await page.keyboard.press('Escape')
+    await page.screenshot({ path: test.info().outputPath(`audience-dialog-${width}.png`), fullPage: true })
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+
+    await page.goto('http://127.0.0.1:5187/admin#workspace?tab=pricing')
+    await page.getByRole('button', { name: '添加计价规则', exact: true }).click()
+    await expect(page.getByLabel('模型或资源名称', { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+    await page.screenshot({ path: test.info().outputPath(`pricing-expanded-${width}.png`), fullPage: true })
   } finally {
     await context.close()
   }

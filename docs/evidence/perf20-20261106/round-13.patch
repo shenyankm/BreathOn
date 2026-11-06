@@ -1,0 +1,14 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -37,9 +37,10 @@
+     throw error
+   }
+ }
++const ownerFields: Doc = { case: 'created_by', remediation: 'owner_id', member_state: 'owner_id' }
+ const visible = (kind: string, item: Doc) => {
+   const user = identity.getStore(),
+-    key = ({ case: 'created_by', remediation: 'owner_id', member_state: 'owner_id' } as Doc)[kind]
++    key = ownerFields[kind]
+   return !user?.authenticated || !key || item[key] === user.id
+ }
+ export class Transaction {

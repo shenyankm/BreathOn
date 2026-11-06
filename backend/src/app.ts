@@ -42,7 +42,8 @@ export async function createApp(config: Doc = settings(), fetcher: typeof fetch 
   ])
   let ready = false,
     checking: Promise<void> | undefined,
-    cleanup: Promise<void> | undefined
+    cleanup: Promise<void> | undefined,
+    recovering: Promise<void> | undefined
   app.decorateRequest('user')
   await app.register(websocket, { options: { maxPayload: 4096, perMessageDeflate: false } })
   app.addHook('onRequest', async (request, reply) => {
@@ -160,7 +161,7 @@ export async function createApp(config: Doc = settings(), fetcher: typeof fetch 
   app.get('/api/doctor', async () => constants.doctor.DOCTOR_PROFILE)
   registerPlatform(app, store, catalog)
   registerDocuments(app, store, catalog)
-  registerOperations(app, store, catalog, models, tasks)
+  const calibration = registerOperations(app, store, catalog, models, tasks)
   medical.register(app)
   research.register(app)
   visits.register(app)
@@ -169,6 +170,8 @@ export async function createApp(config: Doc = settings(), fetcher: typeof fetch 
     try {
       await store.open()
       await catalog.seed()
+      await calibration.recover(true)
+      await sessions.recover(true)
       await visits.cleanup()
       await visits.recover()
       await research.startScheduler()
@@ -190,13 +193,25 @@ export async function createApp(config: Doc = settings(), fetcher: typeof fetch 
         })
   }, 3600000)
   timer.unref()
+  const recoveryTimer = setInterval(() => {
+    if (ready && !recovering)
+      recovering = (async () => {
+        await sessions.recover()
+        await calibration.recover()
+      })().catch(() => {
+        console.error('state_recovery_failed')
+      }).finally(() => { recovering = undefined })
+  }, 30000)
+  recoveryTimer.unref()
   app.addHook('preClose', async () => {
     ready = false
     clearInterval(timer)
+    clearInterval(recoveryTimer)
     await visits.close()
     await research.close()
     await sessions.close()
     await tasks.close()
+    await recovering?.catch(() => {})
     await checking?.catch(() => {})
     await cleanup?.catch(() => {})
   })

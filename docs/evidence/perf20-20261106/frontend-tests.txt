@@ -1,0 +1,1184 @@
+
+> @evispeak/frontend@0.0.0 test
+> node --experimental-strip-types --test tests/*.test.ts
+
+TAP version 13
+# Subtest: admin sections deep link and old workspace URLs retain the matching sidebar
+ok 1 - admin sections deep link and old workspace URLs retain the matching sidebar
+  ---
+  duration_ms: 3.034875
+  type: 'test'
+  ...
+# Subtest: five module groups own every destination and retain context for legacy editor links
+ok 2 - five module groups own every destination and retain context for legacy editor links
+  ---
+  duration_ms: 0.634625
+  type: 'test'
+  ...
+# Subtest: overview counts reviewable states and sorts valid timestamps without fabricated activity
+ok 3 - overview counts reviewable states and sorts valid timestamps without fabricated activity
+  ---
+  duration_ms: 0.46725
+  type: 'test'
+  ...
+# Subtest: overview parses timestamps once and preserves stable ties across sources
+ok 4 - overview parses timestamps once and preserves stable ties across sources
+  ---
+  duration_ms: 0.395333
+  type: 'test'
+  ...
+# Subtest: visit review compares the doctor and leads to scenario generation
+ok 5 - visit review compares the doctor and leads to scenario generation
+  ---
+  duration_ms: 354.28525
+  type: 'test'
+  ...
+# Subtest: fact update requires confirmed public evidence and opens an unpublished doctor draft
+ok 6 - fact update requires confirmed public evidence and opens an unpublished doctor draft
+  ---
+  duration_ms: 85.599
+  type: 'test'
+  ...
+# Subtest: bottom navigation has three accessible labeled entries
+ok 7 - bottom navigation has three accessible labeled entries
+  ---
+  duration_ms: 0.784583
+  type: 'test'
+  ...
+# Subtest: nested pages keep their parent navigation entry selected
+ok 8 - nested pages keep their parent navigation entry selected
+  ---
+  duration_ms: 0.138208
+  type: 'test'
+  ...
+# Subtest: practice entry resumes an active session from any page
+ok 9 - practice entry resumes an active session from any page
+  ---
+  duration_ms: 0.083458
+  type: 'test'
+  ...
+# Subtest: practice session hides navigation while connecting, active, or ended
+ok 10 - practice session hides navigation while connecting, active, or ended
+  ---
+  duration_ms: 0.054458
+  type: 'test'
+  ...
+# Subtest: practice is the default, including old app links
+ok 11 - practice is the default, including old app links
+  ---
+  duration_ms: 3.727542
+  type: 'test'
+  ...
+# Subtest: records, settings and active sessions remain reachable
+ok 12 - records, settings and active sessions remain reachable
+  ---
+  duration_ms: 0.085917
+  type: 'test'
+  ...
+# Subtest: missing, malformed and incomplete identities never mount the private application
+ok 13 - missing, malformed and incomplete identities never mount the private application
+  ---
+  duration_ms: 578.947083
+  type: 'test'
+  ...
+# Subtest: Android requires server authentication while local web management stays compatible
+ok 14 - Android requires server authentication while local web management stays compatible
+  ---
+  duration_ms: 157.869166
+  type: 'test'
+  ...
+# Subtest: invalid credentials keep the form; cookie login and logout update the application
+ok 15 - invalid credentials keep the form; cookie login and logout update the application
+  ---
+  duration_ms: 17.109666
+  type: 'test'
+  ...
+# Subtest: local expiry and an expired server cookie both require login again
+ok 16 - local expiry and an expired server cookie both require login again
+  ---
+  duration_ms: 92.99575
+  type: 'test'
+  ...
+# Subtest: confirmed account or role switches remount isolated application state
+ok 17 - confirmed account or role switches remount isolated application state
+  ---
+  duration_ms: 27.292166
+  type: 'test'
+  ...
+# Subtest: temporary focus failures preserve verified identity and recover on retry
+ok 18 - temporary focus failures preserve verified identity and recover on retry
+  ---
+  duration_ms: 129.09175
+  type: 'test'
+  ...
+# Subtest: a late API 401 rechecks the current cookie before removing a newer session
+ok 19 - a late API 401 rechecks the current cookie before removing a newer session
+  ---
+  duration_ms: 17.770334
+  type: 'test'
+  ...
+# Subtest: a stale anonymous response cannot overwrite a successful login
+ok 20 - a stale anonymous response cannot overwrite a successful login
+  ---
+  duration_ms: 12.144917
+  type: 'test'
+  ...
+# Subtest: focus and old 401 events cannot interrupt an in-progress login
+ok 21 - focus and old 401 events cannot interrupt an in-progress login
+  ---
+  duration_ms: 22.193583
+  type: 'test'
+  ...
+# Subtest: failed logout preserves the session; confirmed missing cookie logs out
+ok 22 - failed logout preserves the session; confirmed missing cookie logs out
+  ---
+  duration_ms: 7.835416
+  type: 'test'
+  ...
+# Subtest: the web management entry rejects representative sessions but permits admins
+ok 23 - the web management entry rejects representative sessions but permits admins
+  ---
+  duration_ms: 33.205125
+  type: 'test'
+  ...
+# Subtest: both login targets omit the removed footer notice
+ok 24 - both login targets omit the removed footer notice
+  ---
+  duration_ms: 29.411167
+  type: 'test'
+  ...
+# Subtest: Android login uses native fields and accessible password sign-in
+ok 25 - Android login uses native fields and accessible password sign-in
+  ---
+  duration_ms: 194.733125
+  type: 'test'
+  ...
+# Subtest: requesting logout and cancelling never revoke the session
+ok 26 - requesting logout and cancelling never revoke the session
+  ---
+  duration_ms: 20.053125
+  type: 'test'
+  ...
+# Subtest: Web build checks actual module IDs across entry and lazy chunks
+ok 27 - Web build checks actual module IDs across entry and lazy chunks
+  ---
+  duration_ms: 9.109959
+  type: 'test'
+  ...
+# Subtest: Android build checks actual module IDs across entry and lazy chunks
+ok 28 - Android build checks actual module IDs across entry and lazy chunks
+  ---
+  duration_ms: 14.32275
+  type: 'test'
+  ...
+# Subtest: calibration keeps zero distinct from unobserved and resets saved scores
+ok 29 - calibration keeps zero distinct from unobserved and resets saved scores
+  ---
+  duration_ms: 366.901083
+  type: 'test'
+  ...
+# Subtest: catalogue avoids serialization for empty searches and reuses unchanged filters
+ok 30 - catalogue avoids serialization for empty searches and reuses unchanged filters
+  ---
+  duration_ms: 577.613709
+  type: 'test'
+  ...
+# Subtest: policy catalogue loads independently without requesting unrelated training content
+ok 31 - policy catalogue loads independently without requesting unrelated training content
+  ---
+  duration_ms: 200.900584
+  type: 'test'
+  ...
+# Subtest: saved case responses remain usable when the next list request would fail
+ok 32 - saved case responses remain usable when the next list request would fail
+  ---
+  duration_ms: 120.592625
+  type: 'test'
+  ...
+# Subtest: catalog save acknowledges the returned version without a fallible list reload
+ok 33 - catalog save acknowledges the returned version without a fallible list reload
+  ---
+  duration_ms: 46.734833
+  type: 'test'
+  ...
+# Subtest: an older case list cannot hide a newly imported case
+ok 34 - an older case list cannot hide a newly imported case
+  ---
+  duration_ms: 13.904458
+  type: 'test'
+  ...
+# Subtest: an older catalog list cannot remove a newly saved entry
+ok 35 - an older catalog list cannot remove a newly saved entry
+  ---
+  duration_ms: 149.106167
+  type: 'test'
+  ...
+# Subtest: an older catalog list cannot remove a generated scene
+ok 36 - an older catalog list cannot remove a generated scene
+  ---
+  duration_ms: 60.2905
+  type: 'test'
+  ...
+# Subtest: a refreshed case list preserves concurrent edits and merges other records
+ok 37 - a refreshed case list preserves concurrent edits and merges other records
+  ---
+  duration_ms: 62.949666
+  type: 'test'
+  ...
+# Subtest: a pending catalog read cannot resurrect a doctor deleted after creation
+ok 38 - a pending catalog read cannot resurrect a doctor deleted after creation
+  ---
+  duration_ms: 47.907667
+  type: 'test'
+  ...
+# Subtest: generated doctor fields are editable and never saved until the review form submits
+ok 39 - generated doctor fields are editable and never saved until the review form submits
+  ---
+  duration_ms: 113.438209
+  type: 'test'
+  ...
+# Subtest: generated doctor form requires explicit review and preserves source fields
+ok 40 - generated doctor form requires explicit review and preserves source fields
+  ---
+  duration_ms: 117.42275
+  type: 'test'
+  ...
+# Subtest: doctor generation starts only on submit and polling exposes the draft for review
+ok 41 - doctor generation starts only on submit and polling exposes the draft for review
+  ---
+  duration_ms: 21.940125
+  type: 'test'
+  ...
+# Subtest: doctor progress retry recovers a failed initial read without a second paid search
+ok 42 - doctor progress retry recovers a failed initial read without a second paid search
+  ---
+  duration_ms: 13.435583
+  type: 'test'
+  ...
+# Subtest: a cancelled doctor search cannot be revived by an older progress response
+ok 43 - a cancelled doctor search cannot be revived by an older progress response
+  ---
+  duration_ms: 153.598666
+  type: 'test'
+  ...
+# Subtest: a saved research draft opens its existing doctor instead of offering another creation
+ok 44 - a saved research draft opens its existing doctor instead of offering another creation
+  ---
+  duration_ms: 6.690917
+  type: 'test'
+  ...
+# Subtest: source review links load the requested job even outside the recent history
+ok 45 - source review links load the requested job even outside the recent history
+  ---
+  duration_ms: 11.901042
+  type: 'test'
+  ...
+# Subtest: published doctor changes require a draft and publishing returns to stable identity
+ok 46 - published doctor changes require a draft and publishing returns to stable identity
+  ---
+  duration_ms: 101.498584
+  type: 'test'
+  ...
+# Subtest: doctor draft deep link opens the reviewed draft
+ok 47 - doctor draft deep link opens the reviewed draft
+  ---
+  duration_ms: 32.716083
+  type: 'test'
+  ...
+# Subtest: retired policy research keeps archives readable without offering new tracking (false)
+ok 48 - retired policy research keeps archives readable without offering new tracking (false)
+  ---
+  duration_ms: 55.409459
+  type: 'test'
+  ...
+# Subtest: retired policy research keeps archives readable without offering new tracking (true)
+ok 49 - retired policy research keeps archives readable without offering new tracking (true)
+  ---
+  duration_ms: 40.157
+  type: 'test'
+  ...
+# Subtest: doctor polling retries reads only and recovers the same draft
+ok 50 - doctor polling retries reads only and recovers the same draft
+  ---
+  duration_ms: 9.949375
+  type: 'test'
+  ...
+# Subtest: doctor polling stops after three retries and keeps manual recovery
+ok 51 - doctor polling stops after three retries and keeps manual recovery
+  ---
+  duration_ms: 12.568667
+  type: 'test'
+  ...
+# Subtest: candidate confirmation requires all identity fields and explicit review
+ok 52 - candidate confirmation requires all identity fields and explicit review
+  ---
+  duration_ms: 60.968834
+  type: 'test'
+  ...
+# Subtest: published doctor offers both free practice guidance and scored scene navigation
+ok 53 - published doctor offers both free practice guidance and scored scene navigation
+  ---
+  duration_ms: 12.177375
+  type: 'test'
+  ...
+# Subtest: candidate fallback opens the saved role without starting another search
+ok 54 - candidate fallback opens the saved role without starting another search
+  ---
+  duration_ms: 16.744334
+  type: 'test'
+  ...
+# Subtest: opening a newly confirmed candidate adds it to the doctor list
+ok 55 - opening a newly confirmed candidate adds it to the doctor list
+  ---
+  duration_ms: 32.242541
+  type: 'test'
+  ...
+# Subtest: company products only shows published company products
+ok 56 - company products only shows published company products
+  ---
+  duration_ms: 18.257833
+  type: 'test'
+  ...
+# Subtest: library loads only visited catalogs and reuses already loaded categories
+ok 57 - library loads only visited catalogs and reuses already loaded categories
+  ---
+  duration_ms: 13.6325
+  type: 'test'
+  ...
+# Subtest: doctor library shows clean names with a prominent simulation notice
+ok 58 - doctor library shows clean names with a prominent simulation notice
+  ---
+  duration_ms: 9.038417
+  type: 'test'
+  ...
+# Subtest: doctor cards open full details and preserve the doctor category on return
+ok 59 - doctor cards open full details and preserve the doctor category on return
+  ---
+  duration_ms: 10.561791
+  type: 'test'
+  ...
+# Subtest: library carries the viewed doctor into practice without losing the reading context
+ok 60 - library carries the viewed doctor into practice without losing the reading context
+  ---
+  duration_ms: 18.415542
+  type: 'test'
+  ...
+# Subtest: dedicated doctor page opens published doctors directly and carries the selected ID to practice
+ok 61 - dedicated doctor page opens published doctors directly and carries the selected ID to practice
+  ---
+  duration_ms: 13.175958
+  type: 'test'
+  ...
+# Subtest: clinical scenarios recover from load errors, hide drafts, search diseases and preserve real IDs
+ok 62 - clinical scenarios recover from load errors, hide drafts, search diseases and preserve real IDs
+  ---
+  duration_ms: 8.505625
+  type: 'test'
+  ...
+# Subtest: admin overview distinguishes unavailable totals from zero and refreshes failed sources
+ok 63 - admin overview distinguishes unavailable totals from zero and refreshes failed sources
+  ---
+  duration_ms: 12.874959
+  type: 'test'
+  ...
+# Subtest: audience saves through the catalog API, preserves failed forms, and edits with current version
+ok 64 - audience saves through the catalog API, preserves failed forms, and edits with current version
+  ---
+  duration_ms: 7.497917
+  type: 'test'
+  ...
+# Subtest: doctor labels remove only the trailing simulation suffix
+ok 65 - doctor labels remove only the trailing simulation suffix
+  ---
+  duration_ms: 12.061958
+  type: 'test'
+  ...
+# Subtest: catalogue covers all 20 launched products in the dated official inventory
+ok 66 - catalogue covers all 20 launched products in the dated official inventory
+  ---
+  duration_ms: 1.405458
+  type: 'test'
+  ...
+# Subtest: every card has a real local image, a summary and a primary document link
+ok 67 - every card has a real local image, a summary and a primary document link
+  ---
+  duration_ms: 9.034125
+  type: 'test'
+  ...
+# Subtest: alternate document and image formats are explicitly identified
+ok 68 - alternate document and image formats are explicitly identified
+  ---
+  duration_ms: 0.10575
+  type: 'test'
+  ...
+# Subtest: settings only shows the account, persisted practice mode and logout
+ok 69 - settings only shows the account, persisted practice mode and logout
+  ---
+  duration_ms: 138.262792
+  type: 'test'
+  ...
+# Subtest: an account without a username has an honest fallback and no unavailable logout action
+ok 70 - an account without a username has an honest fallback and no unavailable logout action
+  ---
+  duration_ms: 58.598125
+  type: 'test'
+  ...
+# Subtest: an available logout action calls its supplied callback and is enabled by default
+ok 71 - an available logout action calls its supplied callback and is enabled by default
+  ---
+  duration_ms: 33.07025
+  type: 'test'
+  ...
+# Subtest: a blocked logout explains that the current practice must be finished and saved
+ok 72 - a blocked logout explains that the current practice must be finished and saved
+  ---
+  duration_ms: 11.424041
+  type: 'test'
+  ...
+# Subtest: ASR corrections remove stale medical judgments before a new result arrives
+ok 73 - ASR corrections remove stale medical judgments before a new result arrives
+  ---
+  duration_ms: 0.776792
+  type: 'test'
+  ...
+# Subtest: unchanged or unrelated transcripts reuse medical state
+ok 74 - unchanged or unrelated transcripts reuse medical state
+  ---
+  duration_ms: 0.060916
+  type: 'test'
+  ...
+# Subtest: native back closes overlays before changing pages
+ok 75 - native back closes overlays before changing pages
+  ---
+  duration_ms: 1.863375
+  type: 'test'
+  ...
+# Subtest: native back returns records, settings, sessions and retired routes to practice
+ok 76 - native back returns records, settings, sessions and retired routes to practice
+  ---
+  duration_ms: 4.847042
+  type: 'test'
+  ...
+# Subtest: message index preserves all findings and their order without assigning unbound checks
+ok 77 - message index preserves all findings and their order without assigning unbound checks
+  ---
+  duration_ms: 0.68425
+  type: 'test'
+  ...
+# Subtest: product source index preserves corpus order and omits missing or repeated references
+ok 78 - product source index preserves corpus order and omits missing or repeated references
+  ---
+  duration_ms: 0.135709
+  type: 'test'
+  ...
+# Subtest: caller cancellation and the API deadline both end stalled requests
+ok 79 - caller cancellation and the API deadline both end stalled requests
+  ---
+  duration_ms: 32.66575
+  type: 'test'
+  ...
+# Subtest: long generation requests retain their 60 second deadline and JSON body
+ok 80 - long generation requests retain their 60 second deadline and JSON body
+  ---
+  duration_ms: 3.5895
+  type: 'test'
+  ...
+# Subtest: only a server 401 notifies the auth gate and API errors stay intact
+ok 81 - only a server 401 notifies the auth gate and API errors stay intact
+  ---
+  duration_ms: 742.332917
+  type: 'test'
+  ...
+# Subtest: a non-browser 401 remains an ApiError
+ok 82 - a non-browser 401 remains an ApiError
+  ---
+  duration_ms: 0.823834
+  type: 'test'
+  ...
+# Subtest: safe read recovers once from 408
+ok 83 - safe read recovers once from 408
+  ---
+  duration_ms: 3.420542
+  type: 'test'
+  ...
+# Subtest: safe read recovers once from 429
+ok 84 - safe read recovers once from 429
+  ---
+  duration_ms: 2.637
+  type: 'test'
+  ...
+# Subtest: safe read recovers once from 502
+ok 85 - safe read recovers once from 502
+  ---
+  duration_ms: 1.046333
+  type: 'test'
+  ...
+# Subtest: safe read recovers once from 503
+ok 86 - safe read recovers once from 503
+  ---
+  duration_ms: 2.3755
+  type: 'test'
+  ...
+# Subtest: safe read recovers once from 504
+ok 87 - safe read recovers once from 504
+  ---
+  duration_ms: 2.570166
+  type: 'test'
+  ...
+# Subtest: network read failure retries once and never loops
+ok 88 - network read failure retries once and never loops
+  ---
+  duration_ms: 397.237709
+  type: 'test'
+  ...
+# Subtest: POST is never automatically replayed
+ok 89 - POST is never automatically replayed
+  ---
+  duration_ms: 1.054292
+  type: 'test'
+  ...
+# Subtest: PUT is never automatically replayed
+ok 90 - PUT is never automatically replayed
+  ---
+  duration_ms: 0.7105
+  type: 'test'
+  ...
+# Subtest: PATCH is never automatically replayed
+ok 91 - PATCH is never automatically replayed
+  ---
+  duration_ms: 0.480625
+  type: 'test'
+  ...
+# Subtest: DELETE is never automatically replayed
+ok 92 - DELETE is never automatically replayed
+  ---
+  duration_ms: 0.393083
+  type: 'test'
+  ...
+# Subtest: cancellation during backoff prevents the next request
+ok 93 - cancellation during backoff prevents the next request
+  ---
+  duration_ms: 2.244625
+  type: 'test'
+  ...
+# Subtest: retry uses the original deadline and stops when it expires
+ok 94 - retry uses the original deadline and stops when it expires
+  ---
+  duration_ms: 0.996334
+  type: 'test'
+  ...
+# Subtest: long or invalid Retry-After values never trigger an early retry
+ok 95 - long or invalid Retry-After values never trigger an early retry
+  ---
+  duration_ms: 2.314541
+  type: 'test'
+  ...
+# Subtest: non-transient statuses and malformed error bodies remain actionable
+ok 96 - non-transient statuses and malformed error bodies remain actionable
+  ---
+  duration_ms: 0.451083
+  type: 'test'
+  ...
+# Subtest: empty success and HEAD do not parse JSON
+ok 97 - empty success and HEAD do not parse JSON
+  ---
+  duration_ms: 0.081125
+  type: 'test'
+  ...
+# Subtest: invalid success payload does not replay a write and explains uncertain completion
+ok 98 - invalid success payload does not replay a write and explains uncertain completion
+  ---
+  duration_ms: 0.171167
+  type: 'test'
+  ...
+# Subtest: Headers instances preserve upload content type and authorization headers
+ok 99 - Headers instances preserve upload content type and authorization headers
+  ---
+  duration_ms: 1.278916
+  type: 'test'
+  ...
+# Subtest: pre-cancelled reads do not reach the network
+ok 100 - pre-cancelled reads do not reach the network
+  ---
+  duration_ms: 0.761834
+  type: 'test'
+  ...
+# Subtest: every policy has a declared level and topic without changing source order
+ok 101 - every policy has a declared level and topic without changing source order
+  ---
+  duration_ms: 0.636667
+  type: 'test'
+  ...
+# Subtest: level and topic filters intersect and empty combinations stay empty
+ok 102 - level and topic filters intersect and empty combinations stay empty
+  ---
+  duration_ms: 0.079042
+  type: 'test'
+  ...
+# Subtest: national policies reposted locally retain their issuing level and hospital rules stay separate
+ok 103 - national policies reposted locally retain their issuing level and hospital rules stay separate
+  ---
+  duration_ms: 0.270125
+  type: 'test'
+  ...
+# Subtest: task follows the actual stage, objective and doctor instead of fixed evidence instructions
+ok 104 - task follows the actual stage, objective and doctor instead of fixed evidence instructions
+  ---
+  duration_ms: 0.915916
+  type: 'test'
+  ...
+# Subtest: voice status distinguishes playback, generation, mute, pause and saving
+ok 105 - voice status distinguishes playback, generation, mute, pause and saving
+  ---
+  duration_ms: 0.210625
+  type: 'test'
+  ...
+# Subtest: free practice starts with published drugs and enables matching doctors after selection
+ok 106 - free practice starts with published drugs and enables matching doctors after selection
+  ---
+  duration_ms: 356.607958
+  type: 'test'
+  ...
+# Subtest: native selects retain current identity and complete option labels after a stale preview arrives
+ok 107 - native selects retain current identity and complete option labels after a stale preview arrives
+  ---
+  duration_ms: 130.306667
+  type: 'test'
+  ...
+# Subtest: a stale free preview resolve cannot overwrite readiness for a newer pair
+ok 108 - a stale free preview resolve cannot overwrite readiness for a newer pair
+  ---
+  duration_ms: 125.262666
+  type: 'test'
+  ...
+# Subtest: a stale free preview reject cannot overwrite readiness for a newer pair
+ok 109 - a stale free preview reject cannot overwrite readiness for a newer pair
+  ---
+  duration_ms: 87.842792
+  type: 'test'
+  ...
+# Subtest: new practice exposes only free pairing with no scored scenario selector
+ok 110 - new practice exposes only free pairing with no scored scenario selector
+  ---
+  duration_ms: 51.091917
+  type: 'test'
+  ...
+# Subtest: empty published choices keep free practice unavailable and direct the user to an administrator
+ok 111 - empty published choices keep free practice unavailable and direct the user to an administrator
+  ---
+  duration_ms: 41.239375
+  type: 'test'
+  ...
+# Subtest: a failed current free preview can be retried without losing the selected pair
+ok 112 - a failed current free preview can be retried without losing the selected pair
+  ---
+  duration_ms: 30.24175
+  type: 'test'
+  ...
+# Subtest: an existing scene or remediation keeps its binding and does not request a free preview
+ok 113 - an existing scene or remediation keeps its binding and does not request a free preview
+  ---
+  duration_ms: 16.576166
+  type: 'test'
+  ...
+# Subtest: the home page preserves a restored free pair through the start callback
+ok 114 - the home page preserves a restored free pair through the start callback
+  ---
+  duration_ms: 63.436042
+  type: 'test'
+  ...
+# Subtest: practice choices stay in the app owner when the home page is unmounted for another tab
+ok 115 - practice choices stay in the app owner when the home page is unmounted for another tab
+  ---
+  duration_ms: 28.590583
+  type: 'test'
+  ...
+# Subtest: choosing a drug filters doctors and changing drugs clears only an incompatible doctor
+ok 116 - choosing a drug filters doctors and changing drugs clears only an incompatible doctor
+  ---
+  duration_ms: 32.872083
+  type: 'test'
+  ...
+# Subtest: restored incompatible pairs cannot be previewed or started
+ok 117 - restored incompatible pairs cannot be previewed or started
+  ---
+  duration_ms: 14.18675
+  type: 'test'
+  ...
+# Subtest: a drug with no matching published doctors shows an empty state and cannot start
+ok 118 - a drug with no matching published doctors shows an empty state and cannot start
+  ---
+  duration_ms: 7.843667
+  type: 'test'
+  ...
+# Subtest: doctor-first selection filters drugs and previews only a compatible pair
+ok 119 - doctor-first selection filters drugs and previews only a compatible pair
+  ---
+  duration_ms: 30.736875
+  type: 'test'
+  ...
+# Subtest: a doctor with no matching drug can be selected first and shows a recoverable empty state
+ok 120 - a doctor with no matching drug can be selected first and shows a recoverable empty state
+  ---
+  duration_ms: 26.79425
+  type: 'test'
+  ...
+# Subtest: clearing a verified pair disables start until a new pair is verified
+ok 121 - clearing a verified pair disables start until a new pair is verified
+  ---
+  duration_ms: 16.053458
+  type: 'test'
+  ...
+# Subtest: App limits drugs to mazdutide while keeping multiple doctors and rejecting stale selections
+ok 122 - App limits drugs to mazdutide while keeping multiple doctors and rejecting stale selections
+  ---
+  duration_ms: 9.539209
+  type: 'test'
+  ...
+# Subtest: default mazdutide preserves a compatible doctor and waits for the verified preview
+ok 123 - default mazdutide preserves a compatible doctor and waits for the verified preview
+  ---
+  duration_ms: 9.805208
+  type: 'test'
+  ...
+# Subtest: assisted practice shows conversation and coach together without tabs
+ok 124 - assisted practice shows conversation and coach together without tabs
+  ---
+  duration_ms: 226.697292
+  type: 'test'
+  ...
+# Subtest: combat keeps transcript reachable and wires independent call controls
+ok 125 - combat keeps transcript reachable and wires independent call controls
+  ---
+  duration_ms: 73.034
+  type: 'test'
+  ...
+# Subtest: policy pause prevents unmuting and connecting offers cancellation
+ok 126 - policy pause prevents unmuting and connecting offers cancellation
+  ---
+  duration_ms: 125.507375
+  type: 'test'
+  ...
+# Subtest: combat shows the specific failure inside the fullscreen stage
+ok 127 - combat shows the specific failure inside the fullscreen stage
+  ---
+  duration_ms: 7.849333
+  type: 'test'
+  ...
+# Subtest: ended practice has no duplicate restart action and combat returns to practice setup
+ok 128 - ended practice has no duplicate restart action and combat returns to practice setup
+  ---
+  duration_ms: 141.918334
+  type: 'test'
+  ...
+# Subtest: pricing opens invalid and new rules and preserves exact prices on save
+ok 129 - pricing opens invalid and new rules and preserves exact prices on save
+  ---
+  duration_ms: 234.209708
+  type: 'test'
+  ...
+# Subtest: record detail retry recovers without leaving the dialog; late old record cannot overwrite current detail
+ok 130 - record detail retry recovers without leaving the dialog; late old record cannot overwrite current detail
+  ---
+  duration_ms: 308.959959
+  type: 'test'
+  ...
+# Subtest: feedback read recovers and repeated retrain retains form on failure then unlocks
+ok 131 - feedback read recovers and repeated retrain retains form on failure then unlocks
+  ---
+  duration_ms: 80.701666
+  type: 'test'
+  ...
+# Subtest: progress ignores late superseded responses and shows recoverable current failure
+ok 132 - progress ignores late superseded responses and shows recoverable current failure
+  ---
+  duration_ms: 88.576833
+  type: 'test'
+  ...
+# Subtest: records focus on practice history and omit service usage statistics
+ok 133 - records focus on practice history and omit service usage statistics
+  ---
+  duration_ms: 233.399042
+  type: 'test'
+  ...
+# Subtest: scenario binds usable policies and preserves drug IDs when editing
+ok 134 - scenario binds usable policies and preserves drug IDs when editing
+  ---
+  duration_ms: 444.254583
+  type: 'test'
+  ...
+# Subtest: transcript follows only readers near the latest message
+ok 135 - transcript follows only readers near the latest message
+  ---
+  duration_ms: 1.4515
+  type: 'test'
+  ...
+# Subtest: saved scroll waits for lazy content and stops after restoration or user input
+ok 136 - saved scroll waits for lazy content and stops after restoration or user input
+  ---
+  duration_ms: 0.303209
+  type: 'test'
+  ...
+# Subtest: self-report recording stops in background and uploads only with consent
+ok 137 - self-report recording stops in background and uploads only with consent
+  ---
+  duration_ms: 230.018708
+  type: 'test'
+  ...
+# Subtest: service checks request real probes and preserve failures
+ok 138 - service checks request real probes and preserve failures
+  ---
+  duration_ms: 17.380167
+  type: 'test'
+  ...
+# Subtest: failed HTTP checks reject without a replacement result
+ok 139 - failed HTTP checks reject without a replacement result
+  ---
+  duration_ms: 0.339709
+  type: 'test'
+  ...
+# Subtest: configuration flags and incomplete probe results cannot appear healthy
+ok 140 - configuration flags and incomplete probe results cannot appear healthy
+  ---
+  duration_ms: 1.970417
+  type: 'test'
+  ...
+# Subtest: leaving the page can abort an in-flight service check
+ok 141 - leaving the page can abort an in-flight service check
+  ---
+  duration_ms: 0.340417
+  type: 'test'
+  ...
+# Subtest: last results restore locally without a service call and invalid cache is ignored
+ok 142 - last results restore locally without a service call and invalid cache is ignored
+  ---
+  duration_ms: 0.561084
+  type: 'test'
+  ...
+# Subtest: blocked storage does not break service status display
+ok 143 - blocked storage does not break service status display
+  ---
+  duration_ms: 0.284417
+  type: 'test'
+  ...
+# Subtest: call duration keeps minute boundaries and hours readable
+ok 144 - call duration keeps minute boundaries and hours readable
+  ---
+  duration_ms: 5.995833
+  type: 'test'
+  ...
+# Subtest: SQLite IPC writes remain ordered, reads wait for writes, and failed writes can recover
+ok 145 - SQLite IPC writes remain ordered, reads wait for writes, and failed writes can recover
+  ---
+  duration_ms: 36.776875
+  type: 'test'
+  ...
+# Subtest: malformed native values are rejected
+ok 146 - malformed native values are rejected
+  ---
+  duration_ms: 8.091875
+  type: 'test'
+  ...
+# Subtest: restores the account preference without writing defaults or exposing another account state
+ok 147 - restores the account preference without writing defaults or exposing another account state
+  ---
+  duration_ms: 35.410792
+  type: 'test'
+  ...
+# Subtest: late native reads never overwrite a new selection or an unmounted account
+ok 148 - late native reads never overwrite a new selection or an unmounted account
+  ---
+  duration_ms: 25.698917
+  type: 'test'
+  ...
+# Subtest: storage failures keep practice usable and explain that persistence failed
+ok 149 - storage failures keep practice usable and explain that persistence failed
+  ---
+  duration_ms: 8.005875
+  type: 'test'
+  ...
+# Subtest: visit draft writes recover after failure and restore only the requested account
+ok 150 - visit draft writes recover after failure and restore only the requested account
+  ---
+  duration_ms: 4.469417
+  type: 'test'
+  ...
+# Subtest: visit drafts reject unknown formats and malformed restored edits
+ok 151 - visit drafts reject unknown formats and malformed restored edits
+  ---
+  duration_ms: 6.329542
+  type: 'test'
+  ...
+# Subtest: quick start prefers a published introductory scene and never promotes a draft
+ok 152 - quick start prefers a published introductory scene and never promotes a draft
+  ---
+  duration_ms: 3.408292
+  type: 'test'
+  ...
+# Subtest: quick start preserves a usable published alternative when no introductory scene exists
+ok 153 - quick start preserves a usable published alternative when no introductory scene exists
+  ---
+  duration_ms: 0.219167
+  type: 'test'
+  ...
+# Subtest: only assisted and combat practice are offered and combat always hides live coaching
+ok 154 - only assisted and combat practice are offered and combat always hides live coaching
+  ---
+  duration_ms: 0.226584
+  type: 'test'
+  ...
+# Subtest: incoming messages preserve history reading and the new-message button resumes following
+ok 155 - incoming messages preserve history reading and the new-message button resumes following
+  ---
+  duration_ms: 58.334792
+  type: 'test'
+  ...
+# Subtest: visit audio is limited to supported files and thirty minutes
+ok 156 - visit audio is limited to supported files and thirty minutes
+  ---
+  duration_ms: 0.478792
+  type: 'test'
+  ...
+# Subtest: audio metadata success, failure, and timeout always release the media source
+ok 157 - audio metadata success, failure, and timeout always release the media source
+  ---
+  duration_ms: 0.853375
+  type: 'test'
+  ...
+# Subtest: visit list opens a separate editor and keeps all unsaved new fields on return
+ok 158 - visit list opens a separate editor and keeps all unsaved new fields on return
+  ---
+  duration_ms: 156.907041
+  type: 'test'
+  ...
+# Subtest: visit deep links retain local detail edits and require confirmation before another record
+ok 159 - visit deep links retain local detail edits and require confirmation before another record
+  ---
+  duration_ms: 52.737917
+  type: 'test'
+  ...
+# Subtest: visit refresh retains current failures and clears the error after recovery
+ok 160 - visit refresh retains current failures and clears the error after recovery
+  ---
+  duration_ms: 38.214375
+  type: 'test'
+  ...
+# Subtest: transcription polling avoids overlapping requests, pauses in background, and aborts on unmount
+ok 161 - transcription polling avoids overlapping requests, pauses in background, and aborts on unmount
+  ---
+  duration_ms: 25.173417
+  type: 'test'
+  ...
+# Subtest: rapid duplicate diary submissions create once; failed writes preserve drafts and unlock retry
+ok 162 - rapid duplicate diary submissions create once; failed writes preserve drafts and unlock retry
+  ---
+  duration_ms: 22.571333
+  type: 'test'
+  ...
+# Subtest: failed diary catalogs expose a retry that preserves the new draft
+ok 163 - failed diary catalogs expose a retry that preserves the new draft
+  ---
+  duration_ms: 25.916292
+  type: 'test'
+  ...
+# Subtest: diary detail can retry in place after a failed read
+ok 164 - diary detail can retry in place after a failed read
+  ---
+  duration_ms: 19.586084
+  type: 'test'
+  ...
+# Subtest: transcription polling recovers after a failed poll and clears the old error
+ok 165 - transcription polling recovers after a failed poll and clears the old error
+  ---
+  duration_ms: 15.435875
+  type: 'test'
+  ...
+# Subtest: native draft recovery blocks edits until loaded and save retry preserves new input
+ok 166 - native draft recovery blocks edits until loaded and save retry preserves new input
+  ---
+  duration_ms: 24.536458
+  type: 'test'
+  ...
+# Subtest: speech retry waits for server execution and remains retryable after rejection
+ok 167 - speech retry waits for server execution and remains retryable after rejection
+  ---
+  duration_ms: 109.149333
+  type: 'test'
+  ...
+# Subtest: late speech retry acknowledgements cannot clear an unsaved-session error
+ok 168 - late speech retry acknowledgements cannot clear an unsaved-session error
+  ---
+  duration_ms: 37.237833
+  type: 'test'
+  ...
+# Subtest: cancelling combat during health lookup leaves the session restartable
+ok 169 - cancelling combat during health lookup leaves the session restartable
+  ---
+  duration_ms: 23.541625
+  type: 'test'
+  ...
+# Subtest: expired server login is reported before microphone capture starts
+ok 170 - expired server login is reported before microphone capture starts
+  ---
+  duration_ms: 33.920833
+  type: 'test'
+  ...
+# Subtest: medical checks follow corrected trainee text and unresolved checks never pass on end
+ok 171 - medical checks follow corrected trainee text and unresolved checks never pass on end
+  ---
+  duration_ms: 11.598875
+  type: 'test'
+  ...
+# Subtest: only confirmed high-risk pause rules mute capture until explicit continuation
+ok 172 - only confirmed high-risk pause rules mute capture until explicit continuation
+  ---
+  duration_ms: 9.857083
+  type: 'test'
+  ...
+# Subtest: trained practice disconnect during final review clears waiting and keeps transcript
+ok 173 - trained practice disconnect during final review clears waiting and keeps transcript
+  ---
+  duration_ms: 12.60275
+  type: 'test'
+  ...
+# Subtest: provider error waits for final persistence acknowledgement before closing
+ok 174 - provider error waits for final persistence acknowledgement before closing
+  ---
+  duration_ms: 15.40175
+  type: 'test'
+  ...
+# Subtest: failed persistence reports retained recovery copy without hiding provider failure
+ok 175 - failed persistence reports retained recovery copy without hiding provider failure
+  ---
+  duration_ms: 12.956792
+  type: 'test'
+  ...
+# Subtest: missing final acknowledgement times out without leaving final review pending
+ok 176 - missing final acknowledgement times out without leaving final review pending
+  ---
+  duration_ms: 16.086208
+  type: 'test'
+  ...
+# Subtest: failed persistence without a recovery copy warns to preserve the displayed transcript
+ok 177 - failed persistence without a recovery copy warns to preserve the displayed transcript
+  ---
+  duration_ms: 7.83
+  type: 'test'
+  ...
+# Subtest: backgrounding and offline stop capture without resuming it silently
+ok 178 - backgrounding and offline stop capture without resuming it silently
+  ---
+  duration_ms: 21.032375
+  type: 'test'
+  ...
+# Subtest: free practice sends the selected pair and uses the confirmed snapshot without changing scored sessions
+ok 179 - free practice sends the selected pair and uses the confirmed snapshot without changing scored sessions
+  ---
+  duration_ms: 7.76825
+  type: 'test'
+  ...
+# Subtest: doctor audio can be muted independently of microphone and resets on restart
+ok 180 - doctor audio can be muted independently of microphone and resets on restart
+  ---
+  duration_ms: 12.338
+  type: 'test'
+  ...
+# Subtest: playback failures preserve the actionable audio error
+ok 181 - playback failures preserve the actionable audio error
+  ---
+  duration_ms: 14.578167
+  type: 'test'
+  ...
+# Subtest: stop aborts startup health I/O before opening a microphone or websocket
+ok 182 - stop aborts startup health I/O before opening a microphone or websocket
+  ---
+  duration_ms: 7.496333
+  type: 'test'
+  ...
+# Subtest: malformed realtime messages end capture while preserving transcript and never auto-reconnect
+ok 183 - malformed realtime messages end capture while preserving transcript and never auto-reconnect
+  ---
+  duration_ms: 8.089
+  type: 'test'
+  ...
+# Subtest: retry save preserves dialogue on failure and only acknowledges matching persisted record
+ok 184 - retry save preserves dialogue on failure and only acknowledges matching persisted record
+  ---
+  duration_ms: 12.411875
+  type: 'test'
+  ...
+# Subtest: stop remains saving until server acknowledgement even without training context
+ok 185 - stop remains saving until server acknowledgement even without training context
+  ---
+  duration_ms: 7.834042
+  type: 'test'
+  ...
+# Subtest: an early doctor turn is followed by coaching without duplicating text or accepting an old session
+ok 186 - an early doctor turn is followed by coaching without duplicating text or accepting an old session
+  ---
+  duration_ms: 8.269208
+  type: 'test'
+  ...
+# Subtest: PCM conversion preserves little endian signs and rejects odd payloads
+ok 187 - PCM conversion preserves little endian signs and rejects odd payloads
+  ---
+  duration_ms: 0.750834
+  type: 'test'
+  ...
+# Subtest: PCM decoder matches every signed 16-bit sample including byte boundaries
+ok 188 - PCM decoder matches every signed 16-bit sample including byte boundaries
+  ---
+  duration_ms: 9.522542
+  type: 'test'
+  ...
+# Subtest: delta, corrected final, and ASR full snapshots never duplicate text
+ok 189 - delta, corrected final, and ASR full snapshots never duplicate text
+  ---
+  duration_ms: 0.359375
+  type: 'test'
+  ...
+# Subtest: unchanged transcript snapshots reuse state while changes preserve message identity
+ok 190 - unchanged transcript snapshots reuse state while changes preserve message identity
+  ---
+  duration_ms: 0.416875
+  type: 'test'
+  ...
+# Subtest: worklet carries 128-sample render blocks into exact 20ms frames
+ok 191 - worklet carries 128-sample render blocks into exact 20ms frames
+  ---
+  duration_ms: 2.346583
+  type: 'test'
+  ...
+# Subtest: browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+ok 192 - browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+  ---
+  duration_ms: 2.869166
+  type: 'test'
+  ...
+# Subtest: microphone loss during worklet loading closes audio without starting capture
+ok 193 - microphone loss during worklet loading closes audio without starting capture
+  ---
+  duration_ms: 0.444125
+  type: 'test'
+  ...
+# Subtest: failed playback scheduling still releases the microphone and audio context
+ok 194 - failed playback scheduling still releases the microphone and audio context
+  ---
+  duration_ms: 0.532459
+  type: 'test'
+  ...
+# Subtest: playback status stays active until the last queued audio segment ends
+ok 195 - playback status stays active until the last queued audio segment ends
+  ---
+  duration_ms: 36.247791
+  type: 'test'
+  ...
+1..195
+# tests 195
+# suites 0
+# pass 195
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3847.424916

@@ -1,0 +1,23 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -351,6 +351,7 @@
+     for (const message of this.record.messages)
+       if (!messages.has(message.id)) messages.set(message.id, message)
+     let changed = false,
++      checkpointNeeded = false,
+       corrected = false,
+       invalidated = false,
+       latest: Doc | undefined
+@@ -395,10 +396,11 @@
+       stored.speech = this.speech.describe(start, part.end_time)
+       if (Number.isInteger(start) && Number.isInteger(part.end_time))
+         Object.assign(stored.speech, { start_ms: start, end_ms: part.end_time })
+-      if (complete || wasFinal) await this.checkpoint()
++      if (complete || wasFinal) checkpointNeeded = true
+       await this.send({ type: 'transcript', ...latest, replace: true })
+       this.scheduleChecks(id, text, complete)
+     }
++    if (checkpointNeeded) await this.checkpoint()
+     if (final)
+       for (const message of this.record.messages)
+         if (message.role === 'trainee' && !message.final) {

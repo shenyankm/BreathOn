@@ -77,6 +77,45 @@ function session(fetchHealth: (url: string, options: RequestInit) => Promise<Res
     render: () => { cursor = 0; return exports.useVoiceSession!() } }
 }
 
+test('speech retry waits for server execution and remains retryable after rejection', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'speech' })
+  ws.receive({ type: 'tts_state', state: 'error' })
+  ws.receive({ type: 'notice', message: '朗读失败' })
+  app.render().retrySpeech(); app.render().retrySpeech()
+  assert.equal(ws.sent.filter((event: any) => event.type === 'retry_speech').length, 1)
+  assert.equal(app.render().speechState, 'error')
+  assert.equal(app.render().error, '朗读失败')
+  ws.receive({ type: 'retry_speech_result', accepted: false, message: '请继续练习' })
+  assert.equal(app.render().speechState, 'error')
+  assert.equal(app.render().error, '请继续练习')
+  app.render().retrySpeech()
+  assert.equal(ws.sent.filter((event: any) => event.type === 'retry_speech').length, 2)
+  ws.receive({ type: 'retry_speech_result', accepted: true })
+  assert.equal(app.render().speechState, 'error')
+  ws.receive({ type: 'tts_state', state: 'speaking' })
+  assert.equal(app.render().speechState, 'speaking')
+  ws.receive({ type: 'tts_state', state: 'done' })
+  assert.equal(app.render().speechState, 'done')
+})
+
+test('late speech retry acknowledgements cannot clear an unsaved-session error', async () => {
+  const app = session()
+  await app.render().start('assisted', 'practice')
+  const ws = app.sockets[0]
+  ws.open(); ws.receive({ type: 'ready', session_id: 'speech' })
+  ws.receive({ type: 'tts_state', state: 'error' })
+  app.render().retrySpeech()
+  ws.receive({ type: 'ended', session_id: 'speech', saved: false })
+  const error = app.render().error
+  assert(error)
+  ws.receive({ type: 'retry_speech_result', accepted: true })
+  assert.equal(app.render().error, error)
+  assert.equal(app.render().saved, false)
+})
+
 test('cancelling combat during health lookup leaves the session restartable', async () => {
   let resolve!: (response: Response) => void
   const app = session(() => new Promise<Response>(done => { resolve = done }))

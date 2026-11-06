@@ -252,6 +252,7 @@ export class Dialogue {
           'doctor',
           'training',
           'free_context',
+          'remediation_id',
         ].map((key) => [key, this.record[key] ?? null]),
       )
       Object.assign(data, {
@@ -346,6 +347,9 @@ export class Dialogue {
         ? []
         : [{ start_time: 'fallback', text: result.text ?? '', definite: final }]
     assert(Array.isArray(utterances) && utterances.length <= 2000, 502, '无效 ASR 分句。')
+    const messages = new Map<string, Doc>()
+    for (const message of this.record.messages)
+      if (!messages.has(message.id)) messages.set(message.id, message)
     let changed = false,
       corrected = false,
       invalidated = false,
@@ -357,7 +361,7 @@ export class Dialogue {
       if (!text.trim()) continue
       const id = `${this.record.experience === 'combat' ? 'combat' : 'practice'}-u-${index}`,
         complete = part.definite === true || final,
-        previous = this.record.messages.find((m: Doc) => m.id === id),
+        previous = messages.get(id),
         wasFinal = previous?.final
       latest = { id, role: 'trainee', text, final: complete }
       if (previous?.text === text && previous.final === complete) continue
@@ -383,7 +387,10 @@ export class Dialogue {
       changed = true
       const stored = previous ?? { ...latest }
       if (previous) Object.assign(previous, latest)
-      else this.record.messages.push(stored)
+      else {
+        this.record.messages.push(stored)
+        messages.set(id, stored)
+      }
       const start = part.start_time ?? part.words?.[0]?.start_time
       stored.speech = this.speech.describe(start, part.end_time)
       if (Number.isInteger(start) && Number.isInteger(part.end_time))
@@ -605,13 +612,18 @@ export class Dialogue {
       this.startResponse(latest.id)
   }
   async retrySpeech() {
-    if (this.stopping || this.record.experience === 'combat' || !this.voiceFailed || this.pending)
-      return
-    const latest = [...this.record.messages].reverse().find((m: Doc) => m.role === 'doctor')
-    if (latest) {
-      await this.cancelVoice()
-      this.startSpeech(latest.text, latest.id)
-    }
+    const latest = [...this.record.messages].reverse().find((m: Doc) => m.role === 'doctor'),
+      revision = this.revision,
+      rejected = () => this.send({
+        type: 'retry_speech_result', accepted: false,
+        message: '当前没有可重试的医生朗读，请继续练习。',
+      })
+    if (this.stopping || this.record.experience === 'combat' || !this.voiceFailed || !latest)
+      return rejected()
+    await this.cancelVoice()
+    if (this.stopping || revision !== this.revision || !this.voiceFailed) return rejected()
+    await this.send({ type: 'retry_speech_result', accepted: true })
+    if (!this.stopping && revision === this.revision) this.startSpeech(latest.text, latest.id)
   }
   async close() {
     this.stopping = true

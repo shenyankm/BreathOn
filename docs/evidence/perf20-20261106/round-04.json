@@ -1,0 +1,449 @@
+{
+  "round": 4,
+  "case": "asr_disk",
+  "files": [
+    "src/live.ts"
+  ],
+  "before_source": "5cad77c89f1e14a7a7794bc7ed3f98c41c6d12789c972fdb5776f78b6c3cf489",
+  "after_source": "830befdffaea8fe3f59113c4f68900deb6e24d24485204306ca558114ae03d5c",
+  "results": {
+    "before": [
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 1,
+        "elapsed_ms": [
+          192.78312500000004,
+          192.5932079999999,
+          175.8788750000001,
+          187.93841699999984,
+          200.84245800000008,
+          196.50704199999996,
+          199.4200830000002,
+          178.62699999999995,
+          181.65362500000037
+        ],
+        "median_ms": 192.5932079999999,
+        "p95_ms": 200.84245800000008,
+        "cpu_us": [
+          49627,
+          44766,
+          35425,
+          48224,
+          48637,
+          48703,
+          48546,
+          39151,
+          45895
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 1,
+        "elapsed_ms": [
+          185.7850420000001,
+          183.9675000000001,
+          195.29779099999996,
+          176.24466700000016,
+          186.63195799999994,
+          188.4236659999999,
+          193.51579199999992,
+          191.95858399999997,
+          190.68904199999997
+        ],
+        "median_ms": 188.4236659999999,
+        "p95_ms": 195.29779099999996,
+        "cpu_us": [
+          49851,
+          47698,
+          54334,
+          43992,
+          47578,
+          51567,
+          48465,
+          47857,
+          48845
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 1,
+        "elapsed_ms": [
+          185.26862500000004,
+          179.666875,
+          196.82120799999984,
+          198.218709,
+          198.37874999999985,
+          189.13595800000007,
+          194.28662499999996,
+          191.10145799999964,
+          193.9588749999998
+        ],
+        "median_ms": 193.9588749999998,
+        "p95_ms": 198.37874999999985,
+        "cpu_us": [
+          47871,
+          42738,
+          52540,
+          50929,
+          53678,
+          49063,
+          49223,
+          48688,
+          51400
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ],
+    "after": [
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          9.144729249999997,
+          8.976562500000007,
+          8.773416749999996,
+          9.195760500000006,
+          8.935395999999997,
+          9.23388525,
+          10.089708250000001,
+          12.340510499999993,
+          10.8426355
+        ],
+        "median_ms": 9.195760500000006,
+        "p95_ms": 12.340510499999993,
+        "cpu_us": [
+          2064.25,
+          1969.25,
+          1897.25,
+          2193.75,
+          2052.5,
+          2739.5,
+          3937.75,
+          4612.25,
+          5575.75
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": false
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          8.964729250000005,
+          9.256489499999994,
+          9.178624999999997,
+          9.614406250000002,
+          10.227302249999994,
+          10.490125000000006,
+          10.513156249999994,
+          11.117635249999992,
+          11.314323000000002
+        ],
+        "median_ms": 10.227302249999994,
+        "p95_ms": 11.314323000000002,
+        "cpu_us": [
+          2084.75,
+          2255,
+          2408,
+          2966,
+          3465.75,
+          4127.25,
+          4570,
+          4816.5,
+          5513.25
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": false
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": false,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          8.975499999999997,
+          9.003291500000003,
+          9.196448000000004,
+          9.869073,
+          9.725125000000006,
+          10.184562499999998,
+          10.397635249999993,
+          10.992823000000001,
+          11.379052000000001
+        ],
+        "median_ms": 9.869073,
+        "p95_ms": 11.379052000000001,
+        "cpu_us": [
+          2078.25,
+          2229.75,
+          2357.25,
+          2821.5,
+          3196,
+          3696.75,
+          4050,
+          5206.75,
+          5497.5
+        ],
+        "output_sha256": "6f876efa7ab585190fbc51a4ed4d9f2fc178cc105b8417d550ee387adac46c4e",
+        "validation": {
+          "durable_acknowledgements": false
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ]
+  },
+  "controls": {
+    "before": [
+      {
+        "case": "asr_disk",
+        "small": true,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          7.982573000000002,
+          7.787864499999991,
+          7.9944165,
+          8.172718750000001,
+          8.088812499999989,
+          8.186635249999995,
+          8.534187500000002,
+          8.686041750000001,
+          8.892010250000013
+        ],
+        "median_ms": 8.172718750000001,
+        "p95_ms": 8.892010250000013,
+        "cpu_us": [
+          903.25,
+          1057.25,
+          1074.5,
+          1125,
+          1348.25,
+          1729,
+          2203.75,
+          2650.75,
+          2589.75
+        ],
+        "output_sha256": "b638b83e5081e167a1094054a2a19c7511d7c0326e37327f462c56e34f3be9a8",
+        "validation": {
+          "durable_acknowledgements": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": true,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          7.959947999999997,
+          8.058729250000006,
+          7.960333500000004,
+          7.896051999999997,
+          8.034323,
+          8.119635250000002,
+          8.782635500000012,
+          9.376760250000004,
+          10.221833500000002
+        ],
+        "median_ms": 8.058729250000006,
+        "p95_ms": 10.221833500000002,
+        "cpu_us": [
+          973.5,
+          1090.75,
+          1089.25,
+          1182,
+          1405.25,
+          1791.5,
+          2419.75,
+          2670,
+          3419
+        ],
+        "output_sha256": "b638b83e5081e167a1094054a2a19c7511d7c0326e37327f462c56e34f3be9a8",
+        "validation": {
+          "durable_acknowledgements": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ],
+    "after": [
+      {
+        "case": "asr_disk",
+        "small": true,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          8.107364500000003,
+          7.953103999999996,
+          7.985875000000007,
+          8.140614749999997,
+          8.100073000000009,
+          8.125145750000001,
+          8.053239500000004,
+          8.098801999999992,
+          9.250197999999997
+        ],
+        "median_ms": 8.100073000000009,
+        "p95_ms": 9.250197999999997,
+        "cpu_us": [
+          971,
+          1124.5,
+          1103.25,
+          1301,
+          1387.75,
+          1708.25,
+          2435,
+          2457.25,
+          2983.5
+        ],
+        "output_sha256": "b638b83e5081e167a1094054a2a19c7511d7c0326e37327f462c56e34f3be9a8",
+        "validation": {
+          "durable_acknowledgements": false
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr_disk",
+        "small": true,
+        "samples": 9,
+        "iterations": 4,
+        "elapsed_ms": [
+          7.887864750000006,
+          7.997114500000002,
+          7.936510250000012,
+          8.122187499999995,
+          8.203062500000001,
+          9.939489500000008,
+          8.418426999999994,
+          8.731197750000007,
+          8.699760249999997
+        ],
+        "median_ms": 8.203062500000001,
+        "p95_ms": 9.939489500000008,
+        "cpu_us": [
+          969.75,
+          1062.25,
+          1121.75,
+          1247.5,
+          1433.25,
+          2013.75,
+          2597.25,
+          2680,
+          2867.5
+        ],
+        "output_sha256": "b638b83e5081e167a1094054a2a19c7511d7c0326e37327f462c56e34f3be9a8",
+        "validation": {
+          "durable_acknowledgements": false
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ]
+  },
+  "large": {
+    "before_ms": 192.5932079999999,
+    "after_ms": 9.869073,
+    "improvement_percent": 94.87569000875669,
+    "speedup": 19.51482251676524,
+    "outputs_equal": true,
+    "validations": {
+      "before": [
+        {
+          "durable_acknowledgements": true
+        },
+        {
+          "durable_acknowledgements": true
+        },
+        {
+          "durable_acknowledgements": true
+        }
+      ],
+      "after": [
+        {
+          "durable_acknowledgements": false
+        },
+        {
+          "durable_acknowledgements": false
+        },
+        {
+          "durable_acknowledgements": false
+        }
+      ]
+    }
+  },
+  "small": {
+    "before_ms": 8.115724000000004,
+    "after_ms": 8.151567750000005,
+    "improvement_percent": -0.4416580701857467,
+    "speedup": 0.995602839711416,
+    "outputs_equal": true,
+    "validations": {
+      "before": [
+        {
+          "durable_acknowledgements": true
+        },
+        {
+          "durable_acknowledgements": true
+        }
+      ],
+      "after": [
+        {
+          "durable_acknowledgements": false
+        },
+        {
+          "durable_acknowledgements": false
+        }
+      ]
+    }
+  },
+  "decision": "revert",
+  "reason": "19.5x faster but acknowledges transcript before durable checkpoint; safety invariant failed"
+}

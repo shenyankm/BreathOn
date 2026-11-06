@@ -1,12 +1,15 @@
-shadcn/ui Radix Luma components
+shadcn 4.23.0 Tailwind CSS
 
-Source registry: https://ui.shadcn.com/r/styles/radix-luma/{component}.json
-Upstream: https://github.com/shadcn-ui/ui
-Retrieved: 2026-11-02
+Unmodified local source: src/styles/vendor/shadcn-4.23.0.css
+Original file: shadcn@4.23.0/dist/tailwind.css
+Package: https://registry.npmjs.org/shadcn/-/shadcn-4.23.0.tgz
+Upstream: https://github.com/shadcn-ui/ui (packages/shadcn)
+CSS SHA-256: 4c371f7a1ff5d219ae2f7ff28bd256b4346fd546fe46fbae22092e57db2f0fae
+Package integrity: sha512-lKgq7QPFgkV/6EOrMCwvEn7ZAw/YnM/grhxzJmK4cZdw3E4F3Ut2EmWvrn2E+vzJp1y/76mxU185OSkXo9Ff+Q==
 
-Components were installed by shadcn@4.22.1 add --overwrite using the project
-components.json (radix-luma, neutral, Lucide, LTR, React client components).
-Application code composes these components; it does not patch their styles.
+This copy retains the existing compiled styling without installing the shadcn CLI.
+When updating, preserve this notice, run frontend checks, and compare compiled CSS.
+The original package license follows unchanged.
 
 MIT License
 

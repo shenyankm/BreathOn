@@ -234,20 +234,44 @@ export function retrieve(documents: Doc[], query: string, limit = 10): Doc[] {
       ...chinese.flatMap((s) => Array.from({ length: s.length - 1 }, (_, i) => s.slice(i, i + 2))),
     ])
   const candidates: Doc[] = []
+  const compare = (a: Doc, b: Doc) => b.score - a.score || a.doc.id.localeCompare(b.doc.id) || a.page - b.page
+  const bounded = Number.isInteger(limit) && limit > 0
   for (const doc of documents)
     for (const page of doc.pages)
       for (let offset = 0; offset < page.text.length; offset += 1100) {
         const text = page.text.slice(offset, offset + 1300),
           lower = text.toLowerCase()
-        candidates.push({
-          score: terms.reduce((n, t) => n + Math.min(lower.split(t).length - 1, 4), 0),
+        let score = 0
+        for (const term of terms) {
+          let start = 0
+          for (let count = 0; count < 4; count++) {
+            const found = lower.indexOf(term, start)
+            if (found < 0) break
+            score++
+            start = found + term.length
+          }
+        }
+        const candidate = {
+          score,
           doc,
           page: page.number,
           text,
-        })
+        }
+        if (bounded) {
+          let low = 0, high = candidates.length
+          while (low < high) {
+            const middle = (low + high) >>> 1
+            if (compare(candidates[middle], candidate) <= 0) low = middle + 1
+            else high = middle
+          }
+          if (low < limit) {
+            candidates.splice(low, 0, candidate)
+            if (candidates.length > limit) candidates.pop()
+          }
+        } else candidates.push(candidate)
       }
   return candidates
-    .sort((a, b) => b.score - a.score || a.doc.id.localeCompare(b.doc.id) || a.page - b.page)
+    .sort(compare)
     .slice(0, limit)
     .map((row, i) => ({
       id: `D${i + 1}`,

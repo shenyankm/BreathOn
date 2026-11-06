@@ -1,0 +1,22 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -239,8 +239,18 @@
+       for (let offset = 0; offset < page.text.length; offset += 1100) {
+         const text = page.text.slice(offset, offset + 1300),
+           lower = text.toLowerCase()
++        let score = 0
++        for (const term of terms) {
++          let start = 0
++          for (let count = 0; count < 4; count++) {
++            const found = lower.indexOf(term, start)
++            if (found < 0) break
++            score++
++            start = found + term.length
++          }
++        }
+         candidates.push({
+-          score: terms.reduce((n, t) => n + Math.min(lower.split(t).length - 1, 4), 0),
++          score,
+           doc,
+           page: page.number,
+           text,

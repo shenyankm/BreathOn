@@ -91,8 +91,22 @@ export class Medical {
         false,
       ),
       approvals = new Map<string, Doc>(),
+      normalizedSources = new Map<Doc, string>(),
+      sourcesByURL = new Map<string, Doc[]>(),
       derived: Doc[] = []
+    for (const source of data.sources) {
+      const group = sourcesByURL.get(source.url)
+      if (group) group.push(source)
+      else sourcesByURL.set(source.url, [source])
+    }
     for (const doc of documents) {
+      const normalizedPages = new Map<number, Set<string>>()
+      if (doc.source_url)
+        for (const page of doc.pages) {
+          const texts = normalizedPages.get(page.number) ?? new Set<string>()
+          texts.add(normalize(page.text))
+          normalizedPages.set(page.number, texts)
+        }
       const digest = sha(canonical(doc.pages)),
         receipt = {
           document_id: doc.id,
@@ -119,13 +133,14 @@ export class Medical {
         document_id: doc.id,
         document_version: doc.version,
       })
-      for (const source of data.sources) {
-        if (!doc.source_url || doc.source_url !== source.url) continue
+      for (const source of doc.source_url ? sourcesByURL.get(doc.source_url) ?? [] : []) {
         for (const page of source.pages ?? []) {
-          const matching = doc.pages.find(
-            (p: Doc) => p.number === page.number && normalize(p.text) === normalize(page.text),
-          )
-          if (matching && normalize(page.text)) {
+          let text = normalizedSources.get(page)
+          if (text === undefined) {
+            text = normalize(page.text)
+            normalizedSources.set(page, text)
+          }
+          if (text && normalizedPages.get(page.number)?.has(text)) {
             const key = `${source.id}:${page.number}`,
               previous = approvals.get(key)
             if (!previous || doc.id.localeCompare(previous.document_id) < 0)
@@ -178,6 +193,12 @@ export class Medical {
               receipt.document_sha256 !== source.sha256))
         )
           continue
+        const factMatch = products.some((p: Doc) =>
+          (data.compiled?.[p.id]?.facts ?? []).some(
+            (fact: Doc) => fact.source_id === source.id && fact.page === page.number &&
+              tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
+          ),
+        )
         for (let offset = 0; offset < page.text.length; offset += 1000) {
           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
             lower = compact(body)
@@ -197,17 +218,7 @@ export class Medical {
             score += 3
           if (['reimbursement', 'policy'].includes(source.kind) && /医保|报销|支付|商保/.test(text))
             score += 8
-          if (
-            products.some((p: Doc) =>
-              (data.compiled?.[p.id]?.facts ?? []).some(
-                (fact: Doc) =>
-                  fact.source_id === source.id &&
-                  fact.page === page.number &&
-                  tokens.filter((t) => compact(fact.claim).includes(t)).length >= 2,
-              ),
-            )
-          )
-            score += 5
+          if (factMatch) score += 5
           if (score > (related ? 8 : 3)) {
             const { pages, original_path, ...metadata } = source
             ranked.push({
@@ -324,6 +335,7 @@ export class Medical {
     return result
   }
   async invalidate(u: User, checks: Doc[]) {
+    if (!checks.some((check) => ['supported', 'contradicted'].includes(check.status))) return
     const { data, approvals } = await this.evidence(u, '')
     for (const check of checks)
       if (['supported', 'contradicted'].includes(check.status)) {
@@ -568,6 +580,15 @@ export class Medical {
 }
 export function validateMedical(raw: Doc, text: string, evidence: Doc[]): Doc[] {
   const parts = sentences(text)
+  const normalized = new Map<string, string>()
+  const sourceText = (value: string) => {
+    let result = normalized.get(value)
+    if (result === undefined) {
+      result = normalize(value)
+      normalized.set(value, result)
+    }
+    return result
+  }
   assert(
     Array.isArray(raw.statements) && raw.statements.length === parts.length,
     502,
@@ -591,14 +612,15 @@ export function validateMedical(raw: Doc, text: string, evidence: Doc[]): Doc[] 
     const citations: Doc[] = []
     for (const citation of row.citations) {
       const chunk = evidence.find((e) => e.id === citation?.chunk_id),
-        quote = citation?.quote
+        quote = citation?.quote,
+        quoteText = typeof quote === 'string' ? normalize(quote) : ''
       if (
         !chunk ||
         typeof quote !== 'string' ||
-        normalize(quote).length < 12 ||
-        normalize(quote).length > 1000 ||
-        !normalize(chunk.text).includes(normalize(quote)) ||
-        normalize(chunk.source.title).includes(normalize(quote))
+        quoteText.length < 12 ||
+        quoteText.length > 1000 ||
+        !sourceText(chunk.text).includes(quoteText) ||
+        sourceText(chunk.source.title).includes(quoteText)
       ) {
         valid = false
         continue
@@ -663,8 +685,14 @@ export function validateSummary(raw: Doc, record: Doc, model: string, checks: Do
     medical: Doc[] = [],
     edits: Doc[] = []
   let missing = false
+  const checkIndex = new Map<string, Map<string, Doc>>()
+  for (const check of checks) {
+    const versions = checkIndex.get(check.message_id) ?? new Map<string, Doc>()
+    versions.set(check.text, check)
+    checkIndex.set(check.message_id, versions)
+  }
   for (const [id, text] of trainees) {
-    const check = [...checks].reverse().find((c) => c.message_id === id && c.text === text)
+    const check = checkIndex.get(id)?.get(text)
     if (!check || ['insufficient', 'unavailable', 'checking'].includes(check.status)) missing = true
     for (const row of check?.statements ?? []) {
       if (['supported', 'contradicted'].includes(row.status)) medical.push(row)

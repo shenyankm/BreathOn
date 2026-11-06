@@ -1,0 +1,18 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -675,8 +675,14 @@
+     medical: Doc[] = [],
+     edits: Doc[] = []
+   let missing = false
++  const checkIndex = new Map<string, Map<string, Doc>>()
++  for (const check of checks) {
++    const versions = checkIndex.get(check.message_id) ?? new Map<string, Doc>()
++    versions.set(check.text, check)
++    checkIndex.set(check.message_id, versions)
++  }
+   for (const [id, text] of trainees) {
+-    const check = [...checks].reverse().find((c) => c.message_id === id && c.text === text)
++    const check = checkIndex.get(id)?.get(text)
+     if (!check || ['insufficient', 'unavailable', 'checking'].includes(check.status)) missing = true
+     for (const row of check?.statements ?? []) {
+       if (['supported', 'contradicted'].includes(row.status)) medical.push(row)

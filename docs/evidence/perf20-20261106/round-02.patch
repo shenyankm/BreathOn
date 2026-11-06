@@ -1,0 +1,42 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -234,6 +234,8 @@
+       ...chinese.flatMap((s) => Array.from({ length: s.length - 1 }, (_, i) => s.slice(i, i + 2))),
+     ])
+   const candidates: Doc[] = []
++  const compare = (a: Doc, b: Doc) => b.score - a.score || a.doc.id.localeCompare(b.doc.id) || a.page - b.page
++  const bounded = Number.isInteger(limit) && limit > 0
+   for (const doc of documents)
+     for (const page of doc.pages)
+       for (let offset = 0; offset < page.text.length; offset += 1100) {
+@@ -249,15 +251,27 @@
+             start = found + term.length
+           }
+         }
+-        candidates.push({
++        const candidate = {
+           score,
+           doc,
+           page: page.number,
+           text,
+-        })
++        }
++        if (bounded) {
++          let low = 0, high = candidates.length
++          while (low < high) {
++            const middle = (low + high) >>> 1
++            if (compare(candidates[middle], candidate) <= 0) low = middle + 1
++            else high = middle
++          }
++          if (low < limit) {
++            candidates.splice(low, 0, candidate)
++            if (candidates.length > limit) candidates.pop()
++          }
++        } else candidates.push(candidate)
+       }
+   return candidates
+-    .sort((a, b) => b.score - a.score || a.doc.id.localeCompare(b.doc.id) || a.page - b.page)
++    .sort(compare)
+     .slice(0, limit)
+     .map((row, i) => ({
+       id: `D${i + 1}`,

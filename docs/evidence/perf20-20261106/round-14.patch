@@ -1,0 +1,40 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -274,21 +274,22 @@
+           limit === null ? values : [...values, limit],
+         )
+       ).rows.map((row) => row.document)
+-    } else
+-      for (const file of await readdir(this.config.records)) {
+-        if (!/^[0-9a-f-]{36}\.json$/i.test(file)) continue
+-        try {
+-          const row = await this.record(file.slice(0, -5))
+-          if (
+-            row?.id === file.slice(0, -5) &&
+-            Array.isArray(row.messages) &&
+-            typeof row.started_at === 'string'
+-          )
+-            rows.push(row)
+-        } catch (error) {
+-          if (!(error instanceof SyntaxError)) throw error
+-        }
+-      }
++    } else {
++      const files = (await readdir(this.config.records)).filter(file => /^[0-9a-f-]{36}\.json$/i.test(file))
++      for (let offset = 0; offset < files.length; offset += 8) {
++        const batch = await Promise.all(files.slice(offset, offset + 8).map(async file => {
++          try {
++            const row = await this.record(file.slice(0, -5))
++            if (row?.id === file.slice(0, -5) && Array.isArray(row.messages) && typeof row.started_at === 'string')
++              return row
++          } catch (error) {
++            if (!(error instanceof SyntaxError)) throw error
++          }
++          return null
++        }))
++        rows.push(...batch.filter((row): row is Doc => row !== null))
++      }
++    }
+     rows = rows
+       .filter(
+         (row) =>

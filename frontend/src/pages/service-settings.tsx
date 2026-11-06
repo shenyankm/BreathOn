@@ -30,10 +30,10 @@ export function ServiceSettings() {
     }
   }
   return <div className="mx-auto max-w-3xl space-y-7">
-        <Item><ItemContent><ItemTitle><h1>{"服务设置"}</h1></ItemTitle><ItemDescription>{"刷新将产生外部服务用量。"}</ItemDescription></ItemContent></Item>
+        <Item className="p-0"><ItemContent><ItemTitle><h1 className="font-heading text-2xl font-semibold">{"服务设置"}</h1></ItemTitle><ItemDescription>{"刷新将产生外部服务用量。"}</ItemDescription></ItemContent></Item>
         <Card >
         <CardHeader className="flex flex-row items-center justify-between">
-          <div className="space-y-1"><CardTitle><h2>服务状态</h2></CardTitle><CardDescription role="status">{serviceChecking?'正在检测服务…':serviceStatus?`上次检测：${healthyServices} / ${serviceChecks.length} 项正常`:'尚未检测'}</CardDescription></div>
+          <div className="space-y-1"><CardTitle><h2 className="font-heading">服务状态</h2></CardTitle><CardDescription role="status">{serviceChecking?'正在检测服务…':serviceStatus?`上次检测：${healthyServices} / ${serviceChecks.length} 项正常`:'尚未检测'}</CardDescription></div>
           <Button variant="outline" className="min-w-24 min-h-11" disabled={serviceChecking} onClick={refreshServices}><RotateCcw aria-hidden="true" className={serviceChecking ? " " : ""}/>{serviceChecking?'检测中':'刷新'}</Button>
         </CardHeader>
         <CardContent aria-busy={serviceChecking}>

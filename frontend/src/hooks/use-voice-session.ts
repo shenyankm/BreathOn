@@ -8,7 +8,7 @@ import { invalidateMedicalCheck, updateMedicalChecks, type MedicalCheck } from '
 
 type Status = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 type PolicyCheck = { message_id: string; text: string; rule_id: string; quote: string; reason: string; risk: string; status: string; action: string; article: string; policy_quote: string; policy_title: string; source_url: string }
-type Connection = { startup: AbortController; ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat'; policyPaused?: boolean; resumeMuted?: boolean }
+type Connection = { startup: AbortController; ws?: WebSocket; audio: BrowserAudio; closing: boolean; finished?: boolean; finishTimeout?: number; response?: string; responseMessage?: string; retired: Set<string>; started: number; experience: 'practice' | 'combat'; policyPaused?: boolean; resumeMuted?: boolean; retryingSpeech?: boolean }
 
 export function useVoiceSession() {
   const [status, setStatus] = useState<Status>('idle')
@@ -173,7 +173,11 @@ export function useVoiceSession() {
             if (experience === 'combat' && event.state === 'error') setAnalysisStatus('error')
           } else if (event.type === 'notice') {
             setError(event.message)
+          } else if (event.type === 'retry_speech_result' && !current.closing) {
+            current.retryingSpeech = false
+            setError(event.accepted === true ? '' : event.message || '朗读未能重试，请继续练习。')
           } else if (event.type === 'tts_state') {
+            current.retryingSpeech = false
             setSpeechState(event.state)
           } else if (event.type === 'transcript') {
             if (event.role === 'doctor' && current.retired.has(event.id)) return
@@ -198,6 +202,7 @@ export function useVoiceSession() {
               current.responseMessage = event.message_id || event.response_id
               if (event.message_id) setMessages(previous => previous.map(message => message.id === event.message_id ? { ...message, interrupted: false } : message))
             } else if (event.type === 'user_started' || (event.type === 'interrupted' && event.response_id === current.response)) {
+              current.retryingSpeech = false
               interruptPlayback()
               if (event.coaching_invalidated) setCoach(previous => previous ? { ...previous, superseded: true } : previous)
               if (experience === 'practice') setSpeechState('idle')
@@ -265,9 +270,9 @@ export function useVoiceSession() {
 
   function retrySpeech() {
     const current = connection.current
-    if (!current || current.closing || current.ws?.readyState !== WebSocket.OPEN) return
+    if (!current || current.closing || current.retryingSpeech || current.ws?.readyState !== WebSocket.OPEN) return
+    current.retryingSpeech = true
     current.ws.send(JSON.stringify({ type: 'retry_speech' }))
-    setError(''); setSpeechState('speaking')
   }
 
   function interrupt() {

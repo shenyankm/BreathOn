@@ -1,0 +1,469 @@
+{
+  "round": 3,
+  "case": "asr",
+  "files": [
+    "src/live.ts"
+  ],
+  "before_source": "48901b3f079df11fa0cc06370674e5cfb913c29cd102402df217ccd8248d730b",
+  "after_source": "5cad77c89f1e14a7a7794bc7ed3f98c41c6d12789c972fdb5776f78b6c3cf489",
+  "results": {
+    "before": [
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 3,
+        "elapsed_ms": [
+          13.467402666666667,
+          13.549625,
+          13.156777666666661,
+          13.04280533333334,
+          13.06244433333334,
+          12.861389000000012,
+          12.99444433333334,
+          13.250041666666675,
+          12.950666666666658
+        ],
+        "median_ms": 13.06244433333334,
+        "p95_ms": 13.549625,
+        "cpu_us": [
+          18535.333333333332,
+          19093.666666666668,
+          18520.333333333332,
+          18456,
+          18170,
+          18121,
+          18426.666666666668,
+          18562,
+          18244.333333333332
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 3,
+        "elapsed_ms": [
+          13.520722333333339,
+          12.522347333333338,
+          12.94934733333334,
+          13.024041666666657,
+          13.013486,
+          13.034666666666661,
+          12.796875,
+          13.047750000000008,
+          12.878819333333317
+        ],
+        "median_ms": 13.013486,
+        "p95_ms": 13.520722333333339,
+        "cpu_us": [
+          18478,
+          17534.333333333332,
+          18086.333333333332,
+          18086.333333333332,
+          17883.333333333332,
+          18088,
+          17867,
+          18261.666666666668,
+          17943
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 3,
+        "elapsed_ms": [
+          13.666597333333337,
+          13.150555666666662,
+          13.06740266666668,
+          12.72733333333332,
+          12.963430666666682,
+          12.95297233333332,
+          12.88361100000001,
+          12.59754166666668,
+          12.530416666666648
+        ],
+        "median_ms": 12.95297233333332,
+        "p95_ms": 13.666597333333337,
+        "cpu_us": [
+          18694.333333333332,
+          18412,
+          18200.333333333332,
+          17723.666666666668,
+          17734.666666666668,
+          17915.666666666668,
+          17879,
+          17547.333333333332,
+          17567.666666666668
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ],
+    "after": [
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 11,
+        "elapsed_ms": [
+          2.280477272727273,
+          1.8286515454545442,
+          2.022496272727272,
+          2.1417727272727234,
+          2.023556818181822,
+          2.0407765454545483,
+          2.042575727272725,
+          2.015606090909087,
+          2.0543068181818183
+        ],
+        "median_ms": 2.0407765454545483,
+        "p95_ms": 2.280477272727273,
+        "cpu_us": [
+          4947.272727272727,
+          3349.5454545454545,
+          4085.2727272727275,
+          4242.090909090909,
+          4077.4545454545455,
+          4089.181818181818,
+          4105.636363636364,
+          4105.454545454545,
+          4096.090909090909
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 15,
+        "elapsed_ms": [
+          1.9293527333333336,
+          1.7752721999999987,
+          1.9320110666666666,
+          1.6994277333333343,
+          1.9612194666666671,
+          1.808447266666667,
+          1.869275000000001,
+          1.8418416666666682,
+          1.7877472000000012
+        ],
+        "median_ms": 1.8418416666666682,
+        "p95_ms": 1.9612194666666671,
+        "cpu_us": [
+          3602.5333333333333,
+          3083.733333333333,
+          3804.266666666667,
+          2949.133333333333,
+          3755.3333333333335,
+          3422.3333333333335,
+          3575.2,
+          3505.2,
+          3382.8
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": false,
+        "samples": 9,
+        "iterations": 16,
+        "elapsed_ms": [
+          1.7319400624999997,
+          1.5573151249999988,
+          1.5654896250000014,
+          1.5607473749999983,
+          1.5482786249999982,
+          1.547632812499998,
+          1.55003125,
+          1.5549973749999992,
+          1.5057656250000022
+        ],
+        "median_ms": 1.5549973749999992,
+        "p95_ms": 1.7319400624999997,
+        "cpu_us": [
+          3108.625,
+          2588.8125,
+          2601.125,
+          2593,
+          2596.6875,
+          2621.3125,
+          2600,
+          2583.375,
+          2533.3125
+        ],
+        "output_sha256": "2473ad136e97c67ae6a0711494dcd2ecf1fef0a5233e4b8c1d3ded480cafcf93",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ]
+  },
+  "controls": {
+    "before": [
+      {
+        "case": "asr",
+        "small": true,
+        "samples": 9,
+        "iterations": 1500,
+        "elapsed_ms": [
+          0.011055444666666669,
+          0.011161860666666674,
+          0.007601416666666656,
+          0.009024693999999991,
+          0.00900341666666668,
+          0.009057194666666666,
+          0.00896536066666666,
+          0.00900333333333333,
+          0.009197361333333333
+        ],
+        "median_ms": 0.009024693999999991,
+        "p95_ms": 0.011161860666666674,
+        "cpu_us": [
+          20.274,
+          19.166666666666668,
+          13.916666666666666,
+          21.170666666666666,
+          21.498666666666665,
+          21.394,
+          21.429333333333332,
+          21.318666666666665,
+          21.58
+        ],
+        "output_sha256": "bc4e43987cba283e4dfe6dab798b7ada4d78a3bde3867a2840652725b5c0b009",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": true,
+        "samples": 9,
+        "iterations": 1500,
+        "elapsed_ms": [
+          0.011155416666666668,
+          0.01121386133333334,
+          0.007819361333333328,
+          0.00930386066666667,
+          0.009301583333333327,
+          0.00916847199999999,
+          0.009048611333333345,
+          0.009052999999999997,
+          0.009149555333333335
+        ],
+        "median_ms": 0.00916847199999999,
+        "p95_ms": 0.01121386133333334,
+        "cpu_us": [
+          20.790666666666667,
+          19.426666666666666,
+          14.51,
+          21.689333333333334,
+          21.458,
+          21.996666666666666,
+          21.48,
+          21.504666666666665,
+          21.743333333333332
+        ],
+        "output_sha256": "bc4e43987cba283e4dfe6dab798b7ada4d78a3bde3867a2840652725b5c0b009",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ],
+    "after": [
+      {
+        "case": "asr",
+        "small": true,
+        "samples": 9,
+        "iterations": 1362,
+        "elapsed_ms": [
+          0.01128567033773862,
+          0.011804301027900152,
+          0.008073604992657859,
+          0.010039922907488985,
+          0.009774076358296612,
+          0.009947167400881043,
+          0.009620992657856093,
+          0.009651339941262854,
+          0.00969291483113065
+        ],
+        "median_ms": 0.009774076358296612,
+        "p95_ms": 0.011804301027900152,
+        "cpu_us": [
+          21.07415565345081,
+          21.00367107195301,
+          19.652716593245227,
+          23.859030837004404,
+          23.324522760646108,
+          24.30763582966226,
+          23.301027900146842,
+          23.765051395007344,
+          23.51468428781204
+        ],
+        "output_sha256": "bc4e43987cba283e4dfe6dab798b7ada4d78a3bde3867a2840652725b5c0b009",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      {
+        "case": "asr",
+        "small": true,
+        "samples": 9,
+        "iterations": 1461,
+        "elapsed_ms": [
+          0.011669205338809037,
+          0.011499201916495566,
+          0.00831339835728952,
+          0.009364476386036961,
+          0.009280373032169751,
+          0.00951930800821356,
+          0.009584930869267656,
+          0.009572752224503768,
+          0.009626739904175213
+        ],
+        "median_ms": 0.009572752224503768,
+        "p95_ms": 0.011669205338809037,
+        "cpu_us": [
+          21.94798083504449,
+          20.145790554414784,
+          15.225872689938399,
+          22.329226557152634,
+          22.333333333333332,
+          22.576317590691307,
+          22.767967145790553,
+          22.416837782340863,
+          22.57015742642026
+        ],
+        "output_sha256": "bc4e43987cba283e4dfe6dab798b7ada4d78a3bde3867a2840652725b5c0b009",
+        "validation": {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        "node": "v22.23.2",
+        "platform": "darwin",
+        "arch": "arm64"
+      }
+    ]
+  },
+  "large": {
+    "before_ms": 13.013486,
+    "after_ms": 1.8418416666666682,
+    "improvement_percent": 85.84666962667292,
+    "speedup": 7.065474864379397,
+    "outputs_equal": true,
+    "validations": {
+      "before": [
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        }
+      ],
+      "after": [
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        }
+      ]
+    }
+  },
+  "small": {
+    "before_ms": 0.009096582999999991,
+    "after_ms": 0.00967341429140019,
+    "improvement_percent": -6.341186480684005,
+    "speedup": 0.9403694213827882,
+    "outputs_equal": true,
+    "validations": {
+      "before": [
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        }
+      ],
+      "after": [
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        },
+        {
+          "durable_acknowledgements": true,
+          "checkpoint_calls": true
+        }
+      ]
+    }
+  },
+  "decision": "keep",
+  "reason": "Per-snapshot message index retains object identity and side effects; small absolute overhead below 0.001ms"
+}

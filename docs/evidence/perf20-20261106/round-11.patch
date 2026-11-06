@@ -1,0 +1,49 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -43,7 +43,10 @@
+   return !user?.authenticated || !key || item[key] === user.id
+ }
+ export class Transaction {
+-  constructor(private execute: (sql: string, values?: any[]) => Promise<Doc[]>) {}
++  constructor(
++    private execute: (sql: string, values?: any[]) => Promise<Doc[]>,
++    private postgres = false,
++  ) {}
+   async all(kind: string): Promise<{ tenant: string; item: Doc }[]> {
+     return (
+       await this.execute('SELECT tenant_id,document FROM platform_entities WHERE kind=?', [kind])
+@@ -63,9 +66,12 @@
+       throw new HttpError(404, '记录不存在或不属于当前工作区。')
+     return item
+   }
+-  async list(tenant: string, kind: string): Promise<Doc[]> {
++  async list(tenant: string, kind: string, withoutPages = false): Promise<Doc[]> {
++    const document = withoutPages
++      ? this.postgres ? "(document::jsonb - 'pages')::text" : "json_remove(document,'$.pages')"
++      : 'document'
+     const rows = await this.execute(
+-      'SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC,id',
++      `SELECT ${document} AS document FROM platform_entities WHERE tenant_id=? AND kind=? ORDER BY updated_at DESC,id`,
+       [tenant, kind],
+     )
+     return rows.map((row) => JSON.parse(row.document)).filter((row) => visible(kind, row))
+@@ -164,7 +170,7 @@
+               values,
+             )
+           ).rows
+-        })
++        }, true)
+         const value = await work(tx)
+         await client.query('COMMIT')
+         return value
+--- a/backend/src/catalog.ts
++++ b/backend/src/catalog.ts
+@@ -133,7 +133,7 @@
+     return this.store.transaction(
+       user.workspace,
+       async (tx) =>
+-        (await tx.list(user.workspace, kind))
++        (await tx.list(user.workspace, kind, ['content', 'policy'].includes(kind)))
+           .filter((row) => !['deleted', 'archived'].includes(row.status))
+           .filter(
+             (row) =>

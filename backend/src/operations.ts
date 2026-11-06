@@ -11,7 +11,7 @@ import {
   constants,
   unique,
 } from './core.ts'
-import { Store, Transaction, activity } from './store.ts'
+import { Store, Transaction, activity, trainingFingerprint } from './store.ts'
 import { Catalog } from './catalog.ts'
 import { parse, usable, stages } from './validation.ts'
 import { prepareTraining, snapshot, retrieve, checkMaterials, scenarioTemplates } from './training.ts'
@@ -21,8 +21,6 @@ import { route } from './http.ts'
 import { prices, estimateCost } from './platform.ts'
 
 const caseKeys = ['title', 'situation', 'approach', 'rationale', 'limitations']
-const fingerprint = (training: Doc) =>
-  sha(canonical(pick(training, ['scenario', 'doctor', 'rubric', 'documents', 'drugs', 'policies'])))
 async function validateCase(tx: Transaction, u: User, item: Doc) {
   const documents = new Map<string, Doc>()
   for (const captured of item.documents ?? []) {
@@ -165,8 +163,9 @@ export function registerOperations(
       const stage = b.stage ?? record.training.stage
       assert(stages.includes(stage), 422, '环节无效。')
       const training = await prepareTraining(store, u, record.training.scenario.id, stage)
+      const fingerprint = trainingFingerprint(record.training)
       assert(
-        fingerprint(record.training) === fingerprint(snapshot(training)),
+        fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
         409,
         '医生、场景或资料版本已变化，不能建立同条件重练。',
       )
@@ -293,9 +292,10 @@ export function registerOperations(
     )
     assert(item.status === 'assigned', 403, '补练已关闭。')
     const baseline = await store.ownRecord(u, item.parent_record_id),
-      training = await prepareTraining(store, u, item.scenario_id, item.stage)
+      training = await prepareTraining(store, u, item.scenario_id, item.stage),
+      fingerprint = trainingFingerprint(baseline.training)
     assert(
-      baseline.training && fingerprint(baseline.training) === fingerprint(snapshot(training)),
+      fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
       409,
       '医生、场景或资料版本已变化，不能启动同条件重练。',
     )
@@ -579,7 +579,7 @@ export function registerOperations(
     },
     201,
   )
-  registerCalibration(app, store, models, tasks)
+  return registerCalibration(app, store, models, tasks)
 }
 
 export function kappa(pairs: [number, number][]): number | null {
@@ -674,26 +674,29 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
     const { samples, ...rest } = run
     return rest
   }
+  const running = (run: Doc) => ['running', 'cancel_requested'].includes(run.status)
+  // shortcut: Task ownership is local to one API process; use shared ownership before adding API workers.
+  const settle = async (tx: Transaction, tenant: string, run: Doc, restarting = false) => {
+    if (
+      !running(run) || tasks.active(run.id) ||
+      (!restarting && Date.parse(run.lease_until) > Date.now())
+    )
+      return run
+    return tx.update(
+      tenant, 'calibration_run', run.id,
+      {
+        ...run,
+        status: run.status === 'cancel_requested' ? 'cancelled' : 'interrupted',
+        error: run.status === 'cancel_requested' ? null : '执行进程已停止，任务已中断；不会自动重试。',
+        finished_at: now(),
+      },
+      run.version,
+    )
+  }
   const get = async (u: User, id: string) =>
-    store.transaction(u.workspace, async (tx) => {
-      let run = await tx.require(u.workspace, 'calibration_run', id)
-      if (
-        ['running', 'cancel_requested'].includes(run.status) &&
-        Date.parse(run.lease_until) < Date.now()
-      )
-        run = await tx.update(
-          u.workspace,
-          'calibration_run',
-          id,
-          {
-            ...run,
-            status: 'interrupted',
-            error: '执行进程未继续更新，任务已中断；不会自动重试。',
-          },
-          run.version,
-        )
-      return clean(run)
-    })
+    store.transaction(u.workspace, async (tx) =>
+      clean(await settle(tx, u.workspace, await tx.require(u.workspace, 'calibration_run', id))),
+    )
   route(app, 'GET', '/api/rubrics/{rubric_id}/samples', undefined, (u, p) =>
     store.transaction(
       u.workspace,
@@ -707,12 +710,14 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
   route(app, 'GET', '/api/rubrics/{rubric_id}/calibration/runs', undefined, (u, p) =>
     store.transaction(
       u.workspace,
-      async (tx) =>
-        (await tx.list(u.workspace, 'calibration_run'))
+      async (tx) => {
+        const rows = (await tx.list(u.workspace, 'calibration_run'))
           .filter((row) => row.rubric_id === p.rubric_id)
           .slice(0, 20)
-          .map(clean),
-      false,
+        const result = []
+        for (const row of rows) result.push(clean(await settle(tx, u.workspace, row)))
+        return result
+      },
     ),
   )
   route(
@@ -763,12 +768,17 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
   route(app, 'POST', '/api/calibration/runs/{run_id}/cancel', undefined, async (u, p) => {
     await store.transaction(u.workspace, async (tx) => {
       const run = await tx.require(u.workspace, 'calibration_run', p.run_id)
-      if (run.status === 'running') {
+      if (running(run)) {
+        const active = tasks.active(run.id)
         await tx.update(
           u.workspace,
           'calibration_run',
           run.id,
-          { ...run, status: 'cancel_requested' },
+          {
+            ...run,
+            status: active ? 'cancel_requested' : 'cancelled',
+            ...(!active ? { finished_at: now(), error: null } : {}),
+          },
           run.version,
         )
         await tx.audit(u, 'calibration.cancel', 'calibration_run', run.id)
@@ -794,8 +804,8 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
           !(await tx.list(u.workspace, 'calibration_run')).some(
             (row) =>
               row.rubric_id === rubric.id &&
-              ['running', 'cancel_requested'].includes(row.status) &&
-              Date.parse(row.lease_until) > Date.now(),
+              running(row) &&
+              (tasks.active(row.id) || Date.parse(row.lease_until) > Date.now()),
           ),
           409,
           '此量表已有校准任务执行中。',
@@ -852,6 +862,7 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
                 signal,
               })
             await checkMaterials(store, u, training)
+            signal.throwIfAborted()
             results.push({
               sample_id: sample.id,
               sample_version: sample.version,
@@ -864,10 +875,12 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
                 speak: false,
                 signal,
               })
+              signal.throwIfAborted()
               ;(repeats[sample.id] ??= []).push(again.result.coach.assessment)
             }
             await store.transaction(u.workspace, async (tx) => {
               const old = await tx.require(u.workspace, 'calibration_run', run.id)
+              if (old.status !== 'running') return
               await tx.update(
                 u.workspace,
                 'calibration_run',
@@ -889,8 +902,9 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
             : '部分样本未完成，请核对资料有效性与模型服务。'
         } finally {
           await store.transaction(u.workspace, async (tx) => {
-            const old = await tx.require(u.workspace, 'calibration_run', run.id),
-              summary = rubric
+            const old = await tx.require(u.workspace, 'calibration_run', run.id)
+            if (!running(old)) return
+            const summary = rubric
                 ? calibrationMetrics(
                     old.samples,
                     results,
@@ -899,12 +913,7 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
                     repeats,
                   )
                 : null,
-              final =
-                old.status === 'cancel_requested'
-                  ? 'cancelled'
-                  : old.status === 'interrupted'
-                    ? 'interrupted'
-                    : status
+              final = old.status === 'cancel_requested' ? 'cancelled' : status
             await tx.update(
               u.workspace,
               'calibration_run',
@@ -949,4 +958,14 @@ function registerCalibration(app: FastifyInstance, store: Store, models: Models,
     },
     202,
   )
+  return {
+    recover: async (restarting = false) => {
+      const rows = await store.transaction('', tx => tx.all('calibration_run'), false)
+      for (const { tenant, item } of rows)
+        if (running(item) && !tasks.active(item.id))
+          await store.transaction(tenant, async tx => {
+            await settle(tx, tenant, await tx.require(tenant, 'calibration_run', item.id), restarting)
+          })
+    },
+  }
 }

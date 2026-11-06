@@ -27,7 +27,7 @@ export function decode64(value: unknown): Buffer {
   assert(
     typeof value === 'string' &&
       value.length % 4 === 0 &&
-      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value),
+      /^[A-Za-z0-9+/]*={0,2}$/.test(value),
     422,
     '无效音频编码。',
   )
@@ -364,19 +364,28 @@ export class SpeechEvidence {
       end > this.frames.length * 20 + 200
     )
       return { available: false }
-    const frames = this.frames.slice(Math.floor(start / 20), Math.ceil(end / 20)),
-      audible = frames.filter((f) => !f.muted)
-    if (!audible.length) return { available: false }
+    let count = 0, power = 0, peak = -Infinity, overlap = 0, observed = false
+    const last = Math.min(this.frames.length, Math.ceil(end / 20))
+    for (let i = Math.floor(start / 20); i < last; i++) {
+      const frame = this.frames[i]
+      observed ||= frame.playing !== undefined
+      if (frame.muted) continue
+      count++
+      power += frame.power
+      peak = Math.max(peak, frame.power)
+      if (frame.playing) overlap++
+    }
+    if (!count) return { available: false }
     const db = (power: number) => Math.round(100 * Math.log10(Math.max(power, 1) / 32768 ** 2)) / 10
     return {
       available: true,
       start_ms: start,
       end_ms: end,
       duration_ms: end - start,
-      rms_dbfs: db(audible.reduce((n, f) => n + f.power, 0) / audible.length),
-      peak_frame_dbfs: db(Math.max(...audible.map((f) => f.power))),
-      playback_overlap_ms: frames.filter((f) => f.playing && !f.muted).length * 20,
-      playback_observed: frames.some((f) => f.playing !== undefined),
+      rms_dbfs: db(power / count),
+      peak_frame_dbfs: db(peak),
+      playback_overlap_ms: overlap * 20,
+      playback_observed: observed,
       tone_audio_assessed: false,
     }
   }

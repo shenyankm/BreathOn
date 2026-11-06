@@ -1,0 +1,39 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -580,6 +580,15 @@
+ }
+ export function validateMedical(raw: Doc, text: string, evidence: Doc[]): Doc[] {
+   const parts = sentences(text)
++  const normalized = new Map<string, string>()
++  const sourceText = (value: string) => {
++    let result = normalized.get(value)
++    if (result === undefined) {
++      result = normalize(value)
++      normalized.set(value, result)
++    }
++    return result
++  }
+   assert(
+     Array.isArray(raw.statements) && raw.statements.length === parts.length,
+     502,
+@@ -603,14 +612,15 @@
+     const citations: Doc[] = []
+     for (const citation of row.citations) {
+       const chunk = evidence.find((e) => e.id === citation?.chunk_id),
+-        quote = citation?.quote
++        quote = citation?.quote,
++        quoteText = typeof quote === 'string' ? normalize(quote) : ''
+       if (
+         !chunk ||
+         typeof quote !== 'string' ||
+-        normalize(quote).length < 12 ||
+-        normalize(quote).length > 1000 ||
+-        !normalize(chunk.text).includes(normalize(quote)) ||
+-        normalize(chunk.source.title).includes(normalize(quote))
++        quoteText.length < 12 ||
++        quoteText.length > 1000 ||
++        !sourceText(chunk.text).includes(quoteText) ||
++        sourceText(chunk.source.title).includes(quoteText)
+       ) {
+         valid = false
+         continue

@@ -1,0 +1,25 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -366,8 +366,11 @@
+     usage: [],
+   }
+ }
++const fingerprintCache = new WeakMap<Doc, string>()
+ export function trainingFingerprint(training: Doc | undefined): string | null {
+   if (!training) return null
++  const cached = fingerprintCache.get(training)
++  if (cached) return cached
+   const captured: Doc = {}
+   for (const kind of ['scenario', 'doctor']) {
+     const item = training[kind] ?? {}
+@@ -389,7 +392,9 @@
+   captured.documents = documents
+     .map((doc: Doc) => [doc.id, doc.version, doc.sha256])
+     .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))
+-  return sha(canonical(captured))
++  const fingerprint = sha(canonical(captured))
++  fingerprintCache.set(training, fingerprint)
++  return fingerprint
+ }
+ export function activity(record: Doc): Doc {
+   const review = [...(record.coaching ?? [])].reverse().find((row: Doc) => row.final_report) ?? {},

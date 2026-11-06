@@ -1,0 +1,28 @@
+{
+  "backend": {
+    "tests": 49,
+    "pass": 49,
+    "fail": 0,
+    "skipped": 0
+  },
+  "frontend": {
+    "tests": 195,
+    "pass": 195,
+    "fail": 0,
+    "skipped": 0
+  },
+  "focused": {
+    "tests": 12,
+    "pass": 12,
+    "fail": 0,
+    "skipped": 0
+  },
+  "builds": [
+    "backend TypeScript",
+    "Web",
+    "Android frontend"
+  ],
+  "lint_errors": 0,
+  "lint_existing_warnings": 8,
+  "patch_chain_verified": true
+}

@@ -25,13 +25,15 @@ sudo docker compose --env-file /etc/medvisit-coach/compose.env \
 
 PostgreSQL 保存演练失败时，后端会尝试把完整记录原子写入 `RECORDS_DIR/recovery/<会话 UUID>.json`，目录权限 `0700`、文件权限 `0600`。只有写入成功才发送 `recovery_saved=true`；`saved` 仍为 `false`，页面不会把本机副本当作数据库保存成功。如果数据库和本机文件同时无法写入，页面提示保存未确认，请先保留当前原话。
 
-数据库恢复、`/api/ready` 正常后，以原生 API 的运行用户和相同环境配置执行 `python -m medvisit.storage.import_records <RECORDS_DIR的recovery子目录>`；不要启动旧 API 容器做生产导入。本地开发使用 PostgreSQL 且保持默认记录目录时，从项目根目录执行：
+数据库恢复后，API 会在启动或下一次周期恢复时自动归档检查点和恢复副本，并补齐对应重训计划。处理成功后才清理副本；失败时继续保留，用户也可重试保存。恢复不会重新调用模型或语音服务，中断检查点不会被标为有效完成的训练。
+
+需要手动导入独立备份时，待 `/api/ready` 正常后，以原生 API 的运行用户和相同环境配置执行 TypeScript CLI；不要启动旧 API 容器做生产导入。本地开发使用 PostgreSQL 且保持默认记录目录时，从项目根目录执行：
 
 ```sh
 npm --prefix backend run import:records -- data/sessions/recovery
 ```
 
-导入先验证所有文件，再在事务中写入；重复运行不覆盖已有数据库记录，也不删除恢复副本。核对记录详情后再按原始资料的要求备份或清理副本。该命令恢复演练记录，不会重新调用模型，也不会自动重放重练任务状态变更。JSON 本地存储模式写入失败仍需修复目录权限或磁盘问题。
+导入先验证所有文件，再在事务中写入；重复运行不覆盖已有数据库记录，也不删除恢复副本。该命令只导入演练记录；标准恢复目录由 API 周期收尾，其他目录导入后重启 API 可补齐历史重训完成标记。JSON 本地存储模式写入失败仍需修复目录权限或磁盘问题。
 
 ## 原生服务的一致性备份
 

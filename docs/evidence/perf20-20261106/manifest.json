@@ -1,0 +1,58 @@
+{
+  "base_commit": "e26d97d3bb261c0b3bd822d1370f699b3df0c5ac",
+  "baseline_source_sha256": "f8d829c666d96096a474a389166835802a2408d08ee9a0bc66124ad8e14db538",
+  "final_source_sha256": "ff862165e4537c2193f51dc986110623d566001e80423ea22df4683ca86ca328",
+  "harness_sha256": "411109a8b107fb020133781434b75fa5bff8bbb0e2e40ff305420781293e56e1",
+  "backend_lock_sha256": "cd939c062ae634316d04c86735739ee3821ac250b379de4d9e6efabfe0c295f2",
+  "node": "v22.23.2",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "arch": "arm64",
+  "rounds": 20,
+  "retained": 14,
+  "reverted": 6,
+  "load_processes_per_version": 3,
+  "small_processes_per_version": 2,
+  "samples_per_process": 9,
+  "order": [
+    "before",
+    "after",
+    "after",
+    "before",
+    "before",
+    "after"
+  ],
+  "small_order": [
+    "before",
+    "after",
+    "after",
+    "before"
+  ],
+  "validation": {
+    "backend": {
+      "tests": 49,
+      "pass": 49,
+      "fail": 0,
+      "skipped": 0
+    },
+    "frontend": {
+      "tests": 195,
+      "pass": 195,
+      "fail": 0,
+      "skipped": 0
+    },
+    "focused": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "skipped": 0
+    },
+    "builds": [
+      "backend TypeScript",
+      "Web",
+      "Android frontend"
+    ],
+    "lint_errors": 0,
+    "lint_existing_warnings": 8,
+    "patch_chain_verified": true
+  }
+}

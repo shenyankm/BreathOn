@@ -1,0 +1,10 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -324,6 +324,7 @@
+     return result
+   }
+   async invalidate(u: User, checks: Doc[]) {
++    if (!checks.some((check) => ['supported', 'contradicted'].includes(check.status))) return
+     const { data, approvals } = await this.evidence(u, '')
+     for (const check of checks)
+       if (['supported', 'contradicted'].includes(check.status)) {

@@ -1,0 +1,575 @@
+--- a/backend/src/app.ts
++++ b/backend/src/app.ts
+@@ -42,7 +42,8 @@
+   ])
+   let ready = false,
+     checking: Promise<void> | undefined,
+-    cleanup: Promise<void> | undefined
++    cleanup: Promise<void> | undefined,
++    recovering: Promise<void> | undefined
+   app.decorateRequest('user')
+   await app.register(websocket, { options: { maxPayload: 4096, perMessageDeflate: false } })
+   app.addHook('onRequest', async (request, reply) => {
+@@ -160,7 +161,7 @@
+   app.get('/api/doctor', async () => constants.doctor.DOCTOR_PROFILE)
+   registerPlatform(app, store, catalog)
+   registerDocuments(app, store, catalog)
+-  registerOperations(app, store, catalog, models, tasks)
++  const calibration = registerOperations(app, store, catalog, models, tasks)
+   medical.register(app)
+   research.register(app)
+   visits.register(app)
+@@ -169,6 +170,8 @@
+     try {
+       await store.open()
+       await catalog.seed()
++      await calibration.recover(true)
++      await sessions.recover(true)
+       await visits.cleanup()
+       await visits.recover()
+       await research.startScheduler()
+@@ -190,13 +193,25 @@
+         })
+   }, 3600000)
+   timer.unref()
++  const recoveryTimer = setInterval(() => {
++    if (ready && !recovering)
++      recovering = (async () => {
++        await sessions.recover()
++        await calibration.recover()
++      })().catch(() => {
++        console.error('state_recovery_failed')
++      }).finally(() => { recovering = undefined })
++  }, 30000)
++  recoveryTimer.unref()
+   app.addHook('preClose', async () => {
+     ready = false
+     clearInterval(timer)
++    clearInterval(recoveryTimer)
+     await visits.close()
+     await research.close()
+     await sessions.close()
+     await tasks.close()
++    await recovering?.catch(() => {})
+     await checking?.catch(() => {})
+     await cleanup?.catch(() => {})
+   })
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -252,6 +252,7 @@
+           'doctor',
+           'training',
+           'free_context',
++          'remediation_id',
+         ].map((key) => [key, this.record[key] ?? null]),
+       )
+       Object.assign(data, {
+@@ -605,13 +606,18 @@
+       this.startResponse(latest.id)
+   }
+   async retrySpeech() {
+-    if (this.stopping || this.record.experience === 'combat' || !this.voiceFailed || this.pending)
+-      return
+-    const latest = [...this.record.messages].reverse().find((m: Doc) => m.role === 'doctor')
+-    if (latest) {
+-      await this.cancelVoice()
+-      this.startSpeech(latest.text, latest.id)
+-    }
++    const latest = [...this.record.messages].reverse().find((m: Doc) => m.role === 'doctor'),
++      revision = this.revision,
++      rejected = () => this.send({
++        type: 'retry_speech_result', accepted: false,
++        message: '当前没有可重试的医生朗读，请继续练习。',
++      })
++    if (this.stopping || this.record.experience === 'combat' || !this.voiceFailed || !latest)
++      return rejected()
++    await this.cancelVoice()
++    if (this.stopping || revision !== this.revision || !this.voiceFailed) return rejected()
++    await this.send({ type: 'retry_speech_result', accepted: true })
++    if (!this.stopping && revision === this.revision) this.startSpeech(latest.text, latest.id)
+   }
+   async close() {
+     this.stopping = true
+--- a/backend/src/operations.ts
++++ b/backend/src/operations.ts
+@@ -11,7 +11,7 @@
+   constants,
+   unique,
+ } from './core.ts'
+-import { Store, Transaction, activity } from './store.ts'
++import { Store, Transaction, activity, trainingFingerprint } from './store.ts'
+ import { Catalog } from './catalog.ts'
+ import { parse, usable, stages } from './validation.ts'
+ import { prepareTraining, snapshot, retrieve, checkMaterials, scenarioTemplates } from './training.ts'
+@@ -21,8 +21,6 @@
+ import { prices, estimateCost } from './platform.ts'
+
+ const caseKeys = ['title', 'situation', 'approach', 'rationale', 'limitations']
+-const fingerprint = (training: Doc) =>
+-  sha(canonical(pick(training, ['scenario', 'doctor', 'rubric', 'documents', 'drugs', 'policies'])))
+ async function validateCase(tx: Transaction, u: User, item: Doc) {
+   const documents = new Map<string, Doc>()
+   for (const captured of item.documents ?? []) {
+@@ -165,8 +163,9 @@
+       const stage = b.stage ?? record.training.stage
+       assert(stages.includes(stage), 422, '环节无效。')
+       const training = await prepareTraining(store, u, record.training.scenario.id, stage)
++      const fingerprint = trainingFingerprint(record.training)
+       assert(
+-        fingerprint(record.training) === fingerprint(snapshot(training)),
++        fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
+         409,
+         '医生、场景或资料版本已变化，不能建立同条件重练。',
+       )
+@@ -293,9 +292,10 @@
+     )
+     assert(item.status === 'assigned', 403, '补练已关闭。')
+     const baseline = await store.ownRecord(u, item.parent_record_id),
+-      training = await prepareTraining(store, u, item.scenario_id, item.stage)
++      training = await prepareTraining(store, u, item.scenario_id, item.stage),
++      fingerprint = trainingFingerprint(baseline.training)
+     assert(
+-      baseline.training && fingerprint(baseline.training) === fingerprint(snapshot(training)),
++      fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
+       409,
+       '医生、场景或资料版本已变化，不能启动同条件重练。',
+     )
+@@ -579,7 +579,7 @@
+     },
+     201,
+   )
+-  registerCalibration(app, store, models, tasks)
++  return registerCalibration(app, store, models, tasks)
+ }
+
+ export function kappa(pairs: [number, number][]): number | null {
+@@ -674,26 +674,29 @@
+     const { samples, ...rest } = run
+     return rest
+   }
++  const running = (run: Doc) => ['running', 'cancel_requested'].includes(run.status)
++  // shortcut: Task ownership is local to one API process; use shared ownership before adding API workers.
++  const settle = async (tx: Transaction, tenant: string, run: Doc, restarting = false) => {
++    if (
++      !running(run) || tasks.active(run.id) ||
++      (!restarting && Date.parse(run.lease_until) > Date.now())
++    )
++      return run
++    return tx.update(
++      tenant, 'calibration_run', run.id,
++      {
++        ...run,
++        status: run.status === 'cancel_requested' ? 'cancelled' : 'interrupted',
++        error: run.status === 'cancel_requested' ? null : '执行进程已停止，任务已中断；不会自动重试。',
++        finished_at: now(),
++      },
++      run.version,
++    )
++  }
+   const get = async (u: User, id: string) =>
+-    store.transaction(u.workspace, async (tx) => {
+-      let run = await tx.require(u.workspace, 'calibration_run', id)
+-      if (
+-        ['running', 'cancel_requested'].includes(run.status) &&
+-        Date.parse(run.lease_until) < Date.now()
+-      )
+-        run = await tx.update(
+-          u.workspace,
+-          'calibration_run',
+-          id,
+-          {
+-            ...run,
+-            status: 'interrupted',
+-            error: '执行进程未继续更新，任务已中断；不会自动重试。',
+-          },
+-          run.version,
+-        )
+-      return clean(run)
+-    })
++    store.transaction(u.workspace, async (tx) =>
++      clean(await settle(tx, u.workspace, await tx.require(u.workspace, 'calibration_run', id))),
++    )
+   route(app, 'GET', '/api/rubrics/{rubric_id}/samples', undefined, (u, p) =>
+     store.transaction(
+       u.workspace,
+@@ -707,12 +710,14 @@
+   route(app, 'GET', '/api/rubrics/{rubric_id}/calibration/runs', undefined, (u, p) =>
+     store.transaction(
+       u.workspace,
+-      async (tx) =>
+-        (await tx.list(u.workspace, 'calibration_run'))
++      async (tx) => {
++        const rows = (await tx.list(u.workspace, 'calibration_run'))
+           .filter((row) => row.rubric_id === p.rubric_id)
+           .slice(0, 20)
+-          .map(clean),
+-      false,
++        const result = []
++        for (const row of rows) result.push(clean(await settle(tx, u.workspace, row)))
++        return result
++      },
+     ),
+   )
+   route(
+@@ -763,12 +768,17 @@
+   route(app, 'POST', '/api/calibration/runs/{run_id}/cancel', undefined, async (u, p) => {
+     await store.transaction(u.workspace, async (tx) => {
+       const run = await tx.require(u.workspace, 'calibration_run', p.run_id)
+-      if (run.status === 'running') {
++      if (running(run)) {
++        const active = tasks.active(run.id)
+         await tx.update(
+           u.workspace,
+           'calibration_run',
+           run.id,
+-          { ...run, status: 'cancel_requested' },
++          {
++            ...run,
++            status: active ? 'cancel_requested' : 'cancelled',
++            ...(!active ? { finished_at: now(), error: null } : {}),
++          },
+           run.version,
+         )
+         await tx.audit(u, 'calibration.cancel', 'calibration_run', run.id)
+@@ -794,8 +804,8 @@
+           !(await tx.list(u.workspace, 'calibration_run')).some(
+             (row) =>
+               row.rubric_id === rubric.id &&
+-              ['running', 'cancel_requested'].includes(row.status) &&
+-              Date.parse(row.lease_until) > Date.now(),
++              running(row) &&
++              (tasks.active(row.id) || Date.parse(row.lease_until) > Date.now()),
+           ),
+           409,
+           '此量表已有校准任务执行中。',
+@@ -852,6 +862,7 @@
+                 signal,
+               })
+             await checkMaterials(store, u, training)
++            signal.throwIfAborted()
+             results.push({
+               sample_id: sample.id,
+               sample_version: sample.version,
+@@ -864,10 +875,12 @@
+                 speak: false,
+                 signal,
+               })
++              signal.throwIfAborted()
+               ;(repeats[sample.id] ??= []).push(again.result.coach.assessment)
+             }
+             await store.transaction(u.workspace, async (tx) => {
+               const old = await tx.require(u.workspace, 'calibration_run', run.id)
++              if (old.status !== 'running') return
+               await tx.update(
+                 u.workspace,
+                 'calibration_run',
+@@ -889,8 +902,9 @@
+             : '部分样本未完成，请核对资料有效性与模型服务。'
+         } finally {
+           await store.transaction(u.workspace, async (tx) => {
+-            const old = await tx.require(u.workspace, 'calibration_run', run.id),
+-              summary = rubric
++            const old = await tx.require(u.workspace, 'calibration_run', run.id)
++            if (!running(old)) return
++            const summary = rubric
+                 ? calibrationMetrics(
+                     old.samples,
+                     results,
+@@ -899,12 +913,7 @@
+                     repeats,
+                   )
+                 : null,
+-              final =
+-                old.status === 'cancel_requested'
+-                  ? 'cancelled'
+-                  : old.status === 'interrupted'
+-                    ? 'interrupted'
+-                    : status
++              final = old.status === 'cancel_requested' ? 'cancelled' : status
+             await tx.update(
+               u.workspace,
+               'calibration_run',
+@@ -949,4 +958,14 @@
+     },
+     202,
+   )
++  return {
++    recover: async (restarting = false) => {
++      const rows = await store.transaction('', tx => tx.all('calibration_run'), false)
++      for (const { tenant, item } of rows)
++        if (running(item) && !tasks.active(item.id))
++          await store.transaction(tenant, async tx => {
++            await settle(tx, tenant, await tx.require(tenant, 'calibration_run', item.id), restarting)
++          })
++    },
++  }
+ }
+--- a/backend/src/sessions.ts
++++ b/backend/src/sessions.ts
+@@ -1,9 +1,9 @@
+ import type { FastifyInstance, FastifyRequest } from 'fastify'
+-import { readFile, readdir, unlink } from 'node:fs/promises'
++import { readFile, readdir, stat, unlink } from 'node:fs/promises'
+ import { join } from 'node:path'
+ import { setTimeout as delay } from 'node:timers/promises'
+ import { type Doc, type User, assert, constants, pick, uuid, Semaphore, identity } from './core.ts'
+-import { Store, newRecord, privateWrite, activity } from './store.ts'
++import { Store, newRecord, privateWrite, activity, trainingFingerprint } from './store.ts'
+ import { Models } from './agents.ts'
+ import { Medical, validateSummary } from './medical.ts'
+ import { Dialogue } from './live.ts'
+@@ -39,6 +39,7 @@
+   >()
+   private finalizing = new Set<string>()
+   private retryLock = new Semaphore(1)
++  private pendingRecovery = new Set<string>()
+   private checking?: Promise<Doc>
+   private closing = false
+   constructor(
+@@ -47,16 +48,86 @@
+     readonly medical: Medical,
+     readonly auth: Authentication,
+   ) {}
+-  async checkpoint(id: string): Promise<Doc | null> {
++  async checkpoint(id: string, folder: 'checkpoints' | 'recovery' = 'checkpoints'): Promise<Doc | null> {
+     if (!/^[0-9a-f-]{36}$/i.test(id)) return null
+     try {
+       const data = JSON.parse(
+-        await readFile(join(this.store.config.records, 'checkpoints', id + '.json'), 'utf8'),
++        await readFile(join(this.store.config.records, folder, id + '.json'), 'utf8'),
+       )
+-      return data?.id === id ? data : null
+-    } catch {
+-      return null
+-    }
++      return data?.id === id && Array.isArray(data.messages) ? data : null
++    } catch (error: any) {
++      if (error.code === 'ENOENT' || error instanceof SyntaxError) return null
++      throw error
++    }
++  }
++  async restore(id: string, user?: User) {
++    assert(!this.active.has(id) && !this.finalizing.has(id), 409, '练习仍在结束保存中，请稍后重试。')
++    const existing = await this.store.record(id)
++    let recovered = existing ?? (await this.checkpoint(id, 'recovery')) ?? (await this.checkpoint(id))
++    assert(
++      recovered &&
++        typeof recovered.workspace === 'string' &&
++        typeof recovered.owner_id === 'string' &&
++        (!user || (recovered.workspace === user.workspace && recovered.owner_id === user.id)),
++      404,
++      '没有可恢复的记录，请保留当前对话并联系管理员。',
++    )
++    const owner: User = user ?? {
++      id: recovered.owner_id,
++      workspace: recovered.workspace,
++      team: recovered.team ?? '',
++      role: 'representative',
++      authenticated: true,
++    }
++    if (!existing) {
++      if (!recovered.ended_at) {
++        const file = await stat(join(this.store.config.records, 'checkpoints', id + '.json'))
++        recovered.ended_at = file.mtime.toISOString()
++        recovered.status = recovered.capture_status = recovered.analysis_status = 'interrupted'
++      }
++      // A concurrent import of the complete record must win over this partial checkpoint.
++      recovered = await this.store.saveRecord(recovered, recovered.status, true)
++    }
++    assert(recovered.workspace === owner.workspace && recovered.owner_id === owner.id, 404, '记录不属于当前账号。')
++    await identity.run(owner, () => this.finishRemediation(owner, recovered))
++    for (const folder of ['checkpoints', 'recovery'])
++      await unlink(join(this.store.config.records, folder, id + '.json')).catch((error: any) => {
++        if (error.code !== 'ENOENT') throw error
++      })
++    this.pendingRecovery.delete(id)
++    return { session_id: id, saved: true }
++  }
++  async recover(includeSaved = false) {
++    await this.retryLock.run(async () => {
++      if (includeSaved)
++        for (const record of await this.store.records(undefined, null)) {
++          try {
++            if (record.remediation_id && activity(record).valid) this.pendingRecovery.add(record.id)
++          } catch {
++            console.error(JSON.stringify({ event: 'session_recovery_invalid', session_id: record.id }))
++          }
++        }
++      for (const folder of ['checkpoints', 'recovery']) {
++        const files = await readdir(join(this.store.config.records, folder)).catch((error: any) => {
++          if (error.code === 'ENOENT') return [] as string[]
++          throw error
++        })
++        for (const file of files)
++          if (/^[0-9a-f-]{36}\.json$/i.test(file)) this.pendingRecovery.add(file.slice(0, -5))
++      }
++      for (const id of this.pendingRecovery) {
++        if (this.active.has(id) || this.finalizing.has(id)) continue
++        try {
++          await this.restore(id)
++        } catch (error: any) {
++          console.error(JSON.stringify({
++            event: 'session_recovery_pending',
++            session_id: id,
++            error_type: error?.constructor?.name ?? 'Error',
++          }))
++        }
++      }
++    })
+   }
+   async own(u: User, id: string): Promise<Doc> {
+     const record = (await this.store.record(id)) ?? (await this.checkpoint(id))
+@@ -129,38 +200,7 @@
+       }
+     })
+     route(app, 'POST', '/api/sessions/{session_id}/retry-save', undefined, (u, p) =>
+-      this.retryLock.run(async () => {
+-        assert(
+-          !this.active.has(p.session_id) && !this.finalizing.has(p.session_id),
+-          409,
+-          '练习仍在结束保存中，请稍后重试。',
+-        )
+-        const existing = await this.store.record(p.session_id)
+-        let recovered = existing
+-        try {
+-          recovered ??= JSON.parse(
+-            await readFile(
+-              join(this.store.config.records, 'recovery', p.session_id + '.json'),
+-              'utf8',
+-            ),
+-          )
+-        } catch {}
+-        recovered ??= await this.checkpoint(p.session_id)
+-        assert(
+-          recovered &&
+-            recovered.id === p.session_id &&
+-            recovered.workspace === u.workspace &&
+-            recovered.owner_id === u.id,
+-          404,
+-          '没有可恢复的记录，请保留当前对话并联系管理员。',
+-        )
+-        assert(recovered.ended_at, 409, '记录尚未完成，请稍后重试并保留当前对话。')
+-        if (!existing) {
+-          await this.store.saveRecord(recovered, recovered.status)
+-          await this.finishRemediation(u, recovered)
+-        }
+-        return { session_id: p.session_id, saved: true }
+-      }),
++      this.retryLock.run(() => this.restore(p.session_id, u)),
+     )
+     route(app, 'POST', '/api/services/check', undefined, () => {
+       if (!this.checking)
+@@ -213,10 +253,9 @@
+         query.scenario_id = remediation.scenario_id
+         query.stage = remediation.stage
+         training = await prepareTraining(this.store, user, query.scenario_id, query.stage)
+-        const candidate = { ...parent, training: snapshot(training) }
++        const fingerprint = trainingFingerprint(parent.training)
+         assert(
+-          activity(parent).training_fingerprint &&
+-            activity(parent).training_fingerprint === activity(candidate).training_fingerprint,
++          fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
+           409,
+           '医生、场景或资料版本已变化，不能启动同条件重练。',
+         )
+@@ -662,14 +701,16 @@
+         await client.send({ type: 'summary_card', card: record.summary_card }).catch(() => {})
+       } catch {}
+       let saved = false,
+-        recovery = false
++        recovery = false,
++        finalized = false
+       try {
+         await this.store.saveRecord(record, status)
+         saved = true
+-        await this.finishRemediation(user, record).catch(() => {})
++        await this.finishRemediation(user, record)
++        finalized = true
+       } catch {
+         record.status = status
+-        record.ended_at = new Date().toISOString()
++        record.ended_at ??= new Date().toISOString()
+         try {
+           await privateWrite(
+             join(config.records, 'recovery', record.id + '.json'),
+@@ -677,8 +718,9 @@
+           )
+           recovery = true
+         } catch {}
+-      }
+-      if (saved || recovery)
++        this.pendingRecovery.add(record.id)
++      }
++      if (finalized || recovery)
+         await unlink(join(config.records, 'checkpoints', record.id + '.json')).catch(() => {})
+       await client
+         .send({
+@@ -698,6 +740,12 @@
+     if (record.remediation_id && activity(record).valid)
+       await this.store.transaction(u.workspace, async (tx) => {
+         const item = await tx.require(u.workspace, 'remediation', record.remediation_id)
++        assert(
++          record.workspace === u.workspace && item.owner_id === record.owner_id && record.owner_id === u.id,
++          404,
++          '重练记录不属于当前账号。',
++        )
++        if (item.status !== 'assigned') return
+         await tx.update(
+           u.workspace,
+           'remediation',
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -207,16 +207,28 @@
+     if (this.pool) await this.pool.end()
+     if (this.db) await this.lock.run(async () => this.db!.close())
+   }
+-  async saveRecord(record: Doc, status: string) {
++  async saveRecord(record: Doc, status: string, onlyIfAbsent = false): Promise<Doc> {
+     record.status = status
+-    record.ended_at = now()
++    record.ended_at ??= now()
+     record.activity = activity(record)
+-    if (this.pool)
++    if (this.pool) {
+       await this.pool.query(
+-        'INSERT INTO sessions (id,document) VALUES ($1,$2) ON CONFLICT (id) DO UPDATE SET document=EXCLUDED.document,saved_at=now()',
++        `INSERT INTO sessions (id,document) VALUES ($1,$2) ON CONFLICT (id) ${onlyIfAbsent ? 'DO NOTHING' : 'DO UPDATE SET document=EXCLUDED.document,saved_at=now()'}`,
+         [record.id, record],
+       )
+-    else await privateWrite(join(this.config.records, `${record.id}.json`), JSON.stringify(record))
++      if (!onlyIfAbsent) return record
++      const saved = await this.record(record.id)
++      assert(saved, 503, '恢复记录尚未确认写入。')
++      return saved
++    }
++    return this.lock.run(async () => {
++      if (onlyIfAbsent) {
++        const existing = await this.record(record.id)
++        if (existing) return existing
++      }
++      await privateWrite(join(this.config.records, `${record.id}.json`), JSON.stringify(record))
++      return record
++    })
+   }
+   async record(id: string): Promise<Doc | null> {
+     if (!/^[0-9a-f-]{36}$/i.test(id)) return null
+@@ -346,8 +358,18 @@
+     if (!item.id || !item.version) return null
+     captured[kind] = [item.id, item.version]
+   }
++  const rubric = training.rubric
++  if (!rubric?.id || !Array.isArray(rubric.dimensions) || !rubric.dimensions.length) return null
++  // Calibration bookkeeping changes the entity version, but not the training conditions.
++  captured.rubric = [rubric.id, sha(canonical(rubric.dimensions))]
++  for (const kind of ['drugs', 'policies']) {
++    const items = training[kind] ?? []
++    if (!Array.isArray(items) || items.some((item: Doc) => !item?.id || !item.version)) return null
++    captured[kind] = items.map((item: Doc) => [item.id, item.version])
++      .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))
++  }
+   const documents = training.documents ?? []
+-  if (documents.some((doc: Doc) => !doc.id || !doc.version || !doc.sha256)) return null
++  if (!Array.isArray(documents) || documents.some((doc: Doc) => !doc?.id || !doc.version || !doc.sha256)) return null
+   captured.documents = documents
+     .map((doc: Doc) => [doc.id, doc.version, doc.sha256])
+     .sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0])))

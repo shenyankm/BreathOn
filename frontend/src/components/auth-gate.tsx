@@ -157,7 +157,7 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
   </Dialog>
   const reconnect = () => { setError(''); setRetry(value => value + 1) }
   if (session && (session.authenticated || target === 'admin' && !session.enabled)) {
-    if (target === 'admin' && session.enabled && session.role !== 'admin') return <><main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button variant="outline" disabled={busy} onClick={requestLogout}>退出登录</Button></main>{logoutConfirmation}</>
+    if (target === 'admin' && session.enabled && session.role !== 'admin') return <><main className="flex min-h-svh flex-col items-center justify-center gap-5 p-6 text-center"><h1 className="font-heading text-2xl font-semibold">管理后台</h1><p role="alert" className="text-sm text-muted-foreground">当前账号无权使用管理后台，请使用 Android 客户端进行演练。</p>{error&&<Alert variant="destructive" className="max-w-sm"><AlertDescription>{error}</AlertDescription></Alert>}<Button variant="outline" disabled={busy} onClick={requestLogout}>退出登录</Button></main>{logoutConfirmation}</>
     return <>
       {logoutConfirmation}
       {error && <Alert variant="destructive" className="fixed inset-x-4 top-4 z-50 mx-auto max-w-lg"><AlertDescription className="flex flex-wrap items-center justify-between gap-3"><p>{error}</p><Button variant="outline" disabled={busy} onClick={reconnect}>重新连接</Button></AlertDescription></Alert>}
@@ -168,7 +168,7 @@ export function AuthGate({ AppComponent, target = 'admin' }: {AppComponent: Comp
   return <main className="flex min-h-svh items-center justify-center px-5 py-12">
     <section className="w-full max-w-sm" aria-labelledby="login-title">
       <a href={target === 'android' ? '#practice' : '/admin'} className="mb-10 flex items-center gap-2.5 text-lg font-semibold"><Brand iconClassName="size-10" /></a>
-      <h1 id="login-title" className="mb-6 text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录循言'}</h1>
+      <h1 id="login-title" className="mb-6 font-heading text-2xl font-semibold">{target === 'admin' ? '登录管理后台' : '登录循言'}</h1>
       {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{error}</AlertDescription></Alert>}
       {!session ? error ? <Button className="w-full min-h-11" onClick={reconnect}>重新连接</Button> : <p role="status" className="text-sm text-muted-foreground">正在连接服务器…</p> : !session.enabled ? <div className="space-y-5"><Alert><AlertDescription>服务器尚未开启账号登录，请联系管理员。</AlertDescription></Alert><Button variant="outline" className="w-full min-h-11" onClick={reconnect}>重新连接</Button></div> : <form onSubmit={login} className="space-y-5" aria-busy={busy}>
         <Field><FieldLabel htmlFor="username">{"账号"}</FieldLabel><Input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={100} className="min-h-11" disabled={busy} /></Field>

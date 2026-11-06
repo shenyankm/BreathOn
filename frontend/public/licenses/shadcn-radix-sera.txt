@@ -1,15 +1,13 @@
-shadcn 4.22.1 Tailwind CSS
+shadcn/ui Radix Sera components
 
-Unmodified local source: src/styles/vendor/shadcn-4.22.1.css
-Original file: shadcn@4.22.1/dist/tailwind.css
-Package: https://registry.npmjs.org/shadcn/-/shadcn-4.22.1.tgz
-Upstream: https://github.com/shadcn-ui/ui (packages/shadcn)
-CSS SHA-256: 4c371f7a1ff5d219ae2f7ff28bd256b4346fd546fe46fbae22092e57db2f0fae
-Package integrity: sha512-LbB4Lro+b0qSVki/tgL5edtKylEnXe1ppxMJC12d7NHPgaT+eSgJGMQULwP72V7X9tbiUq7xfx3VDAfB7jdGoA==
+Source registry: https://ui.shadcn.com/r/styles/radix-sera/{component}.json
+Upstream: https://github.com/shadcn-ui/ui
+Retrieved: 2026-11-06
 
-This copy retains the existing compiled styling without installing the shadcn CLI.
-When updating, preserve this notice, run frontend checks, and compare compiled CSS.
-The original package license follows unchanged.
+Components were installed by shadcn@4.23.0 apply sera --yes using the project
+components.json (radix-sera, taupe, Lucide, LTR, React client components).
+Application code composes these components without visual theme overrides.
+Accordion content uses natural height so content added after opening is not clipped.
 
 MIT License
 

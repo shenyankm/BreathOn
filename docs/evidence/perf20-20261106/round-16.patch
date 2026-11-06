@@ -1,0 +1,25 @@
+--- a/backend/src/core.ts
++++ b/backend/src/core.ts
+@@ -34,12 +34,16 @@
+ }
+ // Stored fingerprints use Python's JSON spacing and sorted keys; keep old records comparable.
+ export function canonical(value: any): string {
+-  if (Array.isArray(value)) return `[${value.map(canonical).join(', ')}]`
+-  if (value && typeof value === 'object')
+-    return `{${Object.keys(value)
+-      .sort()
+-      .map((key) => `${JSON.stringify(key)}: ${canonical(value[key])}`)
+-      .join(', ')}}`
++  if (Array.isArray(value)) {
++    const parts: string[] = []
++    for (const child of value) parts.push(canonical(child))
++    return `[${parts.join(', ')}]`
++  }
++  if (value && typeof value === 'object') {
++    const parts: string[] = []
++    for (const key of Object.keys(value).sort()) parts.push(`${JSON.stringify(key)}: ${canonical(value[key])}`)
++    return `{${parts.join(', ')}}`
++  }
+   return JSON.stringify(value)
+ }
+ export class Semaphore {

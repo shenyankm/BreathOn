@@ -133,7 +133,7 @@ export class Catalog {
     return this.store.transaction(
       user.workspace,
       async (tx) =>
-        (await tx.list(user.workspace, kind))
+        (await tx.list(user.workspace, kind, ['content', 'policy'].includes(kind)))
           .filter((row) => !['deleted', 'archived'].includes(row.status))
           .filter(
             (row) =>

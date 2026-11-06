@@ -1,0 +1,33 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -347,6 +347,9 @@
+         ? []
+         : [{ start_time: 'fallback', text: result.text ?? '', definite: final }]
+     assert(Array.isArray(utterances) && utterances.length <= 2000, 502, '无效 ASR 分句。')
++    const messages = new Map<string, Doc>()
++    for (const message of this.record.messages)
++      if (!messages.has(message.id)) messages.set(message.id, message)
+     let changed = false,
+       corrected = false,
+       invalidated = false,
+@@ -358,7 +361,7 @@
+       if (!text.trim()) continue
+       const id = `${this.record.experience === 'combat' ? 'combat' : 'practice'}-u-${index}`,
+         complete = part.definite === true || final,
+-        previous = this.record.messages.find((m: Doc) => m.id === id),
++        previous = messages.get(id),
+         wasFinal = previous?.final
+       latest = { id, role: 'trainee', text, final: complete }
+       if (previous?.text === text && previous.final === complete) continue
+@@ -384,7 +387,10 @@
+       changed = true
+       const stored = previous ?? { ...latest }
+       if (previous) Object.assign(previous, latest)
+-      else this.record.messages.push(stored)
++      else {
++        this.record.messages.push(stored)
++        messages.set(id, stored)
++      }
+       const start = part.start_time ?? part.words?.[0]?.start_time
+       stored.speech = this.speech.describe(start, part.end_time)
+       if (Number.isInteger(start) && Number.isInteger(part.end_time))

@@ -1,0 +1,36 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -119,6 +119,7 @@
+ }
+ export class Store {
+   private db?: DatabaseSync
++  private statements = new Map<string, ReturnType<DatabaseSync['prepare']>>()
+   private pool?: Pool
+   private lock = new Semaphore(1)
+   workspace = 'local'
+@@ -185,7 +186,12 @@
+       this.db!.exec(write ? 'BEGIN IMMEDIATE' : 'BEGIN')
+       try {
+         const tx = new Transaction(async (sql, values = []) => {
+-          const statement = this.db!.prepare(sql)
++          let statement = this.statements.get(sql)
++          if (!statement) {
++            statement = this.db!.prepare(sql)
++            if (this.statements.size >= 64) this.statements.clear()
++            this.statements.set(sql, statement)
++          }
+           return /^(SELECT|.*RETURNING )/is.test(sql)
+             ? (statement.all(...values) as Doc[])
+             : (statement.run(...values), [])
+@@ -211,7 +217,10 @@
+   }
+   async close() {
+     if (this.pool) await this.pool.end()
+-    if (this.db) await this.lock.run(async () => this.db!.close())
++    if (this.db) await this.lock.run(async () => {
++      this.statements.clear()
++      this.db!.close()
++    })
+   }
+   async saveRecord(record: Doc, status: string, onlyIfAbsent = false): Promise<Doc> {
+     record.status = status

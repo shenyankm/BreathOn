@@ -1,0 +1,36 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -91,8 +91,16 @@
+         false,
+       ),
+       approvals = new Map<string, Doc>(),
++      normalizedSources = new Map<Doc, string>(),
+       derived: Doc[] = []
+     for (const doc of documents) {
++      const normalizedPages = new Map<number, Set<string>>()
++      if (doc.source_url)
++        for (const page of doc.pages) {
++          const texts = normalizedPages.get(page.number) ?? new Set<string>()
++          texts.add(normalize(page.text))
++          normalizedPages.set(page.number, texts)
++        }
+       const digest = sha(canonical(doc.pages)),
+         receipt = {
+           document_id: doc.id,
+@@ -122,10 +130,12 @@
+       for (const source of data.sources) {
+         if (!doc.source_url || doc.source_url !== source.url) continue
+         for (const page of source.pages ?? []) {
+-          const matching = doc.pages.find(
+-            (p: Doc) => p.number === page.number && normalize(p.text) === normalize(page.text),
+-          )
+-          if (matching && normalize(page.text)) {
++          let text = normalizedSources.get(page)
++          if (text === undefined) {
++            text = normalize(page.text)
++            normalizedSources.set(page, text)
++          }
++          if (text && normalizedPages.get(page.number)?.has(text)) {
+             const key = `${source.id}:${page.number}`,
+               previous = approvals.get(key)
+             if (!previous || doc.id.localeCompare(previous.document_id) < 0)

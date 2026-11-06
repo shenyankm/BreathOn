@@ -1,0 +1,26 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -92,7 +92,13 @@
+       ),
+       approvals = new Map<string, Doc>(),
+       normalizedSources = new Map<Doc, string>(),
++      sourcesByURL = new Map<string, Doc[]>(),
+       derived: Doc[] = []
++    for (const source of data.sources) {
++      const group = sourcesByURL.get(source.url)
++      if (group) group.push(source)
++      else sourcesByURL.set(source.url, [source])
++    }
+     for (const doc of documents) {
+       const normalizedPages = new Map<number, Set<string>>()
+       if (doc.source_url)
+@@ -127,8 +133,7 @@
+         document_id: doc.id,
+         document_version: doc.version,
+       })
+-      for (const source of data.sources) {
+-        if (!doc.source_url || doc.source_url !== source.url) continue
++      for (const source of doc.source_url ? sourcesByURL.get(doc.source_url) ?? [] : []) {
+         for (const page of source.pages ?? []) {
+           let text = normalizedSources.get(page)
+           if (text === undefined) {

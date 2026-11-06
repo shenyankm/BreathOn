@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
-import { readFile, readdir, unlink } from 'node:fs/promises'
+import { readFile, readdir, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { type Doc, type User, assert, constants, pick, uuid, Semaphore, identity } from './core.ts'
-import { Store, newRecord, privateWrite, activity } from './store.ts'
+import { Store, newRecord, privateWrite, activity, trainingFingerprint } from './store.ts'
 import { Models } from './agents.ts'
 import { Medical, validateSummary } from './medical.ts'
 import { Dialogue } from './live.ts'
@@ -39,6 +39,7 @@ export class Sessions {
   >()
   private finalizing = new Set<string>()
   private retryLock = new Semaphore(1)
+  private pendingRecovery = new Set<string>()
   private checking?: Promise<Doc>
   private closing = false
   constructor(
@@ -47,16 +48,86 @@ export class Sessions {
     readonly medical: Medical,
     readonly auth: Authentication,
   ) {}
-  async checkpoint(id: string): Promise<Doc | null> {
+  async checkpoint(id: string, folder: 'checkpoints' | 'recovery' = 'checkpoints'): Promise<Doc | null> {
     if (!/^[0-9a-f-]{36}$/i.test(id)) return null
     try {
       const data = JSON.parse(
-        await readFile(join(this.store.config.records, 'checkpoints', id + '.json'), 'utf8'),
+        await readFile(join(this.store.config.records, folder, id + '.json'), 'utf8'),
       )
-      return data?.id === id ? data : null
-    } catch {
-      return null
+      return data?.id === id && Array.isArray(data.messages) ? data : null
+    } catch (error: any) {
+      if (error.code === 'ENOENT' || error instanceof SyntaxError) return null
+      throw error
     }
+  }
+  async restore(id: string, user?: User) {
+    assert(!this.active.has(id) && !this.finalizing.has(id), 409, '练习仍在结束保存中，请稍后重试。')
+    const existing = await this.store.record(id)
+    let recovered = existing ?? (await this.checkpoint(id, 'recovery')) ?? (await this.checkpoint(id))
+    assert(
+      recovered &&
+        typeof recovered.workspace === 'string' &&
+        typeof recovered.owner_id === 'string' &&
+        (!user || (recovered.workspace === user.workspace && recovered.owner_id === user.id)),
+      404,
+      '没有可恢复的记录，请保留当前对话并联系管理员。',
+    )
+    const owner: User = user ?? {
+      id: recovered.owner_id,
+      workspace: recovered.workspace,
+      team: recovered.team ?? '',
+      role: 'representative',
+      authenticated: true,
+    }
+    if (!existing) {
+      if (!recovered.ended_at) {
+        const file = await stat(join(this.store.config.records, 'checkpoints', id + '.json'))
+        recovered.ended_at = file.mtime.toISOString()
+        recovered.status = recovered.capture_status = recovered.analysis_status = 'interrupted'
+      }
+      // A concurrent import of the complete record must win over this partial checkpoint.
+      recovered = await this.store.saveRecord(recovered, recovered.status, true)
+    }
+    assert(recovered.workspace === owner.workspace && recovered.owner_id === owner.id, 404, '记录不属于当前账号。')
+    await identity.run(owner, () => this.finishRemediation(owner, recovered))
+    for (const folder of ['checkpoints', 'recovery'])
+      await unlink(join(this.store.config.records, folder, id + '.json')).catch((error: any) => {
+        if (error.code !== 'ENOENT') throw error
+      })
+    this.pendingRecovery.delete(id)
+    return { session_id: id, saved: true }
+  }
+  async recover(includeSaved = false) {
+    await this.retryLock.run(async () => {
+      if (includeSaved)
+        for (const record of await this.store.records(undefined, null)) {
+          try {
+            if (record.remediation_id && activity(record).valid) this.pendingRecovery.add(record.id)
+          } catch {
+            console.error(JSON.stringify({ event: 'session_recovery_invalid', session_id: record.id }))
+          }
+        }
+      for (const folder of ['checkpoints', 'recovery']) {
+        const files = await readdir(join(this.store.config.records, folder)).catch((error: any) => {
+          if (error.code === 'ENOENT') return [] as string[]
+          throw error
+        })
+        for (const file of files)
+          if (/^[0-9a-f-]{36}\.json$/i.test(file)) this.pendingRecovery.add(file.slice(0, -5))
+      }
+      for (const id of this.pendingRecovery) {
+        if (this.active.has(id) || this.finalizing.has(id)) continue
+        try {
+          await this.restore(id)
+        } catch (error: any) {
+          console.error(JSON.stringify({
+            event: 'session_recovery_pending',
+            session_id: id,
+            error_type: error?.constructor?.name ?? 'Error',
+          }))
+        }
+      }
+    })
   }
   async own(u: User, id: string): Promise<Doc> {
     const record = (await this.store.record(id)) ?? (await this.checkpoint(id))
@@ -129,38 +200,7 @@ export class Sessions {
       }
     })
     route(app, 'POST', '/api/sessions/{session_id}/retry-save', undefined, (u, p) =>
-      this.retryLock.run(async () => {
-        assert(
-          !this.active.has(p.session_id) && !this.finalizing.has(p.session_id),
-          409,
-          '练习仍在结束保存中，请稍后重试。',
-        )
-        const existing = await this.store.record(p.session_id)
-        let recovered = existing
-        try {
-          recovered ??= JSON.parse(
-            await readFile(
-              join(this.store.config.records, 'recovery', p.session_id + '.json'),
-              'utf8',
-            ),
-          )
-        } catch {}
-        recovered ??= await this.checkpoint(p.session_id)
-        assert(
-          recovered &&
-            recovered.id === p.session_id &&
-            recovered.workspace === u.workspace &&
-            recovered.owner_id === u.id,
-          404,
-          '没有可恢复的记录，请保留当前对话并联系管理员。',
-        )
-        assert(recovered.ended_at, 409, '记录尚未完成，请稍后重试并保留当前对话。')
-        if (!existing) {
-          await this.store.saveRecord(recovered, recovered.status)
-          await this.finishRemediation(u, recovered)
-        }
-        return { session_id: p.session_id, saved: true }
-      }),
+      this.retryLock.run(() => this.restore(p.session_id, u)),
     )
     route(app, 'POST', '/api/services/check', undefined, () => {
       if (!this.checking)
@@ -213,10 +253,9 @@ export class Sessions {
         query.scenario_id = remediation.scenario_id
         query.stage = remediation.stage
         training = await prepareTraining(this.store, user, query.scenario_id, query.stage)
-        const candidate = { ...parent, training: snapshot(training) }
+        const fingerprint = trainingFingerprint(parent.training)
         assert(
-          activity(parent).training_fingerprint &&
-            activity(parent).training_fingerprint === activity(candidate).training_fingerprint,
+          fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
           409,
           '医生、场景或资料版本已变化，不能启动同条件重练。',
         )
@@ -662,14 +701,16 @@ export class Sessions {
         await client.send({ type: 'summary_card', card: record.summary_card }).catch(() => {})
       } catch {}
       let saved = false,
-        recovery = false
+        recovery = false,
+        finalized = false
       try {
         await this.store.saveRecord(record, status)
         saved = true
-        await this.finishRemediation(user, record).catch(() => {})
+        await this.finishRemediation(user, record)
+        finalized = true
       } catch {
         record.status = status
-        record.ended_at = new Date().toISOString()
+        record.ended_at ??= new Date().toISOString()
         try {
           await privateWrite(
             join(config.records, 'recovery', record.id + '.json'),
@@ -677,8 +718,9 @@ export class Sessions {
           )
           recovery = true
         } catch {}
+        this.pendingRecovery.add(record.id)
       }
-      if (saved || recovery)
+      if (finalized || recovery)
         await unlink(join(config.records, 'checkpoints', record.id + '.json')).catch(() => {})
       await client
         .send({
@@ -698,6 +740,12 @@ export class Sessions {
     if (record.remediation_id && activity(record).valid)
       await this.store.transaction(u.workspace, async (tx) => {
         const item = await tx.require(u.workspace, 'remediation', record.remediation_id)
+        assert(
+          record.workspace === u.workspace && item.owner_id === record.owner_id && record.owner_id === u.id,
+          404,
+          '重练记录不属于当前账号。',
+        )
+        if (item.status !== 'assigned') return
         await tx.update(
           u.workspace,
           'remediation',

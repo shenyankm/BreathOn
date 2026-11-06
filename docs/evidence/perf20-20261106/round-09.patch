@@ -1,0 +1,54 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -150,6 +150,9 @@
+       }
+     }
+     const query = compact(text),
++      years = text.match(/\b20\d{2}\b/g) ?? [],
++      labelQuestion = /适应|剂量|用法|禁忌|不良|安全|人群|用药/.test(text),
++      policyQuestion = /医保|报销|支付|商保/.test(text),
+       background = compact(context),
+       matches = (p: Doc, input: string) =>
+         [p.id, p.name, p.brand, ...(p.aliases ?? [])].some(
+@@ -166,6 +169,7 @@
+           query.slice(i, i + 2),
+         ).filter((t) => /^[\u4e00-\u9fff]{2}$/u.test(t)),
+       ]),
++      weightedTokens = tokens.map((term) => [term, 1 + Math.min(term.length, 12) / 12] as const),
+       ranked: Doc[] = [],
+       sources = [...data.sources, ...derived]
+     for (const source of sources) {
+@@ -181,7 +185,7 @@
+             trial.match(/\b(?:[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+|monarchE|MONARCH\s*[23])\b/g) ?? []
+           ).some((t) => query.includes(compact(t))),
+         ),
+-        year = (text.match(/\b20\d{2}\b/g) ?? []).some((year) =>
++        year = years.some((year) =>
+           String(source.published_at ?? '').includes(year),
+         )
+       for (const page of source.pages ?? []) {
+@@ -203,8 +207,8 @@
+           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
+             lower = compact(body)
+           let score =
+-            tokens.reduce(
+-              (n, t) => n + (lower.includes(t) ? 1 + Math.min(t.length, 12) / 12 : 0),
++            weightedTokens.reduce(
++              (n, [term, weight]) => n + (lower.includes(term) ? weight : 0),
+               0,
+             ) +
+             (related ? 8 : 0) +
+@@ -212,11 +216,11 @@
+             (year ? 5 : 0)
+           if (
+             source.kind === 'label' &&
+-            /适应|剂量|用法|禁忌|不良|安全|人群|用药/.test(text) &&
++            labelQuestion &&
+             related
+           )
+             score += 3
+-          if (['reimbursement', 'policy'].includes(source.kind) && /医保|报销|支付|商保/.test(text))
++          if (['reimbursement', 'policy'].includes(source.kind) && policyQuestion)
+             score += 8
+           if (factMatch) score += 5
+           if (score > (related ? 8 : 3)) {

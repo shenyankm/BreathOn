@@ -306,6 +306,14 @@ test(
         })
       ).json()
       assert(row.id)
+      const content = (await f.call('POST', '/api/catalog/content', {
+        title: '隔离PG全文投影验证', version_label: 'v1', scope: '合成测试',
+        pages: [{ number: 1, text: '只用于软件测试的全文内容。'.repeat(100) }],
+      })).json()
+      const listed = (await f.call('GET', '/api/catalog/content')).json().find((item: Doc) => item.id === content.id)
+      assert(listed)
+      assert.equal('pages' in listed, false)
+      assert.deepEqual((await f.call('GET', `/api/catalog/content/${content.id}`)).json().pages, content.pages)
       const updates = await Promise.all([
         f.call('PUT', `/api/catalog/audience/${row.id}`, {
           name: '第一次修改',
