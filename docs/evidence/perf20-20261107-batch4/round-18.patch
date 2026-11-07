@@ -1,0 +1,21 @@
+--- a/frontend/src/lib/learning.ts
++++ b/frontend/src/lib/learning.ts
+@@ -13,10 +13,16 @@
+   const coach = latest?.superseded || latest?.degraded ? undefined : latest
+   const dimension = coach?.assessment?.dimensions.filter(row => typeof row.score==='number' && Number.isInteger(row.score) && row.score>=0 && row.score<=4).sort((a, b) => a.score! - b.score!)[0]
+   const compact = (text: string) => text.replace(/\s+/gu, '')
++  const eligible = new Map<string, typeof record.messages>()
++  for (const message of record.messages) {
++    if (message.role !== 'trainee' || !message.final) continue
++    const group = eligible.get(message.id)
++    if (group) group.push(message)
++    else eligible.set(message.id, [message])
++  }
+   const quote = dimension?.utterances.find(quote => {
+     const text = compact(quote.quote)
+-    return text.length >= 6 && record.messages.some(message => message.id === quote.message_id &&
+-      message.role === 'trainee' && message.final && compact(message.text).includes(text))
++    return text.length >= 6 && (eligible.get(quote.message_id)?.some(message => compact(message.text).includes(text)) ?? false)
+   })
+   return { scorable:!!dimension && !coach?.assessment?.validation_errors?.length, focus: dimension?.label ?? coach?.focus ?? '回应结构', quote: quote?.quote,
+     action: coach?.points?.[0] ?? '先核对原话与本次目标，再明确下一次要完成的一个动作。',

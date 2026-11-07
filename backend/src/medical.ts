@@ -256,7 +256,11 @@ export class Medical {
   }
   async check(u: User, text: string, context = '', signal?: AbortSignal): Promise<Doc> {
     const started = Date.now(),
-      { data, approvals, rows: evidence } = await this.evidence(u, text, context),
+      parts = text.length <= 6000 ? sentences(text) : [],
+      oversized = text.length > 6000 || parts.length > 24,
+      { data, approvals, rows: evidence } = oversized
+        ? { data: await this.load(), approvals: new Map<string, Doc>(), rows: [] }
+        : await this.evidence(u, text, context),
       result: Doc = {
         text,
         corpus_version: data.version,
@@ -265,7 +269,7 @@ export class Medical {
         statements: [],
         status: 'insufficient',
       }
-    if (text.length > 6000 || sentences(text).length > 24)
+    if (oversized)
       return {
         ...result,
         status: 'unavailable',
@@ -280,7 +284,7 @@ export class Medical {
         const reply = await this.models.json(
           constants.verify.PROMPT,
           {
-            statements: sentences(text).map((text, i) => ({ id: `s${i}`, text })),
+            statements: parts.map((text, i) => ({ id: `s${i}`, text })),
             context: context.slice(-3000),
             evidence,
           },

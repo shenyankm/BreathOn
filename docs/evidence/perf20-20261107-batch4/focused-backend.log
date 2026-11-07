@@ -1,0 +1,208 @@
+TAP version 13
+# (node:26410) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:26410) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: multi-product references share preparation only within one request and reject revoked receipts
+ok 1 - multi-product references share preparation only within one request and reject revoked receipts
+  ---
+  duration_ms: 2.744917
+  type: 'test'
+  ...
+# Subtest: parallel preflight starts every task but dispatches no model until all validations finish
+ok 2 - parallel preflight starts every task but dispatches no model until all validations finish
+  ---
+  duration_ms: 468.040042
+  type: 'test'
+  ...
+# Subtest: binary request writers preserve all connection/session headers and ASR flags
+ok 3 - binary request writers preserve all connection/session headers and ASR flags
+  ---
+  duration_ms: 2.789834
+  type: 'test'
+  ...
+# Subtest: reused privacy patterns stay stateless across safe and blocked searches
+ok 4 - reused privacy patterns stay stateless across safe and blocked searches
+  ---
+  duration_ms: 0.676041
+  type: 'test'
+  ...
+# (node:26411) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:26411) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: model text deltas arrive before the tail is released, while the complete reply remains pending
+ok 5 - model text deltas arrive before the tail is released, while the complete reply remains pending
+  ---
+  duration_ms: 147.417959
+  type: 'test'
+  ...
+# Subtest: streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+ok 6 - streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+  ---
+  duration_ms: 11.462125
+  type: 'test'
+  ...
+# Subtest: a response body error after publication releases its slot without retrying exposed bytes
+ok 7 - a response body error after publication releases its slot without retrying exposed bytes
+  ---
+  duration_ms: 0.660125
+  type: 'test'
+  ...
+# Subtest: a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+ok 8 - a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+  ---
+  duration_ms: 8.326333
+  type: 'test'
+  ...
+# Subtest: live responses preserve the 16-message prompt window and all prior response acknowledgements
+ok 9 - live responses preserve the 16-message prompt window and all prior response acknowledgements
+  ---
+  duration_ms: 406.587
+  type: 'test'
+  ...
+# Subtest: parallel preparation still rejects a material change before publishing doctor text
+ok 10 - parallel preparation still rejects a material change before publishing doctor text
+  ---
+  duration_ms: 412.79675
+  type: 'test'
+  ...
+# Subtest: material metadata projection keeps original content reads and rejects stale versions and retired content
+ok 11 - material metadata projection keeps original content reads and rejects stale versions and retired content
+  ---
+  duration_ms: 44.59425
+  type: 'test'
+  ...
+# Subtest: skill text refreshes after edits, missing files and recovery
+ok 12 - skill text refreshes after edits, missing files and recovery
+  ---
+  duration_ms: 1.301583
+  type: 'test'
+  ...
+# (node:26412) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:26412) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: SQLite scoped all retains default cross-tenant reads, empty tenant and full documents
+ok 13 - SQLite scoped all retains default cross-tenant reads, empty tenant and full documents
+  ---
+  duration_ms: 52.418708
+  type: 'test'
+  ...
+# Subtest: PostgreSQL scoped all retains default cross-tenant reads, empty tenant and full documents
+ok 14 - PostgreSQL scoped all retains default cross-tenant reads, empty tenant and full documents # SKIP
+  ---
+  duration_ms: 0.1115
+  type: 'test'
+  ...
+# Subtest: archive link caching keeps first title, canonical deduplication, priority and unsafe URL rejection
+ok 15 - archive link caching keeps first title, canonical deduplication, priority and unsafe URL rejection
+  ---
+  duration_ms: 4.797875
+  type: 'test'
+  ...
+# Subtest: archive whitespace normalization preserves numeric boundaries and Unicode behavior
+ok 16 - archive whitespace normalization preserves numeric boundaries and Unicode behavior
+  ---
+  duration_ms: 3.986541
+  type: 'test'
+  ...
+# Subtest: pricing keeps exact totals, first duplicate rates, damaged snapshots and ordered missing reasons
+ok 17 - pricing keeps exact totals, first duplicate rates, damaged snapshots and ordered missing reasons
+  ---
+  duration_ms: 0.996875
+  type: 'test'
+  ...
+# Subtest: oversized medical text returns current corpus version without retrieval and legal length still retrieves
+ok 18 - oversized medical text returns current corpus version without retrieval and legal length still retrieves
+  ---
+  duration_ms: 0.428
+  type: 'test'
+  ...
+# Subtest: policy cache is per snapshot, checks every rule version and discards findings after revocation
+ok 19 - policy cache is per snapshot, checks every rule version and discards findings after revocation
+  ---
+  duration_ms: 0.576333
+  type: 'test'
+  ...
+# (node:26413) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:26413) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: retrieval retains non-overlapping counts, tie order and all existing limit semantics
+ok 20 - retrieval retains non-overlapping counts, tie order and all existing limit semantics
+  ---
+  duration_ms: 24.680375
+  type: 'test'
+  ...
+# Subtest: ASR indexes preserve message identity and persist every acknowledged final transcript
+ok 21 - ASR indexes preserve message identity and persist every acknowledged final transcript
+  ---
+  duration_ms: 63.424208
+  type: 'test'
+  ...
+# Subtest: non-authoritative checks do no approval I/O and authoritative checks always revalidate current receipts
+ok 22 - non-authoritative checks do no approval I/O and authoritative checks always revalidate current receipts
+  ---
+  duration_ms: 0.297166
+  type: 'test'
+  ...
+# Subtest: medical retrieval preserves duplicate-page matching, receipt precedence, scoring, limits and revocation
+ok 23 - medical retrieval preserves duplicate-page matching, receipt precedence, scoring, limits and revocation
+  ---
+  duration_ms: 1.930292
+  type: 'test'
+  ...
+# Subtest: catalogue summaries omit only pages, retain full details and reflect review changes immediately
+ok 24 - catalogue summaries omit only pages, retain full details and reflect review changes immediately
+  ---
+  duration_ms: 45.979667
+  type: 'test'
+  ...
+# Subtest: reused SQLite statements see fresh rows and preserve rollback and compare-and-swap boundaries
+ok 25 - reused SQLite statements see fresh rows and preserve rollback and compare-and-swap boundaries
+  ---
+  duration_ms: 12.182417
+  type: 'test'
+  ...
+# Subtest: bounded record reads retain account filtering, order, malformed-file handling and I/O failures
+ok 26 - bounded record reads retain account filtering, order, malformed-file handling and I/O failures
+  ---
+  duration_ms: 170.411125
+  type: 'test'
+  ...
+# Subtest: training fingerprints detect in-place mutations and ignore only calibration bookkeeping
+ok 27 - training fingerprints detect in-place mutations and ignore only calibration bookkeeping
+  ---
+  duration_ms: 0.200958
+  type: 'test'
+  ...
+# Subtest: base64 validation retains padding, alphabet and non-string rejection
+ok 28 - base64 validation retains padding, alphabet and non-string rejection
+  ---
+  duration_ms: 10.088958
+  type: 'test'
+  ...
+# Subtest: speech statistics retain mute, playback, rounding and clipped-window semantics
+ok 29 - speech statistics retain mute, playback, rounding and clipped-window semantics
+  ---
+  duration_ms: 0.71875
+  type: 'test'
+  ...
+# Subtest: summary uses the latest check matching both message id and original text
+ok 30 - summary uses the latest check matching both message id and original text
+  ---
+  duration_ms: 0.307583
+  type: 'test'
+  ...
+# Subtest: medical citations retain strict length, first matching evidence and malformed-quote handling
+ok 31 - medical citations retain strict length, first matching evidence and malformed-quote handling
+  ---
+  duration_ms: 0.363125
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 1
+# todo 0
+# duration_ms 2603.72525

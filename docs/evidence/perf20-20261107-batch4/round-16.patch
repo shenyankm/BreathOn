@@ -1,0 +1,21 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -24,7 +24,7 @@
+     store.transaction(
+       u.workspace,
+       async (tx) => {
+-        const rows: Doc[] = []
++        const rows: Doc[] = [], loaded = new Map<string, Doc | null>()
+         for (const rule of await tx.list(u.workspace, 'policy_rule')) {
+           if (
+             rule.status !== 'published' ||
+@@ -32,7 +32,8 @@
+             !ids.includes(rule.policy_id)
+           )
+             continue
+-          const policy = await tx.get(u.workspace, 'policy', rule.policy_id)
++          if (!loaded.has(rule.policy_id)) loaded.set(rule.policy_id, await tx.get(u.workspace, 'policy', rule.policy_id))
++          const policy = loaded.get(rule.policy_id) ?? null
+           if (
+             policyUsable(policy) &&
+             policy!.version === rule.policy_version &&

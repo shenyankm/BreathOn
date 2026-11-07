@@ -1,0 +1,14 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -69,8 +69,10 @@
+       seen = new Set<string>(),
+       findings: Doc[] = []
+     assert(Array.isArray(data.findings), 502, '无效合规判断。')
++    const byId = new Map<string, Doc>()
++    for (const rule of rules) if (!byId.has(rule.id)) byId.set(rule.id, rule)
+     for (const row of data.findings) {
+-      const rule = rules.find((rule) => rule.id === row?.rule_id)
++      const rule = byId.get(row?.rule_id)
+       if (
+         !rule ||
+         seen.has(rule.id) ||

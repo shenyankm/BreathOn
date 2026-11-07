@@ -19,8 +19,8 @@ export const normalizedText = (value: string) =>
   value.replace(/\s+/gu, (match, offset) =>
     offset &&
     offset + match.length < value.length &&
-    /\d/.test(value[offset - 1]) &&
-    /\d/.test(value[offset + match.length])
+    value.charCodeAt(offset - 1) >= 48 && value.charCodeAt(offset - 1) <= 57 &&
+    value.charCodeAt(offset + match.length) >= 48 && value.charCodeAt(offset + match.length) <= 57
       ? ' '
       : '',
   )
@@ -154,7 +154,9 @@ export function htmlText(
   }
   const parts: string[] = [],
     titles: string[] = [],
-    links: Doc[] = []
+    links: Doc[] = [],
+    seenLinks = new Set<string>()
+  const targets = new Map<string, string>()
   let skip = 0,
     inTitle = false,
     anchor: Doc | undefined
@@ -182,9 +184,15 @@ export function htmlText(
         if (tag === 'title') inTitle = false
         if (tag === 'a' && anchor) {
           try {
-            const target = canonicalURL(new URL(anchor.url, url).href)
-            if (target !== url && !links.some((row) => row.url === target))
+            let target = targets.get(anchor.url)
+            if (target === undefined) {
+              target = canonicalURL(new URL(anchor.url, url).href)
+              targets.set(anchor.url, target)
+            }
+            if (target !== url && !seenLinks.has(target)) {
+              seenLinks.add(target)
               links.push({ url: target, title: anchor.title.trim().slice(0, 200) })
+            }
           } catch {}
           anchor = undefined
         }

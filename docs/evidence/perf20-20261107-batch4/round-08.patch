@@ -1,0 +1,13 @@
+--- a/backend/src/archive.ts
++++ b/backend/src/archive.ts
+@@ -19,8 +19,8 @@
+   value.replace(/\s+/gu, (match, offset) =>
+     offset &&
+     offset + match.length < value.length &&
+-    /\d/.test(value[offset - 1]) &&
+-    /\d/.test(value[offset + match.length])
++    value.charCodeAt(offset - 1) >= 48 && value.charCodeAt(offset - 1) <= 57 &&
++    value.charCodeAt(offset + match.length) >= 48 && value.charCodeAt(offset + match.length) <= 57
+       ? ' '
+       : '',
+   )

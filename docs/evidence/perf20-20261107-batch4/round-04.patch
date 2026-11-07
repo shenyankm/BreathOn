@@ -1,0 +1,24 @@
+--- a/backend/src/archive.ts
++++ b/backend/src/archive.ts
+@@ -154,7 +154,8 @@
+   }
+   const parts: string[] = [],
+     titles: string[] = [],
+-    links: Doc[] = []
++    links: Doc[] = [],
++    seenLinks = new Set<string>()
+   let skip = 0,
+     inTitle = false,
+     anchor: Doc | undefined
+@@ -183,8 +184,10 @@
+         if (tag === 'a' && anchor) {
+           try {
+             const target = canonicalURL(new URL(anchor.url, url).href)
+-            if (target !== url && !links.some((row) => row.url === target))
++            if (target !== url && !seenLinks.has(target)) {
++              seenLinks.add(target)
+               links.push({ url: target, title: anchor.title.trim().slice(0, 200) })
++            }
+           } catch {}
+           anchor = undefined
+         }

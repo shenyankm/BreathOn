@@ -1,0 +1,13 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -280,8 +280,8 @@
+       ).rows.map((row) => row.document)
+     } else {
+       const files = (await readdir(this.config.records)).filter(file => /^[0-9a-f-]{36}\.json$/i.test(file))
+-      for (let offset = 0; offset < files.length; offset += 8) {
+-        const batch = await Promise.all(files.slice(offset, offset + 8).map(async file => {
++      for (let offset = 0; offset < files.length; offset += 16) {
++        const batch = await Promise.all(files.slice(offset, offset + 16).map(async file => {
+           try {
+             const row = await this.record(file.slice(0, -5))
+             if (row?.id === file.slice(0, -5) && Array.isArray(row.messages) && typeof row.started_at === 'string')

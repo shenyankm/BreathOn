@@ -1,0 +1,21 @@
+--- a/backend/src/archive.ts
++++ b/backend/src/archive.ts
+@@ -210,15 +210,9 @@
+       .filter(Boolean)
+       .join('\n'),
+     title: titles.join('').trim().slice(0, 300) || url,
+-    links: links
+-      .sort(
+-        (a, b) =>
+-          Number(!a.url.toLowerCase().endsWith('.pdf')) -
+-            Number(!b.url.toLowerCase().endsWith('.pdf')) ||
+-          Number(!/附件|说明书|正文|下载/.test(a.title)) -
+-            Number(!/附件|说明书|正文|下载/.test(b.title)),
+-      )
+-      .slice(0, 30),
++    links: links.map(link => ({ link, priority: 2 * Number(!link.url.toLowerCase().endsWith('.pdf')) + Number(!/附件|说明书|正文|下载/.test(link.title)) }))
++      .sort((a, b) => a.priority - b.priority)
++      .slice(0, 30).map(row => row.link),
+   }
+ }
+ export function evidenceBlocks(text: string, version: string): Doc[] {

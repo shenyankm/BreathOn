@@ -1,0 +1,15 @@
+--- a/backend/src/archive.ts
++++ b/backend/src/archive.ts
+@@ -10,10 +10,11 @@
+ import { privateWrite } from './store.ts'
+ import { parseDocument } from './documents.ts'
+ 
++const entities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+ export const escapeHTML = (value: string) =>
+   value.replace(
+     /[&<>"']/g,
+-    (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!,
++    (char) => entities[char]!,
+   )
+ export const normalizedText = (value: string) =>
+   value.replace(/\s+/gu, (match, offset) =>

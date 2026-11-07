@@ -47,9 +47,10 @@ export class Transaction {
     private execute: (sql: string, values?: any[]) => Promise<Doc[]>,
     private postgres = false,
   ) {}
-  async all(kind: string): Promise<{ tenant: string; item: Doc }[]> {
+  async all(kind: string, tenant?: string): Promise<{ tenant: string; item: Doc }[]> {
     return (
-      await this.execute('SELECT tenant_id,document FROM platform_entities WHERE kind=?', [kind])
+      await this.execute(`SELECT tenant_id,document FROM platform_entities WHERE kind=?${tenant === undefined ? '' : ' AND tenant_id=?'}`,
+        tenant === undefined ? [kind] : [kind, tenant])
     ).map((row) => ({ tenant: row.tenant_id, item: JSON.parse(row.document) }))
   }
   async get(tenant: string, kind: string, id: string, withoutPages = false): Promise<Doc | null> {

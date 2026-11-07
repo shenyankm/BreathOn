@@ -19,11 +19,12 @@ export async function assessPolicy(
   context = '',
   signal?: AbortSignal,
 ): Promise<Doc> {
+  if (!ids.length) return { status: 'skipped', findings: [] }
   const load = () =>
     store.transaction(
       u.workspace,
       async (tx) => {
-        const rows: Doc[] = []
+        const rows: Doc[] = [], loaded = new Map<string, Doc | null>()
         for (const rule of await tx.list(u.workspace, 'policy_rule')) {
           if (
             rule.status !== 'published' ||
@@ -31,7 +32,8 @@ export async function assessPolicy(
             !ids.includes(rule.policy_id)
           )
             continue
-          const policy = await tx.get(u.workspace, 'policy', rule.policy_id)
+          if (!loaded.has(rule.policy_id)) loaded.set(rule.policy_id, await tx.get(u.workspace, 'policy', rule.policy_id))
+          const policy = loaded.get(rule.policy_id) ?? null
           if (
             policyUsable(policy) &&
             policy!.version === rule.policy_version &&

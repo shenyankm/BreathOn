@@ -1,0 +1,16 @@
+--- a/backend/src/validation.ts
++++ b/backend/src/validation.ts
+@@ -235,9 +235,12 @@
+   extra(schema, value, schema)
+   return value as Doc
+ }
++const fieldKeys = new Map<string, string[]>()
+ export function schemaFields(name: string, value: Doc): Doc {
++  let keys = fieldKeys.get(name)
++  if (!keys) { keys = Object.keys(schemas[name].properties); fieldKeys.set(name, keys) }
+   return Object.fromEntries(
+-    Object.keys(schemas[name].properties)
++    keys
+       .filter((key) => key in value)
+       .map((key) => [key, value[key]]),
+   )

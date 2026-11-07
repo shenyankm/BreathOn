@@ -1,0 +1,60 @@
+Traceback (most recent call last):
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/perf20-20261107-batch4/run-experiments.py", line 127, in <module>
+    large=[dict(version=v,measurement=measure(A if v=='A' else B,item['case'])) for v in 'ABBAAB']
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/perf20-20261107-batch4/run-experiments.py", line 127, in <listcomp>
+    large=[dict(version=v,measurement=measure(A if v=='A' else B,item['case'])) for v in 'ABBAAB']
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/perf20-20261107-batch4/run-experiments.py", line 107, in measure
+    if result.returncode:raise RuntimeError(result.stderr)
+RuntimeError: node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+file:///Users/sheny/Developer/code/medvisit-coach/backend/benchmarks/performance-twenty-batch4.ts:79
+    const quote = '先核对原文与人群再确认安排'
+    const record = { messages:Array.from({length:small ? 2 : 400},(_,i)=>({id:i === (small ? 1 : 399) ? 'target' : `m${i}`,role:'trainee',final:true,text:('合成原话。 '.repeat(small ? 1 : 300)+quote)})),coaching:[{final_report:true,points:['确认下一步'],assessment:{dimensions:[{key:'d',label:'沟通',score:1,utterances:Array.from({length:small ? 1 : 8},(_,i)=>({message_id:'target',quote:i===(small ? 0 : 7) ? quote : '不存在的引用原话'+i}))]}}] }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         ^
+    work=()=>nextAction(record)
+
+SyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected ',', got ']'
+    at parseTypeScript (node:internal/modules/typescript:67:36)
+    at processTypeScriptCode (node:internal/modules/typescript:133:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:163:10)
+    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:656:29)
+    at #translate (node:internal/modules/esm/loader:559:20)
+    at afterLoad (node:internal/modules/esm/loader:612:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)
+    at #createModuleJob (node:internal/modules/esm/loader:640:36)
+    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41) {
+  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v22.23.2
+
+01 KEEP 9.26355->0.44940ms (+95.1%) 学习管理查询在数据库按租户限制 all，保留默认跨租户接口
+02 REVERT 6.73867->6.19441ms (+8.1%) 本地会话文件读取批量从8调至16
+03 REVERT 7.12115->7.01906ms (+1.4%) 本地会话文件名筛选复用无状态正则
+Traceback (most recent call last):
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/perf20-20261107-batch4/run-experiments.py", line 123, in <module>
+    for b,a in changes:value=transform(value,b,a)
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/perf20-20261107-batch4/run-experiments.py", line 93, in transform
+    assert count==1,(b,count)
+AssertionError: ('    links: Doc[] = []', 2)
+04 KEEP 5.38616->4.74471ms (+11.9%) 网页归档按集合去重链接，保留首个标题与顺序
+05 KEEP 3.47306->3.01242ms (+13.3%) 网页归档在一次页面解析中复用相同 href 的规范化结果
+06 REVERT 3.10924->3.10089ms (+0.3%) 网页归档链接优先级只计算一次再稳定排序
+07 REVERT 0.20761->0.20547ms (+1.0%) HTML转义复用固定实体表，避免每个字符分配对象
+08 KEEP 0.51079->0.39980ms (+21.7%) 原文数字间空白核对使用等价ASCII范围判断
+09 REVERT 0.17503->0.17604ms (-0.6%) 原文证据块复用版本编号前缀
+10 KEEP 3.70417->0.00091ms (+100.0%) 超长医学输入仅读语料版本，不执行注定无效的检索
+11 KEEP 0.00853->0.00726ms (+14.8%) 医学核验长度与模型输入复用分句结果
+12 KEEP 1.67222->0.64620ms (+61.4%) 计费按服务建立当次价格候选组，保留首项匹配和严格比较
+13 REVERT 0.03994->0.03785ms (+5.2%) 计费字段映射移至模块常量
+14 KEEP 0.30560->0.28031ms (+8.3%) 计费缺失依据提示按集合去重，保留首次顺序
+15 KEEP 0.02525->0.00027ms (+98.9%) 无关联政策时跳过必为空的规则查询
+16 KEEP 32.56392->1.66396ms (+94.9%) 每次合规规则快照复用相同政策读取，发布后重新加载
+17 REVERT 1.66888->1.64606ms (+1.4%) 合规结果匹配建立规则首项索引
+18 REVERT 0.08255->0.08070ms (+2.3%) 前端复盘按编号索引完整学员原话，保留重复编号语义
+19 KEEP 0.08200->0.01960ms (+76.1%) 前端复盘重复引文按需复用原话规范化
+20 REVERT 0.00060->0.00061ms (-2.5%) 场景迁移字段投影按固定schema复用字段名
+Completed 20 new candidates; retained 11

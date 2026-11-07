@@ -1,0 +1,12 @@
+--- a/backend/src/archive.ts
++++ b/backend/src/archive.ts
+@@ -236,7 +236,8 @@
+     }
+   }
+   if (current.trim()) blocks.push(current.trim())
+-  return blocks.map((text, index) => ({ id: `E${index + 1}-${version.slice(0, 12)}`, text }))
++  const prefix = version.slice(0, 12)
++  return blocks.map((text, index) => ({ id: `E${index + 1}-${prefix}`, text }))
+ }
+ export function readerHTML(
+   title: string,

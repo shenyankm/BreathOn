@@ -1,0 +1,10 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -19,6 +19,7 @@
+   context = '',
+   signal?: AbortSignal,
+ ): Promise<Doc> {
++  if (!ids.length) return { status: 'skipped', findings: [] }
+   const load = () =>
+     store.transaction(
+       u.workspace,

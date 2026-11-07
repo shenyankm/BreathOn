@@ -99,7 +99,7 @@ export async function finishLearning(store: Store, user: User, record: Doc) {
 async function adminPlan(store: Store, user: User, id: string) {
   assert(user.role === 'admin', 403, '仅培训管理人员可复核。')
   return store.transaction(user.workspace, async tx => {
-    const found = (await tx.all('remediation')).find(row => row.tenant === user.workspace && row.item.id === id)?.item
+    const found = (await tx.all('remediation', user.workspace)).find(row => row.tenant === user.workspace && row.item.id === id)?.item
     assert(found, 404, '任务不存在。')
     await tx.audit(user, 'learning.read', 'remediation', id)
     return found
@@ -195,9 +195,9 @@ export function registerLearning(app: FastifyInstance, store: Store) {
     const records = (await store.records(user.role === 'admin' ? undefined : user, null))
       .filter(record => record.workspace === user.workspace && record.training && !record.validation_only)
     const data = await store.transaction(user.workspace, async tx => ({
-      plans: (await tx.all('remediation')).filter(row => row.tenant === user.workspace && (user.role === 'admin' || row.item.owner_id === user.id)).map(row => row.item),
+      plans: (await tx.all('remediation', user.workspace)).filter(row => row.tenant === user.workspace && (user.role === 'admin' || row.item.owner_id === user.id)).map(row => row.item),
       reviews: await tx.list(user.workspace, 'review'),
-      views: (await tx.all('learning_event')).filter(row => row.tenant === user.workspace && (user.role === 'admin' || row.item.owner_id === user.id)).map(row => row.item),
+      views: (await tx.all('learning_event', user.workspace)).filter(row => row.tenant === user.workspace && (user.role === 'admin' || row.item.owner_id === user.id)).map(row => row.item),
     }), false)
     const reviewsByRecord = new Map<string, Doc[]>()
     for (const review of data.reviews) {

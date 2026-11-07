@@ -1,0 +1,25 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+file:///Users/sheny/Developer/code/medvisit-coach/backend/benchmarks/performance-twenty-batch4.ts:79
+    const quote = '先核对原文与人群再确认安排'
+    const record = { messages:Array.from({length:small ? 2 : 400},(_,i)=>({id:i === (small ? 1 : 399) ? 'target' : `m${i}`,role:'trainee',final:true,text:('合成原话。 '.repeat(small ? 1 : 300)+quote)})),coaching:[{final_report:true,points:['确认下一步'],assessment:{dimensions:[{key:'d',label:'沟通',score:1,utterances:Array.from({length:small ? 1 : 8},(_,i)=>({message_id:'target',quote:i===(small ? 0 : 7) ? quote : '不存在的引用原话'+i}))]}}] }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                         ^
+    work=()=>nextAction(record)
+
+SyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: Expected ',', got ']'
+    at parseTypeScript (node:internal/modules/typescript:67:36)
+    at processTypeScriptCode (node:internal/modules/typescript:133:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:163:10)
+    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:656:29)
+    at #translate (node:internal/modules/esm/loader:559:20)
+    at afterLoad (node:internal/modules/esm/loader:612:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:617:12)
+    at #createModuleJob (node:internal/modules/esm/loader:640:36)
+    at #getJobFromResolveResult (node:internal/modules/esm/loader:353:34)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:321:41) {
+  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v22.23.2

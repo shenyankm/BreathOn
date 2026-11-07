@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: reused quote normalization respects role, final state, duplicate IDs and changes between calls
+ok 1 - reused quote normalization respects role, final state, duplicate IDs and changes between calls
+  ---
+  duration_ms: 0.762959
+  type: 'test'
+  ...
+# Subtest: PCM conversion preserves little endian signs and rejects odd payloads
+ok 2 - PCM conversion preserves little endian signs and rejects odd payloads
+  ---
+  duration_ms: 0.735625
+  type: 'test'
+  ...
+# Subtest: PCM decoder matches every signed 16-bit sample including byte boundaries
+ok 3 - PCM decoder matches every signed 16-bit sample including byte boundaries
+  ---
+  duration_ms: 4.3895
+  type: 'test'
+  ...
+# Subtest: PCM frame encoding preserves every byte in 20ms and larger buffers
+ok 4 - PCM frame encoding preserves every byte in 20ms and larger buffers
+  ---
+  duration_ms: 5.150709
+  type: 'test'
+  ...
+# Subtest: delta, corrected final, and ASR full snapshots never duplicate text
+ok 5 - delta, corrected final, and ASR full snapshots never duplicate text
+  ---
+  duration_ms: 0.111917
+  type: 'test'
+  ...
+# Subtest: unchanged transcript snapshots reuse state while changes preserve message identity
+ok 6 - unchanged transcript snapshots reuse state while changes preserve message identity
+  ---
+  duration_ms: 0.140833
+  type: 'test'
+  ...
+# Subtest: worklet carries 128-sample render blocks into exact 20ms frames
+ok 7 - worklet carries 128-sample render blocks into exact 20ms frames
+  ---
+  duration_ms: 0.8415
+  type: 'test'
+  ...
+# Subtest: browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+ok 8 - browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+  ---
+  duration_ms: 2.151333
+  type: 'test'
+  ...
+# Subtest: audio resume and worklet load overlap and microphone loss prevents capture
+ok 9 - audio resume and worklet load overlap and microphone loss prevents capture
+  ---
+  duration_ms: 0.426542
+  type: 'test'
+  ...
+# Subtest: failed playback scheduling still releases the microphone and audio context
+ok 10 - failed playback scheduling still releases the microphone and audio context
+  ---
+  duration_ms: 0.566708
+  type: 'test'
+  ...
+# Subtest: playback status stays active until the last queued audio segment ends
+ok 11 - playback status stays active until the last queued audio segment ends
+  ---
+  duration_ms: 0.310667
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 83.600167

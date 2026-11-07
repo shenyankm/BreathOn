@@ -1,0 +1,19 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -121,6 +121,7 @@
+     })
+   }
+ }
++const recordName = /^[0-9a-f-]{36}\.json$/i
+ export class Store {
+   private db?: DatabaseSync
+   private statements = new Map<string, ReturnType<DatabaseSync['prepare']>>()
+@@ -279,7 +280,7 @@
+         )
+       ).rows.map((row) => row.document)
+     } else {
+-      const files = (await readdir(this.config.records)).filter(file => /^[0-9a-f-]{36}\.json$/i.test(file))
++      const files = (await readdir(this.config.records)).filter(file => recordName.test(file))
+       for (let offset = 0; offset < files.length; offset += 8) {
+         const batch = await Promise.all(files.slice(offset, offset + 8).map(async file => {
+           try {

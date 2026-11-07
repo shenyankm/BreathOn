@@ -43,7 +43,7 @@ export async function prices(store: Store, user: User) {
 export function estimateCost(usages: Doc[], rates: Doc[]): Doc {
   const totals: Record<string, Decimal> = {},
     lines: Doc[] = [],
-    missing: string[] = [],
+    missing = new Set<string>(),
     fields: Doc = {
       deepseek: {
         input_tokens: 'prompt_tokens',
@@ -60,14 +60,14 @@ export function estimateCost(usages: Doc[], rates: Doc[]): Doc {
       model = usage.model,
       mapping = fields[provider] ?? {}
     if (usage.incomplete)
-      missing.push(`${provider ?? '未标明服务'}部分请求未返回用量，费用尚未完整核算。`)
+      missing.add(`${provider ?? '未标明服务'}部分请求未返回用量，费用尚未完整核算。`)
     if (!Object.keys(mapping).some((key) => typeof usage[mapping[key]] === 'number'))
-      missing.push(`${provider ?? '未标明服务'}未记录可计价用量。`)
+      missing.add(`${provider ?? '未标明服务'}未记录可计价用量。`)
     for (const [unit, key] of Object.entries(mapping)) {
       const quantity = usage[key as string]
       if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity < 0) {
         if (!['search_requests', 'fetch_requests'].includes(unit))
-          missing.push(`${provider} 未报告 ${unit}，无法核算该项费用。`)
+          missing.add(`${provider} 未报告 ${unit}，无法核算该项费用。`)
         continue
       }
       if (!quantity) continue
@@ -75,7 +75,7 @@ export function estimateCost(usages: Doc[], rates: Doc[]): Doc {
         (row) => row.provider === provider && row.model === model && row.unit === unit,
       )
       if (!rate) {
-        missing.push(`${provider} / ${model ?? '未记录模型'} / ${unit} 未配置当次计价依据。`)
+        missing.add(`${provider} / ${model ?? '未记录模型'} / ${unit} 未配置当次计价依据。`)
         continue
       }
       try {
@@ -99,12 +99,12 @@ export function estimateCost(usages: Doc[], rates: Doc[]): Doc {
           rate,
         })
       } catch {
-        missing.push('历史计价快照损坏，此项费用无法核算。')
+        missing.add('历史计价快照损坏，此项费用无法核算。')
       }
     }
   }
   return {
-    status: missing.length
+    status: missing.size
       ? lines.length
         ? 'partial'
         : 'unavailable'
@@ -115,7 +115,7 @@ export function estimateCost(usages: Doc[], rates: Doc[]): Doc {
       Object.entries(totals).map(([key, value]) => [key, value.toFixed(6)]),
     ),
     lines,
-    missing: unique(missing.length ? missing : usages.length ? [] : ['未记录服务用量。']),
+    missing: missing.size ? [...missing] : usages.length ? [] : ['未记录服务用量。'],
   }
 }
 export async function curriculum(store: Store, user: User): Promise<Doc> {
