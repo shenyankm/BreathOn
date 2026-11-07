@@ -1,0 +1,23 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -375,15 +375,17 @@
+       ),
+       evidence: Doc[] = [],
+       gaps: Doc[] = []
+-    for (const product of [...selected, ...peers].slice(0, 4)) {
++    const groups = await Promise.all([...selected, ...peers].slice(0, 4).map(async product => {
+       const found = (await this.evidence(u, text + ' ' + product.brand)).rows
+         .filter(
+           (row) => row.source.product_ids.includes(product.id) && row.source.quality === 'original',
+         )
+         .slice(0, 2)
++      return { product, found }
++    }))
++    for (const { product, found } of groups) {
+       evidence.push(...found)
+-      if (!found.length)
+-        gaps.push({ product: product.name, reason: '缺少当前有效审核的相关原文，不能作医学比较。' })
++      if (!found.length) gaps.push({ product: product.name, reason: '缺少当前有效审核的相关原文，不能作医学比较。' })
+     }
+     return { version: data.version, evidence, gaps }
+   }

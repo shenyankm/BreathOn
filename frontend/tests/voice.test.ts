@@ -21,6 +21,13 @@ test('PCM decoder matches every signed 16-bit sample including byte boundaries',
   assert.equal(decodePcm16('').length, 0)
 })
 
+test('PCM frame encoding preserves every byte in 20ms and larger buffers', () => {
+  for (const length of [0, 640, 9600, 65536]) {
+    const bytes = Uint8Array.from({ length }, (_, i) => i * 73)
+    assert.equal(encodeAudio(bytes.buffer), Buffer.from(bytes).toString('base64'))
+  }
+})
+
 test('delta, corrected final, and ASR full snapshots never duplicate text', () => {
   let messages: VoiceMessage[] = []
   const event = { id: 'u1', role: 'trainee' as const, text: '玛仕', final: false }
@@ -147,7 +154,7 @@ test('browser audio schedules doctor PCM, cancels playback, keeps muted frames s
   }
 })
 
-test('microphone loss during worklet loading closes audio without starting capture', async t => {
+test('audio resume and worklet load overlap and microphone loss prevents capture', async t => {
   const originals = ['navigator', 'AudioContext', 'AudioWorkletNode'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const)
   t.after(() => {
     for (const [name, descriptor] of originals) {
@@ -155,7 +162,8 @@ test('microphone loss during worklet loading closes audio without starting captu
       else Reflect.deleteProperty(globalThis, name)
     }
   })
-  let finishModule!: () => void, moduleStarted!: () => void
+  let finishModule!: () => void, moduleStarted!: () => void, finishResume!: () => void
+  const resuming = new Promise<void>(resolve => { finishResume = resolve })
   const loading = new Promise<void>(resolve => { moduleStarted = resolve })
   const module = new Promise<void>(resolve => { finishModule = resolve })
   let stopped = 0, closed = 0, lost = 0, captures = 0
@@ -165,7 +173,7 @@ test('microphone loss during worklet loading closes audio without starting captu
   Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: class {
     sampleRate = 16000; state = 'running'; destination = {}
     audioWorklet = { addModule: () => { moduleStarted(); return module } }
-    async resume() {}
+    async resume() { await resuming }
     createMediaStreamSource() { return node() }
     createGain() { return { ...node(), gain: { value: 1 } } }
     async close() { this.state = 'closed'; closed++ }
@@ -177,6 +185,7 @@ test('microphone loss during worklet loading closes audio without starting captu
   const opening = audio.open(() => assert.fail('stopped capture emitted a frame'), () => { lost++ })
   await loading
   track.onended?.()
+  finishResume()
   finishModule()
   await opening
   assert.equal(lost, 1)

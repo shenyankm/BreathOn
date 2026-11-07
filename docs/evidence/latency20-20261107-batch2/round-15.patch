@@ -1,0 +1,22 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -61,11 +61,14 @@
+ }
+ export function asrPacket(payload: Buffer, audio = false, final = false): Buffer {
+   const body = gzipSync(payload)
+-  return Buffer.concat([
+-    Buffer.from([0x11, (audio ? 0x20 : 0x10) | (final ? 2 : 0), audio ? 1 : 0x11, 0]),
+-    u32(body.length),
+-    body,
+-  ])
++  const packet = Buffer.allocUnsafe(8 + body.length)
++  packet[0] = 0x11
++  packet[1] = (audio ? 0x20 : 0x10) | (final ? 2 : 0)
++  packet[2] = audio ? 1 : 0x11
++  packet[3] = 0
++  packet.writeUInt32BE(body.length, 4)
++  body.copy(packet, 8)
++  return packet
+ }
+ export const asrRequest = (id: string) =>
+   asrPacket(

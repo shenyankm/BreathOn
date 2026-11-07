@@ -1,0 +1,18 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -172,6 +172,7 @@
+       ]),
+       ranked: Doc[] = []
+     for (const source of sources) {
++      const { pages, original_path, ...metadata } = source
+       const related = source.product_ids.some((id: string) => ids.includes(id))
+       if (
+         ids.length &&
+@@ -226,7 +227,6 @@
+             score += 8
+           if (factMatch) score += 5
+           if (score > (related ? 8 : 3)) {
+-            const { pages, original_path, ...metadata } = source
+             ranked.push({
+               id: `${source.id}:p${page.number}:${offset}`,
+               source_id: source.id,

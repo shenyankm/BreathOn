@@ -1,0 +1,11 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -247,7 +247,7 @@
+   const stamp = `${info.mtimeMs}:${info.ctimeMs}:${info.size}`
+   const cached = skillCache.get(name)
+   if (cached?.stamp === stamp) return cached.text
+-  const text = readFile(path, 'utf8').then(value => value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim())
++  const text = readFile(path, 'utf8').then(value => value.replace(/^---\r?\n.*?\r?\n---\r?\n/s, '').trim())
+   skillCache.set(name, { stamp, text })
+   void text.catch(() => { if (skillCache.get(name)?.text === text) skillCache.delete(name) })
+   return text

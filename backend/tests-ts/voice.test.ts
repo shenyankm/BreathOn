@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { WebSocketServer } from 'ws'
-import { gzipSync } from 'node:zlib'
+import { gzipSync, gunzipSync } from 'node:zlib'
 import { once } from 'node:events'
 import { fixture, modelMock, coach } from './helpers.ts'
 import { type Doc } from '../src/core.ts'
@@ -310,6 +310,52 @@ test('combat bridges duplex audio, mute and interruption while ASR and Pi save a
     for (const server of [asr, duplex]) {
       for (const socket of server.clients) socket.terminate()
       await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
+  }
+})
+
+test('ASR sends a 100ms first packet, retains 200ms steady packets and flushes muted residual audio exactly', async () => {
+  const asr = new WebSocketServer({ port: 0 }), tts = new WebSocketServer({ port: 0 })
+  await Promise.all([once(asr, 'listening'), once(tts, 'listening')])
+  const packets: Buffer[] = []
+  asr.on('connection', ws => ws.on('message', raw => {
+    const packet = Buffer.from(raw as Buffer)
+    if (packet[1] >> 4 !== 2) return
+    packets.push(gunzipSync(packet.subarray(8)))
+    if (packet[1] & 2) ws.send(asrResult({ text: '', utterances: [] }, true))
+  }))
+  tts.on('connection', ws => ws.close())
+  const f = await fixture({ key: 'synthetic-key', asrKey: 'synthetic-asr', ttsKey: 'synthetic-tts', search: false,
+    asrUrl: `ws://127.0.0.1:${(asr.address() as any).port}`, ttsUrl: `ws://127.0.0.1:${(tts.address() as any).port}` }, modelMock())
+  try {
+    await f.app.listen({ host: '127.0.0.1', port: 0 })
+    const client = await Socket.connect(`ws://127.0.0.1:${(f.app.server.address() as any).port}/api/realtime?experience=practice`, { Origin: f.config.origins[0] })
+    const observed: Doc[] = []
+    client.ws.on('message', raw => observed.push(JSON.parse(raw.toString())))
+    const read = async () => {
+      try { return JSON.parse((await client.read(undefined, 10000)).toString()) }
+      catch (error) { throw new Error(JSON.stringify(observed), { cause: error }) }
+    }
+    await client.send({ type: 'start', mode: 'assisted' })
+    while ((await read()).type !== 'ready') {}
+    const frames = Array.from({ length: 25 }, (_, i) => Buffer.alloc(640, i))
+    for (const frame of frames) { await delay(20); await client.send({ type: 'audio', audio: frame.toString('base64') }) }
+    await client.send({ type: 'mute', muted: true })
+    for (let i = 0; i < 3; i++) { await delay(20); await client.send({ type: 'audio', audio: Buffer.alloc(640, 99).toString('base64') }) }
+    await client.send({ type: 'stop' })
+    let ended: Doc
+    for (;;) { const event = await read(); if (event.type === 'ended') { ended = event; break } }
+    assert.equal(ended.saved, true)
+    assert.deepEqual(packets.map(packet => packet.length), [3200, 6400, 6400, 1920])
+    assert.deepEqual(Buffer.concat(packets), Buffer.concat([...frames, Buffer.alloc(3 * 640)]))
+    const record = (await f.call('GET', `/api/sessions/${ended.session_id}`)).json()
+    assert.equal(record.usage.find((row: Doc) => row.provider === 'seedasr').audio_seconds, 0.56)
+    client.close()
+  } finally {
+    await f.close()
+    for (const server of [asr, tts]) {
+      for (const ws of server.clients) ws.terminate()
+      await new Promise<void>(resolve => server.close(() => resolve()))
     }
   }
 })

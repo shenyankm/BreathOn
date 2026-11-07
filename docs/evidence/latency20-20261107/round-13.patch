@@ -1,0 +1,11 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -364,7 +364,7 @@
+       }
+   }
+   async reference(u: User, drug: Doc, text: string): Promise<Doc> {
+-    const { data } = await this.evidence(u, ''),
++    const data = await this.load(),
+       names = [drug.id, drug.name, drug.brand].filter(Boolean).map(compact),
+       selected = data.products.filter((p: Doc) =>
+         [p.id, p.name, p.brand, ...(p.aliases ?? [])].some((v) => v && names.includes(compact(v))),

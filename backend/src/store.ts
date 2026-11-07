@@ -52,9 +52,12 @@ export class Transaction {
       await this.execute('SELECT tenant_id,document FROM platform_entities WHERE kind=?', [kind])
     ).map((row) => ({ tenant: row.tenant_id, item: JSON.parse(row.document) }))
   }
-  async get(tenant: string, kind: string, id: string): Promise<Doc | null> {
+  async get(tenant: string, kind: string, id: string, withoutPages = false): Promise<Doc | null> {
+    const document = withoutPages
+      ? this.postgres ? "(document::jsonb - 'pages')::text" : "json_remove(document,'$.pages')"
+      : 'document'
     const rows = await this.execute(
-      'SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? AND id=?',
+      `SELECT ${document} AS document FROM platform_entities WHERE tenant_id=? AND kind=? AND id=?`,
       [tenant, kind, id],
     )
     const item = rows[0] ? JSON.parse(rows[0].document) : null

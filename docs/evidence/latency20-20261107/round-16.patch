@@ -1,0 +1,15 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -291,8 +291,10 @@
+       message = this.record.messages.find((m: Doc) => m.id === id)
+     message.speech_status = 'speaking'
+     try {
+-      await this.send({ type: 'response_started', response_id: responseId, message_id: id })
+-      await this.send({ type: 'tts_state', state: 'speaking' })
++      await Promise.all([
++        this.send({ type: 'response_started', response_id: responseId, message_id: id }),
++        this.send({ type: 'tts_state', state: 'speaking' }),
++      ])
+       const context =
+           this.training ??
+           (this.record.free_context ? { doctor: this.record.free_context.doctor } : undefined),

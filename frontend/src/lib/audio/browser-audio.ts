@@ -14,7 +14,9 @@ function writePcm16(bytes: string, samples: Float32Array) {
 }
 
 export function encodeAudio(buffer: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  let bytes = ''
+  for (const value of new Uint8Array(buffer)) bytes += String.fromCharCode(value)
+  return btoa(bytes)
 }
 
 export class BrowserAudio {
@@ -43,8 +45,10 @@ export class BrowserAudio {
     if (context.sampleRate !== 16000) throw new Error('当前浏览器不支持 16 kHz 音频，请使用桌面 Chrome')
     this.output = context.createGain()
     this.output.connect(context.destination)
-    await context.resume()
-    await context.audioWorklet.addModule(new URL('./capture.worklet.js', import.meta.url).href)
+    await Promise.all([
+      context.resume(),
+      context.audioWorklet.addModule(new URL('./capture.worklet.js', import.meta.url).href),
+    ])
     if (this.stopped) return
     this.capture = new AudioWorkletNode(context, 'pcm-capture')
     this.capture.port.onmessage = ({ data }) => {

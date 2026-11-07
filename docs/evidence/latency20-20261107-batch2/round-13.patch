@@ -1,0 +1,15 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -297,8 +297,10 @@
+     }
+     await write(100, { event: 100, req_params: params }, id)
+     await expect(150, id)
+-    await write(200, { event: 200, req_params: { ...params, text } }, id)
+-    await write(102, {}, id)
++    await Promise.all([
++      write(200, { event: 200, req_params: { ...params, text } }, id),
++      write(102, {}, id),
++    ])
+     let bytes = 0,
+       started = 0,
+       usage: Doc = {}

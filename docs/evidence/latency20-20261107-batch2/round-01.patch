@@ -1,0 +1,23 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -495,16 +495,14 @@
+     try {
+       const finalMessages = this.record.messages.filter((m: Doc) => m.final),
+         history = structuredClone(finalMessages.slice(-16)),
+-        [checks, reference] = await Promise.all([
++        [checks, reference, , scoring] = await Promise.all([
+           this.checks.snapshot(),
+           this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
+             history.slice(-4).map((m: Doc) => m.text).join('\n')) : undefined,
++          this.validate(),
++          this.store.transaction(this.user.workspace,
++            async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
+         ])
+-      const [, scoring] = await Promise.all([
+-        this.validate(),
+-        this.store.transaction(this.user.workspace,
+-          async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
+-      ])
+       const validate = async (withReference: boolean) => {
+         const current = structuredClone(checks)
+         await Promise.all([this.validate(), this.medical.invalidate(this.user, current)])

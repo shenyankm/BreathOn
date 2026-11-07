@@ -1,0 +1,48 @@
+01 KEEP 97.51146->67.71029ms (+30.6%) 模型前置快照、参考、资料校验、评分读取同时启动
+02 KEEP 245.16223->133.22921ms (+45.7%) 一次参考查询复用同一语料和审核快照，发布时仍重新校验
+03 REVERT 55.68581->96.17752ms (-72.7%) 医学检索并行读取语料和审核资料
+04 REVERT 19.06171->16.67204ms (+12.5%) 检索源元数据移到分块循环之外
+05 REVERT 29.42667->18.01419ms (+38.8%) 查询年份只解析一次
+Traceback (most recent call last):
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/latency20-20261107-batch2/run-experiments.py", line 158, in <module>
+    for b,a in changes:s=transform(s,b,a)
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/latency20-20261107-batch2/run-experiments.py", line 145, in transform
+    assert s.count(b)==1,(b,s.count(b));return s.replace(b,a,1)
+AssertionError: ('      ranked: Doc[] = [],', 0)
+06 REVERT 25.52121->27.64435ms (-8.3%) 查询词权重只计算一次
+07 REVERT 33.09881->69.16556ms (-109.0%) 已有12条有效检索结果后停止扫描排序结果
+Traceback (most recent call last):
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/latency20-20261107-batch2/run-experiments.py", line 163, in <module>
+    large=[dict(version=v,measurement=measure(A if v=='A' else B,item['case'])) for v in 'ABBAAB']
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/latency20-20261107-batch2/run-experiments.py", line 163, in <listcomp>
+    large=[dict(version=v,measurement=measure(A if v=='A' else B,item['case'])) for v in 'ABBAAB']
+  File "/Users/sheny/Developer/code/medvisit-coach/docs/evidence/latency20-20261107/run-experiments.py", line 203, in measure
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=120, check=True)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 507, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1134, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1979, in _communicate
+    ready = selector.select(timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt
+03 KEEP 57.91573->31.70871ms (+45.3%) 医学检索并行读取语料和审核资料
+04 KEEP 29.01733->23.21806ms (+20.0%) 检索源元数据移到分块循环之外
+05 REVERT 14.74112->15.54940ms (-5.5%) 查询年份只解析一次
+06 KEEP 16.73833->15.35112ms (+8.3%) 查询词权重只计算一次
+07 KEEP 17.19808->14.87902ms (+13.5%) 已有12条有效检索结果后停止扫描排序结果
+08 KEEP 30.78202->15.06050ms (+51.1%) 同次多产品检索复用原文块规范化结果
+09 REVERT 10.03508->10.30950ms (-2.7%) 事实命中两个查询词即停止计数
+10 REVERT 10.38769->10.19454ms (+1.9%) 无空白原文跳过规范化替换
+11 KEEP 0.00345->0.00119ms (+65.4%) 隐私检查复用不带状态的编译正则
+12 KEEP 16.25263->15.28667ms (+5.9%) TTS有足够播放缓冲时跳过零毫秒定时器
+13 REVERT 15.61767->16.00854ms (-2.5%) TTS文本和结束事件按顺序提交后并行等待写入
+14 REVERT 0.04855->0.04649ms (+4.2%) ASR压缩等级1试验并检查传输体积代价
+15 REVERT 0.04576->0.04739ms (-3.6%) ASR协议头一次分配并复制压缩正文
+16 REVERT 0.01127->0.01196ms (-6.2%) TTS协议头一次分配并复制会话与正文
+17 KEEP 36.96204->20.72846ms (+43.9%) 麦克风授权后并行恢复音频和加载采集模块
+18 REVERT 0.01790->0.02084ms (-16.4%) PCM16符号扩展使用等价位移
+19 KEEP 0.15156->0.08131ms (+46.4%) 采集帧base64编码逐字节构造字符串
+20 KEEP 0.02059->0.01818ms (+11.7%) 复用已验证技能名对应的文件URL
+Completed 20 fresh candidates; kept 12

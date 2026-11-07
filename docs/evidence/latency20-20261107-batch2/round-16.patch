@@ -1,0 +1,28 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -113,13 +113,18 @@
+ export function ttsRequest(event: number, payload: Doc = {}, id = ''): Buffer {
+   const data = Buffer.from(JSON.stringify(payload)),
+     identity = Buffer.from(id)
+-  return Buffer.concat([
+-    Buffer.from('11141000', 'hex'),
+-    u32(event),
+-    ...([1, 2].includes(event) ? [] : [u32(identity.length), identity]),
+-    u32(data.length),
+-    data,
+-  ])
++  const connection = event === 1 || event === 2
++  const header = connection ? 12 : 16 + identity.length
++  const packet = Buffer.allocUnsafe(header + data.length)
++  packet.writeUInt32BE(0x11141000, 0)
++  packet.writeUInt32BE(event, 4)
++  if (!connection) {
++    packet.writeUInt32BE(identity.length, 8)
++    identity.copy(packet, 12)
++  }
++  packet.writeUInt32BE(data.length, header - 4)
++  data.copy(packet, header)
++  return packet
+ }
+ export function parseTts(raw: Buffer): {
+   kind: number

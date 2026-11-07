@@ -1,0 +1,22 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -448,9 +448,7 @@
+ }
+ const surnames =
+   '王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾萧田董潘袁蔡蒋余于杜叶程魏苏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤'
+-export function personalDataKind(query: string): string | undefined {
+-  const squeezed = query.replace(/[\s\-－]+/g, '')
+-  const checks: [string, RegExp, boolean][] = [
++const checks: [string, RegExp, boolean][] = [
+     ['phone', /(?<!\d)1[3-9]\d{9}(?!\d)/, true],
+     ['id_card', /(?<!\d)\d{17}[\dXx](?!\d)/, true],
+     ['email', /[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/, false],
+@@ -468,6 +466,8 @@
+     ],
+     ['demographics', /(?:男|女)性?\s*[,，]?\s*\d{1,3}\s*岁|\d{1,3}\s*岁\s*(?:男|女)/, false],
+   ]
++export function personalDataKind(query: string): string | undefined {
++  const squeezed = query.replace(/[\s\-－]+/g, '')
+   return checks.find(
+     ([, pattern, digits]) => pattern.test(query) || (digits && pattern.test(squeezed)),
+   )?.[0]

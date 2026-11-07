@@ -1,0 +1,20 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -80,12 +80,11 @@
+     }
+   }
+   private async prepareEvidence(u: User, data?: Doc) {
+-    const corpus = data ?? await this.load(),
+-      documents = await this.store.transaction(
+-        u.workspace,
+-        async (tx) => (await tx.list(u.workspace, 'content')).filter(usable),
+-        false,
+-      ),
++    const [corpus, documents] = await Promise.all([
++      data ?? this.load(),
++      this.store.transaction(u.workspace,
++        async tx => (await tx.list(u.workspace, 'content')).filter(usable), false),
++    ]),
+       approvals = new Map<string, Doc>(),
+       normalizedSources = new Map<string, string>(),
+       sourcesByURL = new Map<string, Doc[]>(),

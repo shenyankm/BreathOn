@@ -1,0 +1,18 @@
+dialogue_reference small=False {'before_ms': 412.7333750000007, 'after_ms': 228.16741599999978, 'improvement_percent': 44.71796326139136, 'paired_percent': [43.33336764778474, 52.08957481540574, 44.337087835458064]} equal=True
+dialogue_reference small=True {'before_ms': 2.9652499999997417, 'after_ms': 3.9974160000001575, 'improvement_percent': -34.80873450806865, 'paired_percent': [-14.92094100422612, -34.80873450806865, -33.346233683969615]} equal=True
+dialogue_real small=False {'before_ms': 34.150937500000055, 'after_ms': 35.38818749999996, 'improvement_percent': -3.6228873658297127, 'paired_percent': [4.971299453003695, -12.433255501938936]} equal=True
+dialogue_parallel small=False {'before_ms': 93.07462499999997, 'after_ms': 67.51158349999969, 'improvement_percent': 27.465102867726078, 'paired_percent': [27.738041179773948, 27.19234850600451]} equal=True
+med_reference small=False {'before_ms': 57.85539600000001, 'after_ms': 12.841250000000002, 'improvement_percent': 77.80457677620943, 'paired_percent': [71.763877827447, 78.2904321164699, 78.61385133376328]} equal=True
+med_reference small=True {'before_ms': 0.15547924999999907, 'after_ms': 0.10249487500001919, 'improvement_percent': 34.07810045390635, 'paired_percent': [50.204368107003205, -24.754110649555354, 41.639970363000614]} equal=True
+med_evidence small=False {'before_ms': 17.456447999999995, 'after_ms': 10.583021000000002, 'improvement_percent': 39.374717010012546, 'paired_percent': [34.5678295416816, 43.621466311916954]} equal=True
+med_disk small=False {'before_ms': 18.843458249999998, 'after_ms': 13.412551750000034, 'improvement_percent': 28.821177237994327, 'paired_percent': [34.84774470252906, 21.71605190991614]} equal=True
+tts_direct small=False {'before_ms': 3.2724580000000287, 'after_ms': 3.33725000000004, 'improvement_percent': -1.9799184588468581, 'paired_percent': [7.685323998047392, -2.766773544393705, -6.935995734417608]} equal=True
+tts_notify small=False {'before_ms': 18.225145499999996, 'after_ms': 17.6925205, 'improvement_percent': 2.9224732389653405, 'paired_percent': [3.557101208638152, 2.286039259859321]} equal=True
+browser_open small=False {'before_ms': 39.05483349999997, 'after_ms': 20.631103999999993, 'improvement_percent': 47.17400600363587, 'paired_percent': [45.53854405269772, 48.784554520625925]} equal=True
+browser_encode small=False {'before_ms': 0.1637524599999972, 'after_ms': 0.07939672000000314, 'improvement_percent': 51.514181832746516, 'paired_percent': [52.44572779839074, 50.48686764606492]} equal=True
+browser_encode small=True {'before_ms': 0.011518993750002336, 'after_ms': 0.00730936875000161, 'improvement_percent': 36.54507582313665, 'paired_percent': [40.977170799207585, 31.849869546516068]} equal=True
+stream small=False {'before_ms': 11.504624999999976, 'after_ms': 11.719166499999972, 'improvement_percent': -1.8648282755847858, 'paired_percent': [0.8970218873338576, -4.622720215410732]} equal=True
+queue small=False {'before_ms': 12.816500000000019, 'after_ms': 12.935604000000012, 'improvement_percent': -0.9293020715483385, 'paired_percent': [2.091254825358312, -4.091526254482675]} equal=True
+asr_first small=False {'before_ms': 109.8277290000002, 'after_ms': 108.57704200000012, 'improvement_percent': 1.138771612039872, 'paired_percent': [0.6065288966245583, 1.6666840019064357]} equal=True
+skill small=False {'before_ms': 0.01956404999999748, 'after_ms': 0.017183774999998746, 'improvement_percent': 12.166575939026128, 'paired_percent': [14.679541232036094, 9.168107664232803]} equal=True
+retrieve small=False {'before_ms': 1.5207501666666778, 'after_ms': 1.4823611666666447, 'improvement_percent': 2.524346262882725, 'paired_percent': [5.677995782304421, -0.4422222732644775]} equal=True

@@ -1,0 +1,10 @@
+
+> evispeak@0.0.0 lint
+> npm --prefix frontend run lint --
+
+
+> @evispeak/frontend@0.0.0 lint
+> oxlint
+
+src/main.tsx:6:7: warning react(only-export-components): Fast refresh only works when a file has exports. Move your component(s) to a separate file.
+src/main.android.tsx:6:7: warning react(only-export-components): Fast refresh only works when a file has exports. Move your component(s) to a separate file.

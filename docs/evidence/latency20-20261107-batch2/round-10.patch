@@ -1,0 +1,11 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -27,7 +27,7 @@
+     .split(/(?<=[。！？!?；;])\s*|\n+/u)
+     .map((s) => s.trim())
+     .filter(Boolean)
+-const compact = (text: string) => normalize(text).toLowerCase()
++const compact = (text: string) => (/\s/u.test(text) ? normalize(text) : text).toLowerCase()
+ export async function lintWiki(root: string): Promise<string[]> {
+   const folder = join(root, 'wiki'),
+     pages = new Map<string, string>(),

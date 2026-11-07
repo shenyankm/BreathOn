@@ -1,0 +1,21 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -491,7 +491,8 @@
+     let itemId = '',
+       earlyUsage: Doc | undefined
+     try {
+-      const history = structuredClone(this.record.messages.filter((m: Doc) => m.final)),
++      const finalMessages = this.record.messages.filter((m: Doc) => m.final),
++        history = structuredClone(finalMessages.slice(-16)),
+         [checks, reference] = await Promise.all([
+           this.checks.snapshot(),
+           this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
+@@ -558,7 +559,7 @@
+       await validate(true)
+       signal.throwIfAborted()
+       if (revision !== this.revision || this.stopping) return
+-      for (const message of history) if (message.role === 'trainee') this.responded.add(message.id)
++      for (const message of finalMessages) if (message.role === 'trainee') this.responded.add(message.id)
+       if (
+         !(await this.store.transaction(
+           this.user.workspace,

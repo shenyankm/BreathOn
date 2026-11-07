@@ -1,0 +1,15 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -316,9 +316,9 @@
+         started ||= Date.now()
+         for (let offset = 0; offset < row.payload.length; offset += 9600) {
+           const chunk = row.payload.subarray(offset, offset + 9600)
+-          await delay(Math.max(0, bytes / 48 - (Date.now() - started) - 500), undefined, {
+-            signal: combined,
+-          })
++          const wait = bytes / 48 - (Date.now() - started) - 500
++          if (wait > 0) await delay(wait, undefined, { signal: combined })
++          combined.throwIfAborted()
+           await send(chunk)
+           bytes += chunk.length
+         }

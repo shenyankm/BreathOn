@@ -291,8 +291,10 @@ export class Dialogue {
       message = this.record.messages.find((m: Doc) => m.id === id)
     message.speech_status = 'speaking'
     try {
-      await this.send({ type: 'response_started', response_id: responseId, message_id: id })
-      await this.send({ type: 'tts_state', state: 'speaking' })
+      await Promise.all([
+        this.send({ type: 'response_started', response_id: responseId, message_id: id }),
+        this.send({ type: 'tts_state', state: 'speaking' }),
+      ])
       const context =
           this.training ??
           (this.record.free_context ? { doctor: this.record.free_context.doctor } : undefined),
@@ -491,28 +493,19 @@ export class Dialogue {
     let itemId = '',
       earlyUsage: Doc | undefined
     try {
-      const history = structuredClone(this.record.messages.filter((m: Doc) => m.final)),
-        checks = await this.checks.snapshot(),
-        reference = this.record.free_context
-          ? await this.medical.reference(
-              this.user,
-              this.record.free_context.drug,
-              history
-                .slice(-4)
-                .map((m: Doc) => m.text)
-                .join('\n'),
-            )
-          : undefined
-      await this.validate()
-      const scoring = await this.store.transaction(
-        this.user.workspace,
-        async (tx) => (await workspaceSettings(tx, this.user.workspace)).training_scoring,
-        false,
-      )
+      const finalMessages = this.record.messages.filter((m: Doc) => m.final),
+        history = structuredClone(finalMessages.slice(-16)),
+        [checks, reference, , scoring] = await Promise.all([
+          this.checks.snapshot(),
+          this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
+            history.slice(-4).map((m: Doc) => m.text).join('\n')) : undefined,
+          this.validate(),
+          this.store.transaction(this.user.workspace,
+            async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
+        ])
       const validate = async (withReference: boolean) => {
-        await this.validate()
         const current = structuredClone(checks)
-        await this.medical.invalidate(this.user, current)
+        await Promise.all([this.validate(), this.medical.invalidate(this.user, current)])
         assert(
           checks.every(
             (before, index) =>
@@ -566,7 +559,7 @@ export class Dialogue {
       await validate(true)
       signal.throwIfAborted()
       if (revision !== this.revision || this.stopping) return
-      for (const message of history) if (message.role === 'trainee') this.responded.add(message.id)
+      for (const message of finalMessages) if (message.role === 'trainee') this.responded.add(message.id)
       if (
         !(await this.store.transaction(
           this.user.workspace,

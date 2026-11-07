@@ -1,0 +1,66 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -79,12 +79,8 @@
+       }
+     }
+   }
+-  async evidence(
+-    u: User,
+-    text: string,
+-    context = '',
+-  ): Promise<{ data: Doc; approvals: Map<string, Doc>; rows: Doc[]; sources: Doc[] }> {
+-    const data = await this.load(),
++  private async prepareEvidence(u: User, data?: Doc) {
++    const corpus = data ?? await this.load(),
+       documents = await this.store.transaction(
+         u.workspace,
+         async (tx) => (await tx.list(u.workspace, 'content')).filter(usable),
+@@ -94,7 +90,7 @@
+       normalizedSources = new Map<string, string>(),
+       sourcesByURL = new Map<string, Doc[]>(),
+       derived: Doc[] = []
+-    for (const source of data.sources) {
++    for (const source of corpus.sources) {
+       const group = sourcesByURL.get(source.url)
+       if (group) group.push(source)
+       else sourcesByURL.set(source.url, [source])
+@@ -149,8 +145,15 @@
+         }
+       }
+     }
++    return { data: corpus, approvals, sources: [...corpus.sources, ...derived] }
++  }
++  async evidence(u: User, text: string, context = '') {
++    return this.rankEvidence(await this.prepareEvidence(u), text, context)
++  }
++  private rankEvidence(prepared: { data: Doc; approvals: Map<string, Doc>; sources: Doc[] }, text: string, context = '') {
++    const { data, approvals, sources } = prepared
+     if (!text.trim() && !context.trim())
+-      return { data, approvals, rows: [], sources: [...data.sources, ...derived] }
++      return { data, approvals, rows: [], sources }
+     const query = compact(text),
+       background = compact(context),
+       matches = (p: Doc, input: string) =>
+@@ -168,8 +171,7 @@
+           query.slice(i, i + 2),
+         ).filter((t) => /^[\u4e00-\u9fff]{2}$/u.test(t)),
+       ]),
+-      ranked: Doc[] = [],
+-      sources = [...data.sources, ...derived]
++      ranked: Doc[] = []
+     for (const source of sources) {
+       const related = source.product_ids.some((id: string) => ids.includes(id))
+       if (
+@@ -375,8 +377,10 @@
+       ),
+       evidence: Doc[] = [],
+       gaps: Doc[] = []
+-    for (const product of [...selected, ...peers].slice(0, 4)) {
+-      const found = (await this.evidence(u, text + ' ' + product.brand)).rows
++    const products = [...selected, ...peers].slice(0, 4)
++    const prepared = products.length ? await this.prepareEvidence(u, data) : undefined
++    for (const product of products) {
++      const found = this.rankEvidence(prepared!, text + ' ' + product.brand).rows
+         .filter(
+           (row) => row.source.product_ids.includes(product.id) && row.source.quality === 'original',
+         )

@@ -1,0 +1,65 @@
+{
+  "created_at": "2026-11-07T08:23:34.892769+00:00",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "node": "v22.23.2",
+  "git_baseline": "f7c283512106129469d12626f1a90fd26f23c405",
+  "candidates": 20,
+  "retained": 13,
+  "reverted": 7,
+  "round_outputs_equivalent": true,
+  "overall_outputs_equivalent": true,
+  "final_source_rebuild_matches": true,
+  "backend": {
+    "tests": 78,
+    "passed": 78,
+    "failed": 0,
+    "skipped": 0
+  },
+  "frontend": {
+    "tests": 183,
+    "passed": 183,
+    "failed": 0,
+    "skipped": 0
+  },
+  "training_browser": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "web_e2e": {
+    "passed": 22,
+    "failed": 0,
+    "skipped": 6,
+    "skip_reasons": [
+      "five paid-provider tests",
+      "one Android WebView without attached device"
+    ]
+  },
+  "postgres": "fresh isolated PostgreSQL 17 container; deleted after tests",
+  "asr_regression": {
+    "first_packet_bytes": 3200,
+    "steady_packet_bytes": 6400,
+    "residual_packet_bytes": 1920,
+    "total_seconds": 0.56,
+    "pcm_equivalent": true
+  },
+  "builds": {
+    "backend": true,
+    "web": true,
+    "android_frontend": true
+  },
+  "lint": {
+    "errors": 0,
+    "existing_warnings": 2
+  },
+  "not_verified": [
+    "paid-provider TTFT and speech accuracy",
+    "physical-device first visible text and first audible playback",
+    "APK installation",
+    "weak networks",
+    "production concurrency",
+    "peak memory"
+  ],
+  "committed": false,
+  "deployed": false
+}

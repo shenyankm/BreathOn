@@ -1,0 +1,20 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -211,7 +211,7 @@
+           ['drug', training.drugs ?? []],
+           ['policy', training.policies ?? []],
+         ] as [string, Doc[]][]) {
+-          for (const captured of items) {
++          await Promise.all(items.map(async captured => {
+             const key = `${kind}:${captured.id}`
+             if (!loaded.has(key)) loaded.set(key, await tx.get(user.workspace, kind, captured.id, true))
+             const current = loaded.get(key)
+@@ -226,7 +226,7 @@
+               409,
+               '训练资料已失效或状态改变，本次暂停分析；请重新选择有效场景。',
+             )
+-          }
++          }))
+         }
+     },
+     false,

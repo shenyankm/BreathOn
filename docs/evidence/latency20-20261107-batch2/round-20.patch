@@ -1,0 +1,16 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -241,9 +241,12 @@
+ }
+ const skillRoot = new URL('../resources/skills/', import.meta.url)
+ const skillCache = new Map<string, { stamp: string; text: Promise<string> }>()
++const skillPaths = new Map<string, URL>()
+ export async function skill(name: string): Promise<string> {
+   assert(/^[a-z][a-z0-9-]+$/.test(name), 500, 'Invalid skill')
+-  const path = new URL(`${name}/SKILL.md`, skillRoot), info = await stat(path)
++  const path = skillPaths.get(name) ?? new URL(`${name}/SKILL.md`, skillRoot)
++  skillPaths.set(name, path)
++  const info = await stat(path)
+   const stamp = `${info.mtimeMs}:${info.ctimeMs}:${info.size}`
+   const cached = skillCache.get(name)
+   if (cached?.stamp === stamp) return cached.text

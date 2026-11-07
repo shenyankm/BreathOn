@@ -1,0 +1,21 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -171,6 +171,7 @@
+           query.slice(i, i + 2),
+         ).filter((t) => /^[\u4e00-\u9fff]{2}$/u.test(t)),
+       ]),
++      weighted = tokens.map(token => [token, 1 + Math.min(token.length, 12) / 12] as const),
+       ranked: Doc[] = []
+     for (const source of sources) {
+       const related = source.product_ids.some((id: string) => ids.includes(id))
+@@ -210,8 +211,8 @@
+           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
+             lower = compact(body)
+           let score =
+-            tokens.reduce(
+-              (n, t) => n + (lower.includes(t) ? 1 + Math.min(t.length, 12) / 12 : 0),
++            weighted.reduce(
++              (n, [t, weight]) => n + (lower.includes(t) ? weight : 0),
+               0,
+             ) +
+             (related ? 8 : 0) +

@@ -1,0 +1,13 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -503,9 +503,8 @@
+           async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
+       ])
+       const validate = async (withReference: boolean) => {
+-        await this.validate()
+         const current = structuredClone(checks)
+-        await this.medical.invalidate(this.user, current)
++        await Promise.all([this.validate(), this.medical.invalidate(this.user, current)])
+         assert(
+           checks.every(
+             (before, index) =>

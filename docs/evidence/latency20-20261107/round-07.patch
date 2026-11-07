@@ -1,0 +1,19 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -566,13 +566,14 @@
+     ...(view ? { training: view } : {}),
+     ...(options.free_context ? { free_context: options.free_context } : {}),
+   }
+-  const doctorRun = doctor?.reply(JSON.stringify(record), signal, budget).then(async reply => {
++  const input = JSON.stringify(record)
++  const doctorRun = doctor?.reply(input, signal, budget).then(async reply => {
+     const text = parseDoctor(JSON.parse(reply.text))
+     if (options.onDoctor) await options.onDoctor(text, reply.usage)
+     return reply
+   })
+   const runs = [
+-    coach.reply(JSON.stringify({ ...record, ...(options.reference_context ? { reference_context: options.reference_context } : {}) }),
++    coach.reply(options.reference_context ? JSON.stringify({ ...record, reference_context: options.reference_context }) : input,
+       signal, speak ? budget - 10 : budget),
+     ...(doctorRun ? [doctorRun] : []),
+   ]

@@ -314,6 +314,14 @@ test(
       assert(listed)
       assert.equal('pages' in listed, false)
       assert.deepEqual((await f.call('GET', `/api/catalog/content/${content.id}`)).json().pages, content.pages)
+      await f.store.transaction(f.store.workspace, async tx => {
+        const full = await tx.get(f!.store.workspace, 'content', content.id)
+        const metadata = await tx.get(f!.store.workspace, 'content', content.id, true)
+        assert(full && metadata)
+        const { pages, ...expected } = full
+        assert.deepEqual(metadata, expected)
+        assert.deepEqual(pages, content.pages)
+      }, false)
       const updates = await Promise.all([
         f.call('PUT', `/api/catalog/audience/${row.id}`, {
           name: '第一次修改',

@@ -1,7 +1,7 @@
 import { Agent, type AgentTool } from '@earendil-works/pi-agent-core'
 import { createModels, type AssistantMessage, type Model } from '@earendil-works/pi-ai'
 import { deepseekProvider } from '@earendil-works/pi-ai/providers/deepseek'
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 import { type Doc, assert, constants, Semaphore, normalize, HttpError } from './core.ts'
 import { publicURL } from './validation.ts'
@@ -71,7 +71,7 @@ export class Models {
       maxTokens: 8192,
     }
   }
-  private providerFetch: typeof fetch = async (input, init) =>
+  private providerFetch: typeof fetch = (input, init) => new Promise((resolve, reject) => {
     this.slots.run(async () => {
       const signal = init?.signal
       for (let attempt = 0; ; attempt++) {
@@ -84,25 +84,40 @@ export class Models {
             await delay(500, undefined, { signal: signal ?? undefined })
             continue
           }
-          // Bound the shared capacity through response consumption, including streamed completions.
-          return new Response(await response.arrayBuffer(), {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers,
+          if (!response.body) { resolve(response); return }
+          const reader = response.body.getReader()
+          let abort: () => void, downstream: ReadableStreamDefaultController<Uint8Array>
+          let finish!: () => void
+          const consumed = new Promise<void>(done => { finish = () => { signal?.removeEventListener('abort', abort); done() } })
+          const body = new ReadableStream<Uint8Array>({
+            start(controller) { downstream = controller },
+            async pull(controller) {
+              try {
+                const { done, value } = await reader.read()
+                if (done) { controller.close(); finish() }
+                else controller.enqueue(value)
+              } catch (error) { controller.error(error); finish() }
+            },
+            async cancel(reason) { try { await reader.cancel(reason) } finally { finish() } },
           })
+          abort = () => {
+            downstream.error(signal?.reason)
+            void reader.cancel(signal?.reason).catch(() => {}).finally(finish)
+          }
+          signal?.addEventListener('abort', abort, { once: true })
+          if (signal?.aborted) abort()
+          resolve(new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers }))
+          // Keep the slot until EOF/cancel; never replay a body after exposing its bytes.
+          await consumed
+          return
         } catch (error: any) {
-          if (
-            attempt ||
-            signal?.aborted ||
-            error?.name === 'TimeoutError' ||
-            error?.name === 'AbortError'
-          )
-            throw error
+          if (attempt || signal?.aborted || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error
           count('retry.agent_call')
           await delay(500, undefined, { signal: signal ?? undefined })
         }
       }
-    })
+    }).catch(reject)
+  })
   agent(
     system: string,
     {
@@ -225,11 +240,20 @@ export class AgentRun {
   }
 }
 const skillRoot = new URL('../resources/skills/', import.meta.url)
+const skillCache = new Map<string, { stamp: string; text: Promise<string> }>()
+const skillPaths = new Map<string, URL>()
 export async function skill(name: string): Promise<string> {
   assert(/^[a-z][a-z0-9-]+$/.test(name), 500, 'Invalid skill')
-  return (await readFile(new URL(`${name}/SKILL.md`, skillRoot), 'utf8'))
-    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
-    .trim()
+  const path = skillPaths.get(name) ?? new URL(`${name}/SKILL.md`, skillRoot)
+  skillPaths.set(name, path)
+  const info = await stat(path)
+  const stamp = `${info.mtimeMs}:${info.ctimeMs}:${info.size}`
+  const cached = skillCache.get(name)
+  if (cached?.stamp === stamp) return cached.text
+  const text = readFile(path, 'utf8').then(value => value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim())
+  skillCache.set(name, { stamp, text })
+  void text.catch(() => { if (skillCache.get(name)?.text === text) skillCache.delete(name) })
+  return text
 }
 const routes: [string, RegExp][] = [
   [
@@ -427,9 +451,7 @@ export class WebSearch {
 }
 const surnames =
   '王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾萧田董潘袁蔡蒋余于杜叶程魏苏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤'
-export function personalDataKind(query: string): string | undefined {
-  const squeezed = query.replace(/[\s\-－]+/g, '')
-  const checks: [string, RegExp, boolean][] = [
+const checks: [string, RegExp, boolean][] = [
     ['phone', /(?<!\d)1[3-9]\d{9}(?!\d)/, true],
     ['id_card', /(?<!\d)\d{17}[\dXx](?!\d)/, true],
     ['email', /[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/, false],
@@ -447,6 +469,8 @@ export function personalDataKind(query: string): string | undefined {
     ],
     ['demographics', /(?:男|女)性?\s*[,，]?\s*\d{1,3}\s*岁|\d{1,3}\s*岁\s*(?:男|女)/, false],
   ]
+export function personalDataKind(query: string): string | undefined {
+  const squeezed = query.replace(/[\s\-－]+/g, '')
   return checks.find(
     ([, pattern, digits]) => pattern.test(query) || (digits && pattern.test(squeezed)),
   )?.[0]
@@ -545,24 +569,15 @@ export async function generateReply(
     ...(view ? { training: view } : {}),
     ...(options.free_context ? { free_context: options.free_context } : {}),
   }
+  const doctorRun = doctor?.reply(JSON.stringify(record), signal, budget).then(async reply => {
+    const text = parseDoctor(JSON.parse(reply.text))
+    if (options.onDoctor) await options.onDoctor(text, reply.usage)
+    return reply
+  })
   const runs = [
-    coach.reply(
-      JSON.stringify({
-        ...record,
-        ...(options.reference_context ? { reference_context: options.reference_context } : {}),
-      }),
-      signal,
-      speak ? budget - 10 : budget,
-    ),
-    ...(doctor
-      ? [
-          doctor.reply(JSON.stringify(record), signal, budget).then(async (reply) => {
-            const text = parseDoctor(JSON.parse(reply.text))
-            if (options.onDoctor) await options.onDoctor(text, reply.usage)
-            return reply
-          }),
-        ]
-      : []),
+    coach.reply(JSON.stringify({ ...record, ...(options.reference_context ? { reference_context: options.reference_context } : {}) }),
+      signal, speak ? budget - 10 : budget),
+    ...(doctorRun ? [doctorRun] : []),
   ]
   const replies = await Promise.allSettled(runs)
   signal.throwIfAborted()

@@ -41,7 +41,7 @@
 | 训练与模型 | [11-07 用户学习闭环修复](product-loop-2026-11-07.md)、[训练交付](training-delivery.md)、[真实模型验证](coaching-live-validation.md)、[网页搜索验证](web-search-validation.md)、[复盘预览设计](visit-summary-preview.md) |
 | 研究 | [医生研究验收](doctor-research-acceptance.md) |
 | 稳定性 | [恢复初查](recovery-review-2026-10-30.md)、[恢复复查](stability-recovery-review-2026-10-30.md)、[工程稳定性](engineering-stability-2026-10-30.md) |
-| 性能与优化 | [11-07 清理后新增 20 轮](performance-20-rounds-2026-11-07-batch3.md)、[11-07 前批 20 轮](performance-20-rounds-2026-11-07.md)、[11-06 TypeScript 20 轮](performance-20-rounds-2026-11-06.md)、[10-29 优化](optimization-review-2026-10-29.md)、[10-30 性能](performance-20-rounds-2026-10-30.md)、[10-31 优化](optimization-review-2026-10-31.md)、[10-31 新增 30 轮](performance-30-rounds-2026-10-31.md) |
+| 性能与优化 | [11-07 再次延迟与首字 20 轮](latency-20-rounds-2026-11-07-batch2.md)、[11-07 延迟与首字 20 轮](latency-20-rounds-2026-11-07.md)、[11-07 清理后新增 20 轮](performance-20-rounds-2026-11-07-batch3.md)、[11-07 前批 20 轮](performance-20-rounds-2026-11-07.md)、[11-06 TypeScript 20 轮](performance-20-rounds-2026-11-06.md)、[10-29 优化](optimization-review-2026-10-29.md)、[10-30 性能](performance-20-rounds-2026-10-30.md)、[10-31 优化](optimization-review-2026-10-31.md)、[10-31 新增 30 轮](performance-30-rounds-2026-10-31.md) |
 
 ## 维护约定
 

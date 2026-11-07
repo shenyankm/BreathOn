@@ -1,0 +1,25 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -492,17 +492,11 @@
+       earlyUsage: Doc | undefined
+     try {
+       const history = structuredClone(this.record.messages.filter((m: Doc) => m.final)),
+-        checks = await this.checks.snapshot(),
+-        reference = this.record.free_context
+-          ? await this.medical.reference(
+-              this.user,
+-              this.record.free_context.drug,
+-              history
+-                .slice(-4)
+-                .map((m: Doc) => m.text)
+-                .join('\n'),
+-            )
+-          : undefined
++        [checks, reference] = await Promise.all([
++          this.checks.snapshot(),
++          this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
++            history.slice(-4).map((m: Doc) => m.text).join('\n')) : undefined,
++        ])
+       await this.validate()
+       const scoring = await this.store.transaction(
+         this.user.workspace,

@@ -542,7 +542,7 @@ export class Sessions {
               throw new BridgeError('audio_rate', '音频发送过快，请使用实时麦克风输入。')
             dialogue.speech.observe(data.pcm, data.playing, muted)
             frames = Buffer.concat([frames, muted ? Buffer.alloc(640) : data.pcm])
-            if (frames.length >= 6400) {
+            if (frames.length >= (audioBytes === 0 ? 3200 : 6400)) {
               await asr.send(asrPacket(frames, true), capturing)
               audioBytes += frames.length
               asrUsage.audio_seconds = audioBytes / 32000

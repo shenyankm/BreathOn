@@ -1,0 +1,20 @@
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -497,12 +497,11 @@
+           this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
+             history.slice(-4).map((m: Doc) => m.text).join('\n')) : undefined,
+         ])
+-      await this.validate()
+-      const scoring = await this.store.transaction(
+-        this.user.workspace,
+-        async (tx) => (await workspaceSettings(tx, this.user.workspace)).training_scoring,
+-        false,
+-      )
++      const [, scoring] = await Promise.all([
++        this.validate(),
++        this.store.transaction(this.user.workspace,
++          async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
++      ])
+       const validate = async (withReference: boolean) => {
+         await this.validate()
+         const current = structuredClone(checks)

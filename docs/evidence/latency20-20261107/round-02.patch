@@ -1,0 +1,35 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -560,24 +560,15 @@
+     ...(view ? { training: view } : {}),
+     ...(options.free_context ? { free_context: options.free_context } : {}),
+   }
++  const doctorRun = doctor?.reply(JSON.stringify(record), signal, budget).then(async reply => {
++    const text = parseDoctor(JSON.parse(reply.text))
++    if (options.onDoctor) await options.onDoctor(text, reply.usage)
++    return reply
++  })
+   const runs = [
+-    coach.reply(
+-      JSON.stringify({
+-        ...record,
+-        ...(options.reference_context ? { reference_context: options.reference_context } : {}),
+-      }),
+-      signal,
+-      speak ? budget - 10 : budget,
+-    ),
+-    ...(doctor
+-      ? [
+-          doctor.reply(JSON.stringify(record), signal, budget).then(async (reply) => {
+-            const text = parseDoctor(JSON.parse(reply.text))
+-            if (options.onDoctor) await options.onDoctor(text, reply.usage)
+-            return reply
+-          }),
+-        ]
+-      : []),
++    coach.reply(JSON.stringify({ ...record, ...(options.reference_context ? { reference_context: options.reference_context } : {}) }),
++      signal, speak ? budget - 10 : budget),
++    ...(doctorRun ? [doctorRun] : []),
+   ]
+   const replies = await Promise.allSettled(runs)
+   signal.throwIfAborted()

@@ -1,0 +1,12 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -276,8 +276,7 @@
+           }
+         } else candidates.push(candidate)
+       }
+-  return candidates
+-    .sort(compare)
++  return (bounded ? candidates : candidates.sort(compare))
+     .slice(0, limit)
+     .map((row, i) => ({
+       id: `D${i + 1}`,

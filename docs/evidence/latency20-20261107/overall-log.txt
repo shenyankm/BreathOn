@@ -1,0 +1,17 @@
+stream small=False: 80.4345->12.3131ms (+84.7%) equal=True
+stream small=True: 4.0770->2.6225ms (+35.7%) equal=True
+queue small=False: 85.4901->14.5969ms (+82.9%) equal=True
+queue small=True: 14.8478->14.6693ms (+1.2%) equal=True
+dialogue_real small=False: 123.8969->68.2920ms (+44.9%) equal=True
+dialogue_real small=True: 13.9125->12.4361ms (+10.6%) equal=True
+dialogue_parallel small=False: 179.1220->102.1378ms (+43.0%) equal=True
+dialogue_history small=False: 34.1410->13.5564ms (+60.3%) equal=True
+asr_first small=False: 225.2475->112.0448ms (+50.3%) equal=True
+asr_first small=True: 14.6072->8.8111ms (+39.7%) equal=True
+tts_notify small=False: 30.3689->16.4358ms (+45.9%) equal=True
+tts_notify small=True: 6.5365->5.3272ms (+18.5%) equal=True
+materials small=False: 41.8619->6.6444ms (+84.1%) equal=True
+reference_metadata small=False: 71.5096->0.0314ms (+100.0%) equal=True
+reference_parallel small=False: 67.4566->55.4612ms (+17.8%) equal=True
+reference_real small=False: 403.6402->337.6967ms (+16.3%) equal=True
+retrieve small=False: 1.4739->1.5020ms (-1.9%) equal=True

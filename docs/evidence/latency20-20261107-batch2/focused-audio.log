@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: PCM conversion preserves little endian signs and rejects odd payloads
+ok 1 - PCM conversion preserves little endian signs and rejects odd payloads
+  ---
+  duration_ms: 1.253334
+  type: 'test'
+  ...
+# Subtest: PCM decoder matches every signed 16-bit sample including byte boundaries
+ok 2 - PCM decoder matches every signed 16-bit sample including byte boundaries
+  ---
+  duration_ms: 6.416166
+  type: 'test'
+  ...
+# Subtest: PCM frame encoding preserves every byte in 20ms and larger buffers
+ok 3 - PCM frame encoding preserves every byte in 20ms and larger buffers
+  ---
+  duration_ms: 9.429459
+  type: 'test'
+  ...
+# Subtest: delta, corrected final, and ASR full snapshots never duplicate text
+ok 4 - delta, corrected final, and ASR full snapshots never duplicate text
+  ---
+  duration_ms: 0.167209
+  type: 'test'
+  ...
+# Subtest: unchanged transcript snapshots reuse state while changes preserve message identity
+ok 5 - unchanged transcript snapshots reuse state while changes preserve message identity
+  ---
+  duration_ms: 0.149458
+  type: 'test'
+  ...
+# Subtest: worklet carries 128-sample render blocks into exact 20ms frames
+ok 6 - worklet carries 128-sample render blocks into exact 20ms frames
+  ---
+  duration_ms: 1.239875
+  type: 'test'
+  ...
+# Subtest: browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+ok 7 - browser audio schedules doctor PCM, cancels playback, keeps muted frames silent and cleans up device loss
+  ---
+  duration_ms: 2.733666
+  type: 'test'
+  ...
+# Subtest: audio resume and worklet load overlap and microphone loss prevents capture
+ok 8 - audio resume and worklet load overlap and microphone loss prevents capture
+  ---
+  duration_ms: 0.59575
+  type: 'test'
+  ...
+# Subtest: failed playback scheduling still releases the microphone and audio context
+ok 9 - failed playback scheduling still releases the microphone and audio context
+  ---
+  duration_ms: 0.709292
+  type: 'test'
+  ...
+# Subtest: playback status stays active until the last queued audio segment ends
+ok 10 - playback status stays active until the last queued audio segment ends
+  ---
+  duration_ms: 0.849458
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 136.37425

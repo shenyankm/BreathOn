@@ -1,0 +1,15 @@
+{
+  "focused-backend": {
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "--test",
+      "backend/tests-ts/latency-batch2.test.ts",
+      "backend/tests-ts/latency.test.ts",
+      "backend/tests-ts/performance.test.ts"
+    ],
+    "exit_code": 1,
+    "seconds": 2.614,
+    "log": "focused-backend.log"
+  }
+}

@@ -1,0 +1,26 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -242,15 +242,14 @@
+       }
+     }
+     ranked.sort((a, b) => b.score - a.score)
+-    const per = new Map<string, number>(),
+-      rows = ranked
+-        .filter((row) => {
+-          const count = per.get(row.source_id) ?? 0
+-          if (count >= 4) return false
+-          per.set(row.source_id, count + 1)
+-          return true
+-        })
+-        .slice(0, 12)
++    const per = new Map<string, number>(), rows: Doc[] = []
++    for (const row of ranked) {
++      const count = per.get(row.source_id) ?? 0
++      if (count >= 4) continue
++      per.set(row.source_id, count + 1)
++      rows.push(row)
++      if (rows.length === 12) break
++    }
+     return { data, approvals, rows, sources }
+   }
+   async check(u: User, text: string, context = '', signal?: AbortSignal): Promise<Doc> {

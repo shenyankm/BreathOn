@@ -1,0 +1,125 @@
+{
+  "focused-backend": {
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "--test",
+      "backend/tests-ts/latency-batch2.test.ts",
+      "backend/tests-ts/latency.test.ts",
+      "backend/tests-ts/performance.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 2.9,
+    "log": "focused-backend.log"
+  },
+  "focused-audio": {
+    "command": [
+      "node",
+      "--experimental-strip-types",
+      "--test",
+      "frontend/tests/voice.test.ts"
+    ],
+    "exit_code": 0,
+    "seconds": 0.227,
+    "log": "focused-audio.log"
+  },
+  "backend-tests": {
+    "command": [
+      "npm",
+      "--prefix",
+      "backend",
+      "test"
+    ],
+    "exit_code": 0,
+    "seconds": 12.375,
+    "log": "backend-tests.log"
+  },
+  "postgresql": {
+    "isolated": true,
+    "image": "postgres:17-alpine",
+    "removed_after_run": true
+  },
+  "frontend-tests": {
+    "command": [
+      "npm",
+      "--prefix",
+      "frontend",
+      "test"
+    ],
+    "exit_code": 0,
+    "seconds": 3.46,
+    "log": "frontend-tests.log"
+  },
+  "build": {
+    "command": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "exit_code": 0,
+    "seconds": 6.3,
+    "log": "build.log"
+  },
+  "build-android": {
+    "command": [
+      "npm",
+      "run",
+      "build:android"
+    ],
+    "exit_code": 0,
+    "seconds": 3.779,
+    "log": "build-android.log"
+  },
+  "lint": {
+    "command": [
+      "npm",
+      "run",
+      "lint"
+    ],
+    "exit_code": 0,
+    "seconds": 0.285,
+    "log": "lint.log"
+  },
+  "training-browser": {
+    "command": [
+      "npm",
+      "--prefix",
+      "frontend",
+      "run",
+      "test:training",
+      "--",
+      "--output=/tmp/evispeak-latency-b2-training"
+    ],
+    "exit_code": 0,
+    "seconds": 25.024,
+    "log": "training-browser.log"
+  },
+  "admin-e2e": {
+    "command": [
+      "npm",
+      "run",
+      "test:e2e",
+      "--",
+      "--output=/tmp/evispeak-latency-b2-admin"
+    ],
+    "exit_code": 0,
+    "seconds": 52.361,
+    "log": "admin-e2e.log"
+  },
+  "diff-check": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0,
+    "seconds": 0.038,
+    "log": "diff-check.log"
+  },
+  "limitations": [
+    "synthetic providers only",
+    "no physical device or installed APK",
+    "no production deployment or remote CI",
+    "no sustained load, weak-network or peak-memory acceptance"
+  ]
+}

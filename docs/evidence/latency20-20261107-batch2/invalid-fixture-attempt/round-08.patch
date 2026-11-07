@@ -1,0 +1,29 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -145,13 +145,13 @@
+         }
+       }
+     }
+-    return { data: corpus, approvals, sources: [...corpus.sources, ...derived] }
++    return { data: corpus, approvals, sources: [...corpus.sources, ...derived], normalized: new Map<string, string>() }
+   }
+   async evidence(u: User, text: string, context = '') {
+     return this.rankEvidence(await this.prepareEvidence(u), text, context)
+   }
+-  private rankEvidence(prepared: { data: Doc; approvals: Map<string, Doc>; sources: Doc[] }, text: string, context = '') {
+-    const { data, approvals, sources } = prepared
++  private rankEvidence(prepared: { data: Doc; approvals: Map<string, Doc>; sources: Doc[]; normalized: Map<string, string> }, text: string, context = '') {
++    const { data, approvals, sources, normalized } = prepared
+     if (!text.trim() && !context.trim())
+       return { data, approvals, rows: [], sources }
+     const query = compact(text),
+@@ -208,7 +208,8 @@
+         )
+         for (let offset = 0; offset < page.text.length; offset += 1000) {
+           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
+-            lower = compact(body)
++            lower = normalized.get(body) ?? compact(body)
++          normalized.set(body, lower)
+           let score =
+             tokens.reduce(
+               (n, t) => n + (lower.includes(t) ? 1 + Math.min(t.length, 12) / 12 : 0),

@@ -1,0 +1,15 @@
+--- a/frontend/src/lib/audio/browser-audio.ts
++++ b/frontend/src/lib/audio/browser-audio.ts
+@@ -43,8 +43,10 @@
+     if (context.sampleRate !== 16000) throw new Error('当前浏览器不支持 16 kHz 音频，请使用桌面 Chrome')
+     this.output = context.createGain()
+     this.output.connect(context.destination)
+-    await context.resume()
+-    await context.audioWorklet.addModule(new URL('./capture.worklet.js', import.meta.url).href)
++    await Promise.all([
++      context.resume(),
++      context.audioWorklet.addModule(new URL('./capture.worklet.js', import.meta.url).href),
++    ])
+     if (this.stopped) return
+     this.capture = new AudioWorkletNode(context, 'pcm-capture')
+     this.capture.port.onmessage = ({ data }) => {

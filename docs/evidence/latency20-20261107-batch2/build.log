@@ -1,0 +1,65 @@
+
+> evispeak@0.0.0 build
+> npm --prefix backend run build && npm --prefix frontend run build
+
+
+> @evispeak/backend@0.1.0 build
+> tsc
+
+
+> @evispeak/frontend@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 2109 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                       0.66 kB │ gzip:  0.38 kB
+dist/assets/playfair-display-vietnamese-wght-normal-Cabi7G8-.woff2    9.11 kB
+dist/assets/noto-sans-greek-ext-wght-normal-12T8GTDR.woff2           10.76 kB
+dist/assets/noto-sans-vietnamese-wght-normal-DLTJy58D.woff2          14.45 kB
+dist/assets/noto-sans-cyrillic-wght-normal-B2hlT84T.woff2            20.08 kB
+dist/assets/playfair-display-latin-ext-wght-normal-CT1r92Rl.woff2    21.14 kB
+dist/assets/playfair-display-cyrillic-wght-normal-5WvUvBgz.woff2     21.15 kB
+dist/assets/noto-sans-greek-wght-normal-Ymb6dZNd.woff2               21.77 kB
+dist/assets/noto-sans-latin-wght-normal-BYSzYMf3.woff2               35.82 kB
+dist/assets/playfair-display-latin-wght-normal-BOwq7MWX.woff2        38.40 kB
+dist/assets/breathon-logo-B1nVervA.png                               50.67 kB
+dist/assets/noto-sans-cyrillic-ext-wght-normal-DSNfmdVt.woff2        70.68 kB
+dist/assets/noto-sans-devanagari-wght-normal-Cv-Vwajv.woff2          99.23 kB
+dist/assets/noto-sans-latin-ext-wght-normal-W1qJv59z.woff2          167.96 kB
+dist/assets/doctor-breast-B3-xUS9N.jpg                              214.80 kB
+dist/assets/doctor-endocrine-DgOF8SH4.jpg                           215.63 kB
+dist/assets/doctor-pediatrics-c0LYsiJX.jpg                          220.41 kB
+dist/assets/doctor-oncology-CiXnXWtI.jpg                            224.19 kB
+dist/assets/doctor-blood-RjYxjbDP.jpg                               230.85 kB
+dist/assets/doctor-general-Bu69wZOj.jpg                             237.28 kB
+dist/assets/doctor-cardio-ecdcwarq.jpg                              240.55 kB
+dist/assets/doctor-illustration-D8P1dKi0.webp                       884.06 kB
+dist/assets/index-RrL6j6x5.css                                       90.39 kB │ gzip: 15.43 kB
+dist/assets/check-CzQ5O9Nk.js                                         0.15 kB │ gzip:  0.15 kB
+dist/assets/collapsible-Cu2oKSci.js                                   0.36 kB │ gzip:  0.20 kB
+dist/assets/card-DRtwuAFF.js                                          1.35 kB │ gzip:  0.55 kB
+dist/assets/admin-overview-DAUfjDpK.js                                1.44 kB │ gzip:  0.67 kB
+dist/assets/dist-ChmL8nc4.js                                          4.21 kB │ gzip:  1.86 kB
+dist/assets/service-settings-BpWhT9e-.js                              4.55 kB │ gzip:  2.12 kB
+dist/assets/checkbox-BBjJhqFS.js                                      5.16 kB │ gzip:  2.09 kB
+dist/assets/admin-settings-BcWFPqFp.js                                5.75 kB │ gzip:  2.39 kB
+dist/assets/health-observations-lfvPg6ON.js                           7.01 kB │ gzip:  2.76 kB
+dist/assets/accordion-CoLwE7qv.js                                     7.92 kB │ gzip:  2.80 kB
+dist/assets/admin-lessons-D1BbD4OR.js                                 8.24 kB │ gzip:  2.94 kB
+dist/assets/admin-audiences-hnol8MoL.js                               8.39 kB │ gzip:  3.14 kB
+dist/assets/catalog-types-Chbsz26g.js                                10.51 kB │ gzip:  4.49 kB
+dist/assets/admin-doctors-jD3bUctJ.js                                13.02 kB │ gzip:  4.83 kB
+dist/assets/admin-overview-BCFjZyNs.js                               17.58 kB │ gzip:  6.58 kB
+dist/assets/textarea-BH6IC9ML.js                                     24.64 kB │ gzip:  8.19 kB
+dist/assets/admin-review-B-t4l4o1.js                                 25.20 kB │ gzip:  7.92 kB
+dist/assets/es2015-DuVlD_j4.js                                       34.91 kB │ gzip: 12.13 kB
+dist/assets/platform-api-AMqY1zzj.js                                 36.72 kB │ gzip: 13.83 kB
+dist/assets/button-DWTM-nJ5.js                                       44.09 kB │ gzip: 17.61 kB
+dist/assets/admin-app-BZtxwPn-.js                                    67.58 kB │ gzip: 19.50 kB
+dist/assets/platform-page-CCJAYIVm.js                                82.31 kB │ gzip: 20.62 kB
+dist/assets/index-CqbZrjRS.js                                       234.49 kB │ gzip: 73.94 kB
+
+✓ built in 811ms

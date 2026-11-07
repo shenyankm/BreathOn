@@ -1,0 +1,19 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -156,6 +156,7 @@
+       return { data, approvals, rows: [], sources }
+     const query = compact(text),
+       background = compact(context),
++      years = text.match(/\b20\d{2}\b/g) ?? [],
+       matches = (p: Doc, input: string) =>
+         [p.id, p.name, p.brand, ...(p.aliases ?? [])].some(
+           (alias) => alias && input.includes(compact(alias)),
+@@ -185,7 +186,7 @@
+             trial.match(/\b(?:[A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+|monarchE|MONARCH\s*[23])\b/g) ?? []
+           ).some((t) => query.includes(compact(t))),
+         ),
+-        year = (text.match(/\b20\d{2}\b/g) ?? []).some((year) =>
++        year = years.some((year) =>
+           String(source.published_at ?? '').includes(year),
+         )
+       for (const page of source.pages ?? []) {

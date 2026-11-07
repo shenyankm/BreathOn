@@ -1,0 +1,10 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -188,6 +188,7 @@
+   }
+ }
+ export async function checkMaterials(store: Store, user: User, training?: Doc, free?: Doc) {
++  if (!training && !free) return
+   await store.transaction(
+     user.workspace,
+     async (tx) => {

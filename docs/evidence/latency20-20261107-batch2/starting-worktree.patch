@@ -1,0 +1,369 @@
+diff --git a/backend/src/agents.ts b/backend/src/agents.ts
+index 424be5d..ce61fe4 100644
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -1,7 +1,7 @@
+ import { Agent, type AgentTool } from '@earendil-works/pi-agent-core'
+ import { createModels, type AssistantMessage, type Model } from '@earendil-works/pi-ai'
+ import { deepseekProvider } from '@earendil-works/pi-ai/providers/deepseek'
+-import { readFile } from 'node:fs/promises'
++import { readFile, stat } from 'node:fs/promises'
+ import { setTimeout as delay } from 'node:timers/promises'
+ import { type Doc, assert, constants, Semaphore, normalize, HttpError } from './core.ts'
+ import { publicURL } from './validation.ts'
+@@ -71,7 +71,7 @@ export class Models {
+       maxTokens: 8192,
+     }
+   }
+-  private providerFetch: typeof fetch = async (input, init) =>
++  private providerFetch: typeof fetch = (input, init) => new Promise((resolve, reject) => {
+     this.slots.run(async () => {
+       const signal = init?.signal
+       for (let attempt = 0; ; attempt++) {
+@@ -84,25 +84,40 @@ export class Models {
+             await delay(500, undefined, { signal: signal ?? undefined })
+             continue
+           }
+-          // Bound the shared capacity through response consumption, including streamed completions.
+-          return new Response(await response.arrayBuffer(), {
+-            status: response.status,
+-            statusText: response.statusText,
+-            headers: response.headers,
++          if (!response.body) { resolve(response); return }
++          const reader = response.body.getReader()
++          let abort: () => void, downstream: ReadableStreamDefaultController<Uint8Array>
++          let finish!: () => void
++          const consumed = new Promise<void>(done => { finish = () => { signal?.removeEventListener('abort', abort); done() } })
++          const body = new ReadableStream<Uint8Array>({
++            start(controller) { downstream = controller },
++            async pull(controller) {
++              try {
++                const { done, value } = await reader.read()
++                if (done) { controller.close(); finish() }
++                else controller.enqueue(value)
++              } catch (error) { controller.error(error); finish() }
++            },
++            async cancel(reason) { try { await reader.cancel(reason) } finally { finish() } },
+           })
++          abort = () => {
++            downstream.error(signal?.reason)
++            void reader.cancel(signal?.reason).catch(() => {}).finally(finish)
++          }
++          signal?.addEventListener('abort', abort, { once: true })
++          if (signal?.aborted) abort()
++          resolve(new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers }))
++          // Keep the slot until EOF/cancel; never replay a body after exposing its bytes.
++          await consumed
++          return
+         } catch (error: any) {
+-          if (
+-            attempt ||
+-            signal?.aborted ||
+-            error?.name === 'TimeoutError' ||
+-            error?.name === 'AbortError'
+-          )
+-            throw error
++          if (attempt || signal?.aborted || error?.name === 'TimeoutError' || error?.name === 'AbortError') throw error
+           count('retry.agent_call')
+           await delay(500, undefined, { signal: signal ?? undefined })
+         }
+       }
+-    })
++    }).catch(reject)
++  })
+   agent(
+     system: string,
+     {
+@@ -225,11 +240,17 @@ export class AgentRun {
+   }
+ }
+ const skillRoot = new URL('../resources/skills/', import.meta.url)
++const skillCache = new Map<string, { stamp: string; text: Promise<string> }>()
+ export async function skill(name: string): Promise<string> {
+   assert(/^[a-z][a-z0-9-]+$/.test(name), 500, 'Invalid skill')
+-  return (await readFile(new URL(`${name}/SKILL.md`, skillRoot), 'utf8'))
+-    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+-    .trim()
++  const path = new URL(`${name}/SKILL.md`, skillRoot), info = await stat(path)
++  const stamp = `${info.mtimeMs}:${info.ctimeMs}:${info.size}`
++  const cached = skillCache.get(name)
++  if (cached?.stamp === stamp) return cached.text
++  const text = readFile(path, 'utf8').then(value => value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim())
++  skillCache.set(name, { stamp, text })
++  void text.catch(() => { if (skillCache.get(name)?.text === text) skillCache.delete(name) })
++  return text
+ }
+ const routes: [string, RegExp][] = [
+   [
+@@ -545,24 +566,15 @@ export async function generateReply(
+     ...(view ? { training: view } : {}),
+     ...(options.free_context ? { free_context: options.free_context } : {}),
+   }
++  const doctorRun = doctor?.reply(JSON.stringify(record), signal, budget).then(async reply => {
++    const text = parseDoctor(JSON.parse(reply.text))
++    if (options.onDoctor) await options.onDoctor(text, reply.usage)
++    return reply
++  })
+   const runs = [
+-    coach.reply(
+-      JSON.stringify({
+-        ...record,
+-        ...(options.reference_context ? { reference_context: options.reference_context } : {}),
+-      }),
+-      signal,
+-      speak ? budget - 10 : budget,
+-    ),
+-    ...(doctor
+-      ? [
+-          doctor.reply(JSON.stringify(record), signal, budget).then(async (reply) => {
+-            const text = parseDoctor(JSON.parse(reply.text))
+-            if (options.onDoctor) await options.onDoctor(text, reply.usage)
+-            return reply
+-          }),
+-        ]
+-      : []),
++    coach.reply(JSON.stringify({ ...record, ...(options.reference_context ? { reference_context: options.reference_context } : {}) }),
++      signal, speak ? budget - 10 : budget),
++    ...(doctorRun ? [doctorRun] : []),
+   ]
+   const replies = await Promise.allSettled(runs)
+   signal.throwIfAborted()
+diff --git a/backend/src/live.ts b/backend/src/live.ts
+index 56685fe..abb45c5 100644
+--- a/backend/src/live.ts
++++ b/backend/src/live.ts
+@@ -291,8 +291,10 @@ export class Dialogue {
+       message = this.record.messages.find((m: Doc) => m.id === id)
+     message.speech_status = 'speaking'
+     try {
+-      await this.send({ type: 'response_started', response_id: responseId, message_id: id })
+-      await this.send({ type: 'tts_state', state: 'speaking' })
++      await Promise.all([
++        this.send({ type: 'response_started', response_id: responseId, message_id: id }),
++        this.send({ type: 'tts_state', state: 'speaking' }),
++      ])
+       const context =
+           this.training ??
+           (this.record.free_context ? { doctor: this.record.free_context.doctor } : undefined),
+@@ -491,28 +493,21 @@ export class Dialogue {
+     let itemId = '',
+       earlyUsage: Doc | undefined
+     try {
+-      const history = structuredClone(this.record.messages.filter((m: Doc) => m.final)),
+-        checks = await this.checks.snapshot(),
+-        reference = this.record.free_context
+-          ? await this.medical.reference(
+-              this.user,
+-              this.record.free_context.drug,
+-              history
+-                .slice(-4)
+-                .map((m: Doc) => m.text)
+-                .join('\n'),
+-            )
+-          : undefined
+-      await this.validate()
+-      const scoring = await this.store.transaction(
+-        this.user.workspace,
+-        async (tx) => (await workspaceSettings(tx, this.user.workspace)).training_scoring,
+-        false,
+-      )
++      const finalMessages = this.record.messages.filter((m: Doc) => m.final),
++        history = structuredClone(finalMessages.slice(-16)),
++        [checks, reference] = await Promise.all([
++          this.checks.snapshot(),
++          this.record.free_context ? this.medical.reference(this.user, this.record.free_context.drug,
++            history.slice(-4).map((m: Doc) => m.text).join('\n')) : undefined,
++        ])
++      const [, scoring] = await Promise.all([
++        this.validate(),
++        this.store.transaction(this.user.workspace,
++          async tx => (await workspaceSettings(tx, this.user.workspace)).training_scoring, false),
++      ])
+       const validate = async (withReference: boolean) => {
+-        await this.validate()
+         const current = structuredClone(checks)
+-        await this.medical.invalidate(this.user, current)
++        await Promise.all([this.validate(), this.medical.invalidate(this.user, current)])
+         assert(
+           checks.every(
+             (before, index) =>
+@@ -566,7 +561,7 @@ export class Dialogue {
+       await validate(true)
+       signal.throwIfAborted()
+       if (revision !== this.revision || this.stopping) return
+-      for (const message of history) if (message.role === 'trainee') this.responded.add(message.id)
++      for (const message of finalMessages) if (message.role === 'trainee') this.responded.add(message.id)
+       if (
+         !(await this.store.transaction(
+           this.user.workspace,
+diff --git a/backend/src/medical.ts b/backend/src/medical.ts
+index 2effe51..d8ae397 100644
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -364,7 +364,7 @@ export class Medical {
+       }
+   }
+   async reference(u: User, drug: Doc, text: string): Promise<Doc> {
+-    const { data } = await this.evidence(u, ''),
++    const data = await this.load(),
+       names = [drug.id, drug.name, drug.brand].filter(Boolean).map(compact),
+       selected = data.products.filter((p: Doc) =>
+         [p.id, p.name, p.brand, ...(p.aliases ?? [])].some((v) => v && names.includes(compact(v))),
+diff --git a/backend/src/sessions.ts b/backend/src/sessions.ts
+index 69fa6e9..d618cb5 100644
+--- a/backend/src/sessions.ts
++++ b/backend/src/sessions.ts
+@@ -542,7 +542,7 @@ export class Sessions {
+               throw new BridgeError('audio_rate', '音频发送过快，请使用实时麦克风输入。')
+             dialogue.speech.observe(data.pcm, data.playing, muted)
+             frames = Buffer.concat([frames, muted ? Buffer.alloc(640) : data.pcm])
+-            if (frames.length >= 6400) {
++            if (frames.length >= (audioBytes === 0 ? 3200 : 6400)) {
+               await asr.send(asrPacket(frames, true), capturing)
+               audioBytes += frames.length
+               asrUsage.audio_seconds = audioBytes / 32000
+diff --git a/backend/src/store.ts b/backend/src/store.ts
+index 8d176b1..e818964 100644
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -52,9 +52,12 @@ export class Transaction {
+       await this.execute('SELECT tenant_id,document FROM platform_entities WHERE kind=?', [kind])
+     ).map((row) => ({ tenant: row.tenant_id, item: JSON.parse(row.document) }))
+   }
+-  async get(tenant: string, kind: string, id: string): Promise<Doc | null> {
++  async get(tenant: string, kind: string, id: string, withoutPages = false): Promise<Doc | null> {
++    const document = withoutPages
++      ? this.postgres ? "(document::jsonb - 'pages')::text" : "json_remove(document,'$.pages')"
++      : 'document'
+     const rows = await this.execute(
+-      'SELECT document FROM platform_entities WHERE tenant_id=? AND kind=? AND id=?',
++      `SELECT ${document} AS document FROM platform_entities WHERE tenant_id=? AND kind=? AND id=?`,
+       [tenant, kind, id],
+     )
+     const item = rows[0] ? JSON.parse(rows[0].document) : null
+diff --git a/backend/src/training.ts b/backend/src/training.ts
+index e5b56c7..a2b2883 100644
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -188,6 +188,7 @@ export function snapshot(training: Doc): Doc {
+   }
+ }
+ export async function checkMaterials(store: Store, user: User, training?: Doc, free?: Doc) {
++  if (!training && !free) return
+   await store.transaction(
+     user.workspace,
+     async (tx) => {
+@@ -203,6 +204,7 @@ export async function checkMaterials(store: Store, user: User, training?: Doc, f
+         )
+         matchDepartment(drug, doctor)
+       }
++      const loaded = new Map<string, Doc | null>()
+       if (training)
+         for (const [kind, items] of [
+           ['content', training.documents],
+@@ -210,7 +212,9 @@ export async function checkMaterials(store: Store, user: User, training?: Doc, f
+           ['policy', training.policies ?? []],
+         ] as [string, Doc[]][]) {
+           for (const captured of items) {
+-            const current = await tx.get(user.workspace, kind, captured.id)
++            const key = `${kind}:${captured.id}`
++            if (!loaded.has(key)) loaded.set(key, await tx.get(user.workspace, kind, captured.id, true))
++            const current = loaded.get(key)
+             assert(
+               current &&
+                 current.version === captured.version &&
+diff --git a/backend/tests-ts/storage.test.ts b/backend/tests-ts/storage.test.ts
+index 81c0b01..5b4fac0 100644
+--- a/backend/tests-ts/storage.test.ts
++++ b/backend/tests-ts/storage.test.ts
+@@ -314,6 +314,14 @@ test(
+       assert(listed)
+       assert.equal('pages' in listed, false)
+       assert.deepEqual((await f.call('GET', `/api/catalog/content/${content.id}`)).json().pages, content.pages)
++      await f.store.transaction(f.store.workspace, async tx => {
++        const full = await tx.get(f!.store.workspace, 'content', content.id)
++        const metadata = await tx.get(f!.store.workspace, 'content', content.id, true)
++        assert(full && metadata)
++        const { pages, ...expected } = full
++        assert.deepEqual(metadata, expected)
++        assert.deepEqual(pages, content.pages)
++      }, false)
+       const updates = await Promise.all([
+         f.call('PUT', `/api/catalog/audience/${row.id}`, {
+           name: '第一次修改',
+diff --git a/backend/tests-ts/voice.test.ts b/backend/tests-ts/voice.test.ts
+index 0c6614b..1b15946 100644
+--- a/backend/tests-ts/voice.test.ts
++++ b/backend/tests-ts/voice.test.ts
+@@ -1,7 +1,7 @@
+ import { test } from 'node:test'
+ import assert from 'node:assert/strict'
+ import { WebSocketServer } from 'ws'
+-import { gzipSync } from 'node:zlib'
++import { gzipSync, gunzipSync } from 'node:zlib'
+ import { once } from 'node:events'
+ import { fixture, modelMock, coach } from './helpers.ts'
+ import { type Doc } from '../src/core.ts'
+@@ -313,3 +313,49 @@ test('combat bridges duplex audio, mute and interruption while ASR and Pi save a
+     }
+   }
+ })
++
++test('ASR sends a 100ms first packet, retains 200ms steady packets and flushes muted residual audio exactly', async () => {
++  const asr = new WebSocketServer({ port: 0 }), tts = new WebSocketServer({ port: 0 })
++  await Promise.all([once(asr, 'listening'), once(tts, 'listening')])
++  const packets: Buffer[] = []
++  asr.on('connection', ws => ws.on('message', raw => {
++    const packet = Buffer.from(raw as Buffer)
++    if (packet[1] >> 4 !== 2) return
++    packets.push(gunzipSync(packet.subarray(8)))
++    if (packet[1] & 2) ws.send(asrResult({ text: '', utterances: [] }, true))
++  }))
++  tts.on('connection', ws => ws.close())
++  const f = await fixture({ key: 'synthetic-key', asrKey: 'synthetic-asr', ttsKey: 'synthetic-tts', search: false,
++    asrUrl: `ws://127.0.0.1:${(asr.address() as any).port}`, ttsUrl: `ws://127.0.0.1:${(tts.address() as any).port}` }, modelMock())
++  try {
++    await f.app.listen({ host: '127.0.0.1', port: 0 })
++    const client = await Socket.connect(`ws://127.0.0.1:${(f.app.server.address() as any).port}/api/realtime?experience=practice`, { Origin: f.config.origins[0] })
++    const observed: Doc[] = []
++    client.ws.on('message', raw => observed.push(JSON.parse(raw.toString())))
++    const read = async () => {
++      try { return JSON.parse((await client.read(undefined, 10000)).toString()) }
++      catch (error) { throw new Error(JSON.stringify(observed), { cause: error }) }
++    }
++    await client.send({ type: 'start', mode: 'assisted' })
++    while ((await read()).type !== 'ready') {}
++    const frames = Array.from({ length: 25 }, (_, i) => Buffer.alloc(640, i))
++    for (const frame of frames) { await delay(20); await client.send({ type: 'audio', audio: frame.toString('base64') }) }
++    await client.send({ type: 'mute', muted: true })
++    for (let i = 0; i < 3; i++) { await delay(20); await client.send({ type: 'audio', audio: Buffer.alloc(640, 99).toString('base64') }) }
++    await client.send({ type: 'stop' })
++    let ended: Doc
++    for (;;) { const event = await read(); if (event.type === 'ended') { ended = event; break } }
++    assert.equal(ended.saved, true)
++    assert.deepEqual(packets.map(packet => packet.length), [3200, 6400, 6400, 1920])
++    assert.deepEqual(Buffer.concat(packets), Buffer.concat([...frames, Buffer.alloc(3 * 640)]))
++    const record = (await f.call('GET', `/api/sessions/${ended.session_id}`)).json()
++    assert.equal(record.usage.find((row: Doc) => row.provider === 'seedasr').audio_seconds, 0.56)
++    client.close()
++  } finally {
++    await f.close()
++    for (const server of [asr, tts]) {
++      for (const ws of server.clients) ws.terminate()
++      await new Promise<void>(resolve => server.close(() => resolve()))
++    }
++  }
++})
+diff --git a/docs/README.md b/docs/README.md
+index f3f51a2..9816b2c 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -41,7 +41,7 @@
+ | 训练与模型 | [11-07 用户学习闭环修复](product-loop-2026-11-07.md)、[训练交付](training-delivery.md)、[真实模型验证](coaching-live-validation.md)、[网页搜索验证](web-search-validation.md)、[复盘预览设计](visit-summary-preview.md) |
+ | 研究 | [医生研究验收](doctor-research-acceptance.md) |
+ | 稳定性 | [恢复初查](recovery-review-2026-10-30.md)、[恢复复查](stability-recovery-review-2026-10-30.md)、[工程稳定性](engineering-stability-2026-10-30.md) |
+-| 性能与优化 | [11-07 清理后新增 20 轮](performance-20-rounds-2026-11-07-batch3.md)、[11-07 前批 20 轮](performance-20-rounds-2026-11-07.md)、[11-06 TypeScript 20 轮](performance-20-rounds-2026-11-06.md)、[10-29 优化](optimization-review-2026-10-29.md)、[10-30 性能](performance-20-rounds-2026-10-30.md)、[10-31 优化](optimization-review-2026-10-31.md)、[10-31 新增 30 轮](performance-30-rounds-2026-10-31.md) |
++| 性能与优化 | [11-07 延迟与首字 20 轮](latency-20-rounds-2026-11-07.md)、[11-07 清理后新增 20 轮](performance-20-rounds-2026-11-07-batch3.md)、[11-07 前批 20 轮](performance-20-rounds-2026-11-07.md)、[11-06 TypeScript 20 轮](performance-20-rounds-2026-11-06.md)、[10-29 优化](optimization-review-2026-10-29.md)、[10-30 性能](performance-20-rounds-2026-10-30.md)、[10-31 优化](optimization-review-2026-10-31.md)、[10-31 新增 30 轮](performance-30-rounds-2026-10-31.md) |
+ 
+ ## 维护约定
+ 

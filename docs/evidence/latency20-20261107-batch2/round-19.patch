@@ -1,0 +1,13 @@
+--- a/frontend/src/lib/audio/browser-audio.ts
++++ b/frontend/src/lib/audio/browser-audio.ts
+@@ -14,7 +14,9 @@
+ }
+ 
+ export function encodeAudio(buffer: ArrayBuffer): string {
+-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
++  let bytes = ''
++  for (const value of new Uint8Array(buffer)) bytes += String.fromCharCode(value)
++  return btoa(bytes)
+ }
+ 
+ export class BrowserAudio {

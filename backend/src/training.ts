@@ -188,6 +188,7 @@ export function snapshot(training: Doc): Doc {
   }
 }
 export async function checkMaterials(store: Store, user: User, training?: Doc, free?: Doc) {
+  if (!training && !free) return
   await store.transaction(
     user.workspace,
     async (tx) => {
@@ -203,6 +204,7 @@ export async function checkMaterials(store: Store, user: User, training?: Doc, f
         )
         matchDepartment(drug, doctor)
       }
+      const loaded = new Map<string, Doc | null>()
       if (training)
         for (const [kind, items] of [
           ['content', training.documents],
@@ -210,7 +212,9 @@ export async function checkMaterials(store: Store, user: User, training?: Doc, f
           ['policy', training.policies ?? []],
         ] as [string, Doc[]][]) {
           for (const captured of items) {
-            const current = await tx.get(user.workspace, kind, captured.id)
+            const key = `${kind}:${captured.id}`
+            if (!loaded.has(key)) loaded.set(key, await tx.get(user.workspace, kind, captured.id, true))
+            const current = loaded.get(key)
             assert(
               current &&
                 current.version === captured.version &&

@@ -79,12 +79,8 @@ export class Medical {
       }
     }
   }
-  async evidence(
-    u: User,
-    text: string,
-    context = '',
-  ): Promise<{ data: Doc; approvals: Map<string, Doc>; rows: Doc[]; sources: Doc[] }> {
-    const data = await this.load(),
+  private async prepareEvidence(u: User, data?: Doc) {
+    const corpus = data ?? await this.load(),
       documents = await this.store.transaction(
         u.workspace,
         async (tx) => (await tx.list(u.workspace, 'content')).filter(usable),
@@ -94,7 +90,7 @@ export class Medical {
       normalizedSources = new Map<string, string>(),
       sourcesByURL = new Map<string, Doc[]>(),
       derived: Doc[] = []
-    for (const source of data.sources) {
+    for (const source of corpus.sources) {
       const group = sourcesByURL.get(source.url)
       if (group) group.push(source)
       else sourcesByURL.set(source.url, [source])
@@ -149,8 +145,15 @@ export class Medical {
         }
       }
     }
+    return { data: corpus, approvals, sources: [...corpus.sources, ...derived], normalized: new Map<string, string>() }
+  }
+  async evidence(u: User, text: string, context = '') {
+    return this.rankEvidence(await this.prepareEvidence(u), text, context)
+  }
+  private rankEvidence(prepared: { data: Doc; approvals: Map<string, Doc>; sources: Doc[]; normalized: Map<string, string> }, text: string, context = '') {
+    const { data, approvals, sources, normalized } = prepared
     if (!text.trim() && !context.trim())
-      return { data, approvals, rows: [], sources: [...data.sources, ...derived] }
+      return { data, approvals, rows: [], sources }
     const query = compact(text),
       background = compact(context),
       matches = (p: Doc, input: string) =>
@@ -168,9 +171,9 @@ export class Medical {
           query.slice(i, i + 2),
         ).filter((t) => /^[\u4e00-\u9fff]{2}$/u.test(t)),
       ]),
-      ranked: Doc[] = [],
-      sources = [...data.sources, ...derived]
+      ranked: Doc[] = []
     for (const source of sources) {
+      const { pages, original_path, ...metadata } = source
       const related = source.product_ids.some((id: string) => ids.includes(id))
       if (
         ids.length &&
@@ -206,7 +209,8 @@ export class Medical {
         )
         for (let offset = 0; offset < page.text.length; offset += 1000) {
           const body = page.text.slice(Math.max(0, offset - 200), offset + 1200),
-            lower = compact(body)
+            lower = normalized.get(body) ?? compact(body)
+          normalized.set(body, lower)
           let score =
             tokens.reduce(
               (n, t) => n + (lower.includes(t) ? 1 + Math.min(t.length, 12) / 12 : 0),
@@ -225,7 +229,6 @@ export class Medical {
             score += 8
           if (factMatch) score += 5
           if (score > (related ? 8 : 3)) {
-            const { pages, original_path, ...metadata } = source
             ranked.push({
               id: `${source.id}:p${page.number}:${offset}`,
               source_id: source.id,
@@ -364,7 +367,7 @@ export class Medical {
       }
   }
   async reference(u: User, drug: Doc, text: string): Promise<Doc> {
-    const { data } = await this.evidence(u, ''),
+    const data = await this.load(),
       names = [drug.id, drug.name, drug.brand].filter(Boolean).map(compact),
       selected = data.products.filter((p: Doc) =>
         [p.id, p.name, p.brand, ...(p.aliases ?? [])].some((v) => v && names.includes(compact(v))),
@@ -375,8 +378,10 @@ export class Medical {
       ),
       evidence: Doc[] = [],
       gaps: Doc[] = []
-    for (const product of [...selected, ...peers].slice(0, 4)) {
-      const found = (await this.evidence(u, text + ' ' + product.brand)).rows
+    const products = [...selected, ...peers].slice(0, 4)
+    const prepared = products.length ? await this.prepareEvidence(u, data) : undefined
+    for (const product of products) {
+      const found = this.rankEvidence(prepared!, text + ' ' + product.brand).rows
         .filter(
           (row) => row.source.product_ids.includes(product.id) && row.source.quality === 'original',
         )

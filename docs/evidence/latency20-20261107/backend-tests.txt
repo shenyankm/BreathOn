@@ -1,0 +1,529 @@
+
+> @evispeak/backend@0.1.0 test
+> node --experimental-transform-types --test tests-ts/*.test.ts
+
+TAP version 13
+# (node:72370) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72370) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: real Pi runtime isolates doctor and coach inputs, embeds skills, and accounts for both calls
+ok 1 - real Pi runtime isolates doctor and coach inputs, embeds skills, and accounts for both calls
+  ---
+  duration_ms: 469.448541
+  type: 'test'
+  ...
+# Subtest: doctor is published before the coach, and cancellation drains the pending provider call
+ok 2 - doctor is published before the coach, and cancellation drains the pending provider call
+  ---
+  duration_ms: 16.468292
+  type: 'test'
+  ...
+# Subtest: provider retries remain bounded and an invalid coach cannot discard a valid doctor
+ok 3 - provider retries remain bounded and an invalid coach cannot discard a valid doctor
+  ---
+  duration_ms: 513.410334
+  type: 'test'
+  ...
+# Subtest: Pi executes actual bounded tools and never runs a tool that was not registered
+ok 4 - Pi executes actual bounded tools and never runs a tool that was not registered
+  ---
+  duration_ms: 11.681917
+  type: 'test'
+  ...
+# Subtest: quoted evidence, medical coverage and source applicability fail closed
+ok 5 - quoted evidence, medical coverage and source applicability fail closed
+  ---
+  duration_ms: 3.62325
+  type: 'test'
+  ...
+# Subtest: search privacy filters and SSRF boundaries reject unsafe inputs before network access
+ok 6 - search privacy filters and SSRF boundaries reject unsafe inputs before network access
+  ---
+  duration_ms: 8.070416
+  type: 'test'
+  ...
+# (node:72371) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72371) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: TypeScript speech and Word fixtures retain their actual media and document formats
+ok 7 - TypeScript speech and Word fixtures retain their actual media and document formats
+  ---
+  duration_ms: 320.327
+  type: 'test'
+  ...
+# (node:72372) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72372) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: model text deltas arrive before the tail is released, while the complete reply remains pending
+ok 8 - model text deltas arrive before the tail is released, while the complete reply remains pending
+  ---
+  duration_ms: 346.887875
+  type: 'test'
+  ...
+# Subtest: streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+ok 9 - streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+  ---
+  duration_ms: 71.112
+  type: 'test'
+  ...
+# Subtest: a response body error after publication releases its slot without retrying exposed bytes
+ok 10 - a response body error after publication releases its slot without retrying exposed bytes
+  ---
+  duration_ms: 2.982667
+  type: 'test'
+  ...
+# Subtest: a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+ok 11 - a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+  ---
+  duration_ms: 34.678125
+  type: 'test'
+  ...
+# Subtest: live responses preserve the 16-message prompt window and all prior response acknowledgements
+ok 12 - live responses preserve the 16-message prompt window and all prior response acknowledgements
+  ---
+  duration_ms: 425.16425
+  type: 'test'
+  ...
+# Subtest: parallel preparation still rejects a material change before publishing doctor text
+ok 13 - parallel preparation still rejects a material change before publishing doctor text
+  ---
+  duration_ms: 407.858917
+  type: 'test'
+  ...
+# Subtest: material metadata projection keeps original content reads and rejects stale versions and retired content
+ok 14 - material metadata projection keeps original content reads and rejects stale versions and retired content
+  ---
+  duration_ms: 89.224834
+  type: 'test'
+  ...
+# Subtest: skill text refreshes after edits, missing files and recovery
+ok 15 - skill text refreshes after edits, missing files and recovery
+  ---
+  duration_ms: 6.519166
+  type: 'test'
+  ...
+# (node:72373) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72373) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: practice, transfer and independent trainer review require evidence and never close on a worse score
+ok 16 - practice, transfer and independent trainer review require evidence and never close on a worse score
+  ---
+  duration_ms: 3555.614791
+  type: 'test'
+  ...
+# Subtest: stale tasks can be archived or restarted with a fresh baseline, while cross-account access stays forbidden
+ok 17 - stale tasks can be archived or restarted with a fresh baseline, while cross-account access stays forbidden
+  ---
+  duration_ms: 1969.859625
+  type: 'test'
+  ...
+# Subtest: missing alternate scenes leave verification pending and trainer rejection preserves the practice loop
+ok 18 - missing alternate scenes leave verification pending and trainer rejection preserves the practice loop
+  ---
+  duration_ms: 1434.418709
+  type: 'test'
+  ...
+# Subtest: a submitted field challenge reaches only its owner and returns only published derived scenes
+ok 19 - a submitted field challenge reaches only its owner and returns only published derived scenes
+  ---
+  duration_ms: 1524.755833
+  type: 'test'
+  ...
+# Subtest: next actions and outcome counts use owned records, deduplicate review visits and distinguish verified learning
+ok 20 - next actions and outcome counts use owned records, deduplicate review visits and distinguish verified learning
+  ---
+  duration_ms: 1132.24925
+  type: 'test'
+  ...
+# Subtest: human score corrections determine the next target and a trainer cannot approve their own verification
+ok 21 - human score corrections determine the next target and a trainer cannot approve their own verification
+  ---
+  duration_ms: 1218.993667
+  type: 'test'
+  ...
+# Subtest: trainer review rejects invented quotes, stale materials and stale versions, and can request further verification
+ok 22 - trainer review rejects invented quotes, stale materials and stale versions, and can request further verification
+  ---
+  duration_ms: 1224.734166
+  type: 'test'
+  ...
+# Subtest: unscored, invalid and title-only duplicate scenarios cannot masquerade as learning progress
+ok 23 - unscored, invalid and title-only duplicate scenarios cannot masquerade as learning progress
+  ---
+  duration_ms: 1168.162417
+  type: 'test'
+  ...
+# Subtest: learning metrics show explicit denominators and require a complete second-week observation window
+ok 24 - learning metrics show explicit denominators and require a complete second-week observation window
+  ---
+  duration_ms: 1201.483708
+  type: 'test'
+  ...
+# (node:72374) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72374) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: restart archives orphan checkpoints once and preserves already saved complete records
+ok 25 - restart archives orphan checkpoints once and preserves already saved complete records
+  ---
+  duration_ms: 759.3415
+  type: 'test'
+  ...
+# {"event":"session_recovery_pending","session_id":"1e011e8f-fffc-4d57-a14f-0d042b5a0394","error_type":"Error"}
+# Subtest: checkpoint recovery keeps its durable copy on storage failure and rejects active or foreign sessions
+ok 26 - checkpoint recovery keeps its durable copy on storage failure and rejects active or foreign sessions
+  ---
+  duration_ms: 702.082875
+  type: 'test'
+  ...
+# Subtest: a concurrent import wins over orphan checkpoint recovery
+ok 27 - a concurrent import wins over orphan checkpoint recovery
+  ---
+  duration_ms: 373.882709
+  type: 'test'
+  ...
+# {"event":"session_recovery_pending","session_id":"9e5d431d-e415-478f-bff1-eb46ab163898","error_type":"Error"}
+# Subtest: saved records reconcile grounded retraining after a transient failure without advancing it twice
+ok 28 - saved records reconcile grounded retraining after a transient failure without advancing it twice
+  ---
+  duration_ms: 591.477042
+  type: 'test'
+  ...
+# Subtest: finalization retains a recovery handoff when saving succeeds but its follow-up fails
+ok 29 - finalization retains a recovery handoff when saving succeeds but its follow-up fails
+  ---
+  duration_ms: 712.498458
+  type: 'test'
+  ...
+# Subtest: a live calibration survives an expired lease and prevents overlapping runs
+ok 30 - a live calibration survives an expired lease and prevents overlapping runs
+  ---
+  duration_ms: 458.599208
+  type: 'test'
+  ...
+# Subtest: calibration restart, list and cancellation settle orphan tasks without replaying models
+ok 31 - calibration restart, list and cancellation settle orphan tasks without replaying models
+  ---
+  duration_ms: 970.125625
+  type: 'test'
+  ...
+# Subtest: cancelling an active calibration preserves its terminal state and does not publish late results
+ok 32 - cancelling an active calibration preserves its terminal state and does not publish late results
+  ---
+  duration_ms: 290.366042
+  type: 'test'
+  ...
+# Subtest: speech retry runs independently of pending coaching and explicitly acknowledges rejected retries
+ok 33 - speech retry runs independently of pending coaching and explicitly acknowledges rejected retries
+  ---
+  duration_ms: 166.238791
+  type: 'test'
+  ...
+# Subtest: retraining uses the same material fingerprint in HTTP, WebSocket and progress comparisons
+ok 34 - retraining uses the same material fingerprint in HTTP, WebSocket and progress comparisons
+  ---
+  duration_ms: 434.04025
+  type: 'test'
+  ...
+# (node:72375) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: actual STDIO MCP exposes only research tools and refuses arbitrary private network archives
+ok 35 - actual STDIO MCP exposes only research tools and refuses arbitrary private network archives
+  ---
+  duration_ms: 1495.470375
+  type: 'test'
+  ...
+# (node:72376) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72376) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: normalization preserves non-whitespace and removes every ECMAScript whitespace character
+ok 36 - normalization preserves non-whitespace and removes every ECMAScript whitespace character
+  ---
+  duration_ms: 0.420667
+  type: 'test'
+  ...
+# Subtest: assessment normalization is local, checks every quote and never touches unused malformed history
+ok 37 - assessment normalization is local, checks every quote and never touches unused malformed history
+  ---
+  duration_ms: 1.081
+  type: 'test'
+  ...
+# Subtest: medical ranking matches exhaustive stable selection and empty lookups refresh approval receipts
+ok 38 - medical ranking matches exhaustive stable selection and empty lookups refresh approval receipts
+  ---
+  duration_ms: 162.171375
+  type: 'test'
+  ...
+# Subtest: PCM statistics respect signed little-endian samples, unaligned buffers and truncated frames
+ok 39 - PCM statistics respect signed little-endian samples, unaligned buffers and truncated frames
+  ---
+  duration_ms: 0.371041
+  type: 'test'
+  ...
+# Subtest: ASR packet compression preserves protocol flags, payload sizes and decoded audio
+ok 40 - ASR packet compression preserves protocol flags, payload sizes and decoded audio
+  ---
+  duration_ms: 5.130417
+  type: 'test'
+  ...
+# (node:72377) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72377) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: field projection keeps falsy values, missing fields and prototype-named own properties
+ok 41 - field projection keeps falsy values, missing fields and prototype-named own properties
+  ---
+  duration_ms: 1.682125
+  type: 'test'
+  ...
+# Subtest: review indexing preserves newest override priority, first duplicate dimension and immutable inputs
+ok 42 - review indexing preserves newest override priority, first duplicate dimension and immutable inputs
+  ---
+  duration_ms: 0.288834
+  type: 'test'
+  ...
+# Subtest: observed targets require current final trainee text and reject stale or invented quotes
+ok 43 - observed targets require current final trainee text and reject stale or invented quotes
+  ---
+  duration_ms: 0.466792
+  type: 'test'
+  ...
+# Subtest: skill routing keeps only the latest message per role when speaking and retains full-history mode
+ok 44 - skill routing keeps only the latest message per role when speaking and retains full-history mode
+  ---
+  duration_ms: 46.507125
+  type: 'test'
+  ...
+# Subtest: interaction summary uses the latest capture ending and counts only explicit interruption events
+ok 45 - interaction summary uses the latest capture ending and counts only explicit interruption events
+  ---
+  duration_ms: 0.613458
+  type: 'test'
+  ...
+# Subtest: summary quote caches are local and leave unused malformed text unnormalized
+ok 46 - summary quote caches are local and leave unused malformed text unnormalized
+  ---
+  duration_ms: 2.640834
+  type: 'test'
+  ...
+# (node:72378) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72378) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: retrieval retains non-overlapping counts, tie order and all existing limit semantics
+ok 47 - retrieval retains non-overlapping counts, tie order and all existing limit semantics
+  ---
+  duration_ms: 111.602334
+  type: 'test'
+  ...
+# Subtest: ASR indexes preserve message identity and persist every acknowledged final transcript
+ok 48 - ASR indexes preserve message identity and persist every acknowledged final transcript
+  ---
+  duration_ms: 373.487709
+  type: 'test'
+  ...
+# Subtest: non-authoritative checks do no approval I/O and authoritative checks always revalidate current receipts
+ok 49 - non-authoritative checks do no approval I/O and authoritative checks always revalidate current receipts
+  ---
+  duration_ms: 1.513458
+  type: 'test'
+  ...
+# Subtest: medical retrieval preserves duplicate-page matching, receipt precedence, scoring, limits and revocation
+ok 50 - medical retrieval preserves duplicate-page matching, receipt precedence, scoring, limits and revocation
+  ---
+  duration_ms: 3.520208
+  type: 'test'
+  ...
+# Subtest: catalogue summaries omit only pages, retain full details and reflect review changes immediately
+ok 51 - catalogue summaries omit only pages, retain full details and reflect review changes immediately
+  ---
+  duration_ms: 311.3075
+  type: 'test'
+  ...
+# Subtest: reused SQLite statements see fresh rows and preserve rollback and compare-and-swap boundaries
+ok 52 - reused SQLite statements see fresh rows and preserve rollback and compare-and-swap boundaries
+  ---
+  duration_ms: 123.754667
+  type: 'test'
+  ...
+# Subtest: bounded record reads retain account filtering, order, malformed-file handling and I/O failures
+ok 53 - bounded record reads retain account filtering, order, malformed-file handling and I/O failures
+  ---
+  duration_ms: 373.329416
+  type: 'test'
+  ...
+# Subtest: training fingerprints detect in-place mutations and ignore only calibration bookkeeping
+ok 54 - training fingerprints detect in-place mutations and ignore only calibration bookkeeping
+  ---
+  duration_ms: 1.096
+  type: 'test'
+  ...
+# Subtest: base64 validation retains padding, alphabet and non-string rejection
+ok 55 - base64 validation retains padding, alphabet and non-string rejection
+  ---
+  duration_ms: 17.60775
+  type: 'test'
+  ...
+# Subtest: speech statistics retain mute, playback, rounding and clipped-window semantics
+ok 56 - speech statistics retain mute, playback, rounding and clipped-window semantics
+  ---
+  duration_ms: 1.372708
+  type: 'test'
+  ...
+# Subtest: summary uses the latest check matching both message id and original text
+ok 57 - summary uses the latest check matching both message id and original text
+  ---
+  duration_ms: 0.975375
+  type: 'test'
+  ...
+# Subtest: medical citations retain strict length, first matching evidence and malformed-quote handling
+ok 58 - medical citations retain strict length, first matching evidence and malformed-quote handling
+  ---
+  duration_ms: 0.966333
+  type: 'test'
+  ...
+# (node:72385) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72385) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: all existing HTTP routes and the realtime endpoint are registered
+ok 59 - all existing HTTP routes and the realtime endpoint are registered
+  ---
+  duration_ms: 212.559375
+  type: 'test'
+  ...
+# Subtest: legacy scrypt credentials, cookie revocation, Origin and account isolation survive the runtime change
+ok 60 - legacy scrypt credentials, cookie revocation, Origin and account isolation survive the runtime change
+  ---
+  duration_ms: 1479.064375
+  type: 'test'
+  ...
+# Subtest: catalogue edits use CAS, approved evidence is revoked by revisions, and stable doctor identity retains history
+ok 61 - catalogue edits use CAS, approved evidence is revoked by revisions, and stable doctor identity retains history
+  ---
+  duration_ms: 305.4595
+  type: 'test'
+  ...
+# Subtest: input validation retains the custom rules that JSON schema alone cannot express
+ok 62 - input validation retains the custom rules that JSON schema alone cannot express
+  ---
+  duration_ms: 26.719917
+  type: 'test'
+  ...
+# Subtest: decimal pricing and calibration statistics retain their numerical boundaries
+ok 63 - decimal pricing and calibration statistics retain their numerical boundaries
+  ---
+  duration_ms: 0.865541
+  type: 'test'
+  ...
+# {"event":"http_error","error_type":"Error"}
+# Subtest: recording text stays in a private file and stale edits never delete committed text
+ok 64 - recording text stays in a private file and stale edits never delete committed text
+  ---
+  duration_ms: 338.169792
+  type: 'test'
+  ...
+# (node:72386) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72386) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: unarchived doctor candidates require real search receipts and never become verified facts
+ok 65 - unarchived doctor candidates require real search receipts and never become verified facts
+  ---
+  duration_ms: 61.577458
+  type: 'test'
+  ...
+# Subtest: Pi research pauses for identity selection and continues with the selected hospital and department
+ok 66 - Pi research pauses for identity selection and continues with the selected hospital and department
+  ---
+  duration_ms: 799.810833
+  type: 'test'
+  ...
+# (node:72387) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72387) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: all scenario schemas preserve the old types and accept every shared training template
+ok 67 - all scenario schemas preserve the old types and accept every shared training template
+  ---
+  duration_ms: 181.326958
+  type: 'test'
+  ...
+# Subtest: generation uses selected focus stages, retains evidence checks, and exports the new situation
+ok 68 - generation uses selected focus stages, retains evidence checks, and exports the new situation
+  ---
+  duration_ms: 503.371833
+  type: 'test'
+  ...
+# (node:72388) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72388) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: wiki lint checks navigation, excludes raw document brackets, and reports orphan pages
+ok 69 - wiki lint checks navigation, excludes raw document brackets, and reports orphan pages
+  ---
+  duration_ms: 237.6565
+  type: 'test'
+  ...
+# Subtest: immutable archives validate every receipt and reject tampering or symlink escape
+ok 70 - immutable archives validate every receipt and reject tampering or symlink escape
+  ---
+  duration_ms: 199.059583
+  type: 'test'
+  ...
+# Subtest: medical judgments lose their authority when the actual approved content is retired
+ok 71 - medical judgments lose their authority when the actual approved content is retired
+  ---
+  duration_ms: 395.865084
+  type: 'test'
+  ...
+# Subtest: research restart recovers validated checkpoints without replaying provider requests
+ok 72 - research restart recovers validated checkpoints without replaying provider requests
+  ---
+  duration_ms: 259.124583
+  type: 'test'
+  ...
+# Subtest: PostgreSQL preserves the existing tables, transaction conflicts and records across restart
+ok 73 - PostgreSQL preserves the existing tables, transaction conflicts and records across restart
+  ---
+  duration_ms: 1058.140291
+  type: 'test'
+  ...
+# (node:72392) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72392) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: ASR and TTS binary codecs reject truncation, oversized output, mismatched sizes, and invalid client frames
+ok 74 - ASR and TTS binary codecs reject truncation, oversized output, mismatched sizes, and invalid client frames
+  ---
+  duration_ms: 9.653541
+  type: 'test'
+  ...
+# Subtest: practice runs through real WebSockets, Pi, ASR, TTS, final review and durable saving
+ok 75 - practice runs through real WebSockets, Pi, ASR, TTS, final review and durable saving
+  ---
+  duration_ms: 1263.03425
+  type: 'test'
+  ...
+# Subtest: combat bridges duplex audio, mute and interruption while ASR and Pi save an independent transcript
+ok 76 - combat bridges duplex audio, mute and interruption while ASR and Pi save an independent transcript
+  ---
+  duration_ms: 341.118542
+  type: 'test'
+  ...
+# Subtest: ASR sends a 100ms first packet, retains 200ms steady packets and flushes muted residual audio exactly
+ok 77 - ASR sends a 100ms first packet, retains 200ms steady packets and flushes muted residual audio exactly
+  ---
+  duration_ms: 731.425
+  type: 'test'
+  ...
+# (node:72394) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:72394) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: medical maintenance preserves failed originals, receipts and logs; Pi compilation validates quotes and reuses its cache
+ok 78 - medical maintenance preserves failed originals, receipts and logs; Pi compilation validates quotes and reuses its cache
+  ---
+  duration_ms: 1425.007542
+  type: 'test'
+  ...
+1..78
+# tests 78
+# suites 0
+# pass 78
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15883.06225

@@ -1,0 +1,11 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -550,7 +550,7 @@
+             '\n' +
+             doctorInstructions(options.training, options.free_context) +
+             p.DOCTOR_TURN,
+-          { temperature: models.config.temperature, tokens },
++          { temperature: models.config.temperature, tokens: Math.min(tokens, 1600) },
+         )
+       : undefined
+   const signal = AbortSignal.any([

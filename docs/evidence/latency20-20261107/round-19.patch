@@ -1,0 +1,10 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -264,6 +264,7 @@
+           text,
+         }
+         if (bounded) {
++          if (candidates.length === limit && compare(candidates[candidates.length - 1], candidate) <= 0) continue
+           let low = 0, high = candidates.length
+           while (low < high) {
+             const middle = (low + high) >>> 1

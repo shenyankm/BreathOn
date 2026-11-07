@@ -1,0 +1,61 @@
+TAP version 13
+# (node:69811) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:69811) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: model text deltas arrive before the tail is released, while the complete reply remains pending
+ok 1 - model text deltas arrive before the tail is released, while the complete reply remains pending
+  ---
+  duration_ms: 109.084
+  type: 'test'
+  ...
+# Subtest: streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+ok 2 - streaming responses hold concurrency until consumption or cancellation and abort unread bodies
+  ---
+  duration_ms: 10.807459
+  type: 'test'
+  ...
+# Subtest: a response body error after publication releases its slot without retrying exposed bytes
+ok 3 - a response body error after publication releases its slot without retrying exposed bytes
+  ---
+  duration_ms: 0.575209
+  type: 'test'
+  ...
+# Subtest: a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+ok 4 - a single model slot serves validated doctor text before a blocked coach and never publishes invalid JSON
+  ---
+  duration_ms: 7.955917
+  type: 'test'
+  ...
+# Subtest: live responses preserve the 16-message prompt window and all prior response acknowledgements
+ok 5 - live responses preserve the 16-message prompt window and all prior response acknowledgements
+  ---
+  duration_ms: 406.218125
+  type: 'test'
+  ...
+# Subtest: parallel preparation still rejects a material change before publishing doctor text
+ok 6 - parallel preparation still rejects a material change before publishing doctor text
+  ---
+  duration_ms: 411.836458
+  type: 'test'
+  ...
+# Subtest: material metadata projection keeps original content reads and rejects stale versions and retired content
+ok 7 - material metadata projection keeps original content reads and rejects stale versions and retired content
+  ---
+  duration_ms: 60.126417
+  type: 'test'
+  ...
+# Subtest: skill text refreshes after edits, missing files and recovery
+ok 8 - skill text refreshes after edits, missing files and recovery
+  ---
+  duration_ms: 1.35675
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2442.088292

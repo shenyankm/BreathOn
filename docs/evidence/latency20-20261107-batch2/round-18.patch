@@ -1,0 +1,11 @@
+--- a/frontend/src/lib/audio/browser-audio.ts
++++ b/frontend/src/lib/audio/browser-audio.ts
+@@ -9,7 +9,7 @@
+ function writePcm16(bytes: string, samples: Float32Array) {
+   for (let i = 0; i < samples.length; i++) {
+     const value = bytes.charCodeAt(i * 2) | (bytes.charCodeAt(i * 2 + 1) << 8)
+-    samples[i] = (value >= 32768 ? value - 65536 : value) / 32768
++    samples[i] = (value << 16 >> 16) / 32768
+   }
+ }
+ 

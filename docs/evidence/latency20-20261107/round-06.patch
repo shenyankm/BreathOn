@@ -1,0 +1,32 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -1,7 +1,7 @@
+ import { Agent, type AgentTool } from '@earendil-works/pi-agent-core'
+ import { createModels, type AssistantMessage, type Model } from '@earendil-works/pi-ai'
+ import { deepseekProvider } from '@earendil-works/pi-ai/providers/deepseek'
+-import { readFile } from 'node:fs/promises'
++import { readFile, stat } from 'node:fs/promises'
+ import { setTimeout as delay } from 'node:timers/promises'
+ import { type Doc, assert, constants, Semaphore, normalize, HttpError } from './core.ts'
+ import { publicURL } from './validation.ts'
+@@ -240,11 +240,17 @@
+   }
+ }
+ const skillRoot = new URL('../resources/skills/', import.meta.url)
++const skillCache = new Map<string, { stamp: string; text: Promise<string> }>()
+ export async function skill(name: string): Promise<string> {
+   assert(/^[a-z][a-z0-9-]+$/.test(name), 500, 'Invalid skill')
+-  return (await readFile(new URL(`${name}/SKILL.md`, skillRoot), 'utf8'))
+-    .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+-    .trim()
++  const path = new URL(`${name}/SKILL.md`, skillRoot), info = await stat(path)
++  const stamp = `${info.mtimeMs}:${info.ctimeMs}:${info.size}`
++  const cached = skillCache.get(name)
++  if (cached?.stamp === stamp) return cached.text
++  const text = readFile(path, 'utf8').then(value => value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim())
++  skillCache.set(name, { stamp, text })
++  void text.catch(() => { if (skillCache.get(name)?.text === text) skillCache.delete(name) })
++  return text
+ }
+ const routes: [string, RegExp][] = [
+   [
