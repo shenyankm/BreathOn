@@ -1,0 +1,31 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -210,6 +210,13 @@
+     }
+     const validRecords = records.filter(record => activity(record).valid)
+     const baselines = new Map(records.map(record => [record.id, record]))
++    let needsPractice = 0, needsVerification = 0, awaitingReview = 0, verified = 0
++    for (const plan of data.plans) {
++      if (plan.status === 'assigned') needsPractice++
++      if (plan.status === 'awaiting_verification') needsVerification++
++      if (plan.status === 'awaiting_review') awaitingReview++
++      if (plan.learning_status === 'verified') verified++
++    }
+     const today = Math.floor(Date.now() / 86400000)
+     let firstValid = 0, eligible = 0, returned = 0, repeatedWeakness = 0, practiceAttempts = 0, transferAttempts = 0, transferObserved = 0
+     for (const group of byOwner.values()) {
+@@ -242,10 +249,10 @@
+       saved_attempts: records.length, valid_attempts: validRecords.length,
+       reviewed_records: viewed.size, reviewed_then_retrained: new Set(data.plans.filter(plan => viewed.has(plan.parent_record_id) &&
+         plan.created_at >= viewed.get(plan.parent_record_id)).map(plan => plan.parent_record_id)).size,
+-      needs_practice: data.plans.filter(plan => plan.status === 'assigned').length,
+-      needs_verification: data.plans.filter(plan => plan.status === 'awaiting_verification').length,
+-      awaiting_review: data.plans.filter(plan => plan.status === 'awaiting_review').length,
+-      verified: data.plans.filter(plan => plan.learning_status === 'verified').length,
++      needs_practice: needsPractice,
++      needs_verification: needsVerification,
++      awaiting_review: awaitingReview,
++      verified: verified,
+       scope: '累计已保存场景训练；复盘访问从本功能启用后记录。次周回练按 UTC 自首条记录第 7–13 天统计，仅纳入已满 14 天的用户；不能推算未保存的启动或实际拜访能力。' }
+   })
+   route(app, 'GET', '/api/training/challenges', undefined, async user => {

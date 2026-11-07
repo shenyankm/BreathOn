@@ -1,0 +1,24 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -196,6 +196,12 @@
+       reviews: await tx.list(user.workspace, 'review'),
+       views: (await tx.all('learning_event')).filter(row => row.tenant === user.workspace && (user.role === 'admin' || row.item.owner_id === user.id)).map(row => row.item),
+     }), false)
++    const reviewsByRecord = new Map<string, Doc[]>()
++    for (const review of data.reviews) {
++      const group = reviewsByRecord.get(review.record_id)
++      if (group) group.push(review)
++      else reviewsByRecord.set(review.record_id, [review])
++    }
+     const viewed = new Map(data.views.map(row => [row.record_id, row.created_at]))
+     const byOwner = new Map<string, Doc[]>(), plans = new Map(data.plans.map(plan => [plan.id, plan]))
+     for (const record of records) {
+@@ -217,7 +223,7 @@
+     for (const record of records.filter(record => activity(record).valid)) {
+       const plan = plans.get(record.remediation_id)
+       if (!plan) continue
+-      const target = reviewedDimensions(record, data.reviews.filter(review => review.record_id === record.id)).find(row => row.key === plan.focus_key)
++      const target = reviewedDimensions(record, reviewsByRecord.get(record.id) ?? []).find(row => row.key === plan.focus_key)
+       if (!target || !Number.isInteger(target.score) || target.score < 0 || target.score > 4) continue
+       const observed = target.score >= 3 && observedTarget(record, plan.focus_key)
+       if (record.remediation_phase === 'verification') {

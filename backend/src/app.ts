@@ -13,6 +13,7 @@ import { Tasks } from './tasks.ts'
 import { registerPlatform } from './platform.ts'
 import { registerDocuments } from './documents.ts'
 import { registerOperations } from './operations.ts'
+import { registerLearning } from './learning.ts'
 import { DUPLEX_MODEL } from './voice-protocol.ts'
 
 export async function createApp(config: Doc = settings(), fetcher: typeof fetch = fetch) {
@@ -160,6 +161,7 @@ export async function createApp(config: Doc = settings(), fetcher: typeof fetch 
   }))
   app.get('/api/doctor', async () => constants.doctor.DOCTOR_PROFILE)
   registerPlatform(app, store, catalog)
+  registerLearning(app, store)
   registerDocuments(app, store, catalog)
   const calibration = registerOperations(app, store, catalog, models, tasks)
   medical.register(app)

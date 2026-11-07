@@ -19,6 +19,7 @@ import { Models, generateReply } from './agents.ts'
 import { Tasks } from './tasks.ts'
 import { route } from './http.ts'
 import { prices, estimateCost } from './platform.ts'
+import { observedTarget, prepareRemediation, reviewedDimensions } from './learning.ts'
 
 const caseKeys = ['title', 'situation', 'approach', 'rationale', 'limitations']
 async function validateCase(tx: Transaction, u: User, item: Doc) {
@@ -170,18 +171,12 @@ export function registerOperations(
         '医生、场景或资料版本已变化，不能建立同条件重练。',
       )
       return store.transaction(u.workspace, async (tx) => {
-        const dimensions = activity(record).assessment.dimensions ?? []
-        for (const review of (await tx.list(u.workspace, 'review'))
-          .filter((r) => r.record_id === record.id)
-          .reverse())
-          for (const change of review.overrides ?? []) {
-            const d = dimensions.find((d: Doc) => d.key === change.key)
-            if (d) d.score = change.score
-          }
+        const dimensions = reviewedDimensions(record, (await tx.list(u.workspace, 'review')).filter(row => row.record_id === record.id))
         const focus = dimensions
-            .filter((d: Doc) => d.score !== null && d.score < 4)
-            .sort((a: Doc, b: Doc) => a.score - b.score)[0],
-          item = await tx.create(u.workspace, 'remediation', {
+            .filter((d: Doc) => Number.isInteger(d.score) && d.score >= 0 && d.score <= 4)
+            .sort((a: Doc, b: Doc) => a.score - b.score)[0]
+        assert(activity(record).valid && focus, 409, '本次尚无有效的目标维度，请先完成一次有效场景练习；原话仍保留供复核。')
+        const item = await tx.create(u.workspace, 'remediation', {
             owner_id: u.id,
             workspace: u.workspace,
             team: record.team ?? '',
@@ -192,7 +187,8 @@ export function registerOperations(
             focus_key: focus?.key ?? null,
             focus_label: focus?.label ?? '证据与回应结构巩固',
             note: b.note || '沿用同一评价量表巩固练习；未观察项不视为缺点。',
-            status: 'assigned',
+            status: stage === record.training.stage && focus?.score >= 3 && observedTarget(record, focus?.key) ? 'awaiting_verification' : 'assigned',
+            learning_status: stage === record.training.stage && focus?.score >= 3 && observedTarget(record, focus?.key) ? 'needs_verification' : 'needs_practice',
             assigned_by: u.id,
           })
         await tx.audit(u, 'retrain.create', 'remediation', item.id)
@@ -211,7 +207,7 @@ export function registerOperations(
       baseline = rows.find((row) => row.id === item.parent_record_id),
       seen = new Set<string>(),
       children = rows
-        .filter((row) => row.valid && row.remediation_id === id)
+        .filter((row) => row.valid && row.remediation_id === id && row.remediation_phase !== 'verification')
         .sort((a, b) => (a.ended_at ?? a.started_at).localeCompare(b.ended_at ?? b.started_at))
         .filter((row) => {
           const key = JSON.stringify([
@@ -285,28 +281,8 @@ export function registerOperations(
     remediationProgress(u, p.item_id),
   )
   route(app, 'GET', '/api/remediations/{item_id}/next', undefined, async (u, p) => {
-    const item = await store.transaction(
-      u.workspace,
-      (tx) => tx.require(u.workspace, 'remediation', p.item_id),
-      false,
-    )
-    assert(item.status === 'assigned', 403, '补练已关闭。')
-    const baseline = await store.ownRecord(u, item.parent_record_id),
-      training = await prepareTraining(store, u, item.scenario_id, item.stage),
-      fingerprint = trainingFingerprint(baseline.training)
-    assert(
-      fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
-      409,
-      '医生、场景或资料版本已变化，不能启动同条件重练。',
-    )
-    return {
-      ...item,
-      remediation_id: item.id,
-      experience: ['practice', 'combat'].includes(baseline.experience)
-        ? baseline.experience
-        : 'practice',
-      mode: ['assisted', 'independent'].includes(baseline.mode) ? baseline.mode : 'assisted',
-    }
+    const { plan, choice, phase } = await prepareRemediation(store, u, p.item_id)
+    return { ...plan, ...choice, phase }
   })
   route(app, 'GET', '/api/cases', undefined, (u) =>
     store.transaction(u.workspace, (tx) => tx.list(u.workspace, 'case'), false),

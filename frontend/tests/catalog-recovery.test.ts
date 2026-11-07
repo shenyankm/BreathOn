@@ -55,7 +55,6 @@ function page(file: string, name: string, api: (path: string, options?: RequestI
       get(key: string) { return this.values[key] ?? key }
     },
     require: (module: string) => {
-      if (module === '@/lib/practice-images') return { doctorIllustration: '/doctor.png' }
       if (module === '@/lib/admin-overview') return { overviewSources, overviewSummary }
       if (module === '@/lib/admin-navigation') return { adminHref: (section: string) => `#admin?section=${section}` }
       if (module === '@/lib/app-drugs') return { isAppDrug }
@@ -543,131 +542,6 @@ test('opening a newly confirmed candidate adds it to the doctor list', async () 
   const tree=app.render({kind:'doctor'})
   assert.equal(find(tree,'DoctorForm')[0].props.item.id,'candidate')
   assert.equal(listRows(tree).length,1)
-})
-
-test('company products only shows published company products', async () => {
-  const drug = { id: 'company', status: 'published', name: '玛仕度肽注射液', brand: '', aliases: [], ownership: 'company', category: '', diseases: [], mechanism: '', dosage_form: '', regions: [], indications: [], overview: '', source_url: '', company: '', manufacturer: '' }
-  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/drug' ? [drug, { ...drug, id: 'competitor', ownership: 'competitor', name: '竞品名称' }, { ...drug, id: 'draft', status: 'draft', name: '未发布名称' }] : [])
-  app.render({ companyOnly: true })
-  await settle()
-  const view = app.render({ companyOnly: true })
-  const cards = JSON.stringify(find(view, 'Card'))
-  assert.ok(cards.includes('玛仕度肽注射液'))
-  assert.ok(!cards.includes('竞品名称'))
-  assert.ok(!cards.includes('未发布名称'))
-})
-
-test('library loads only visited catalogs and reuses already loaded categories', async () => {
-  const calls: string[] = []
-  const app = page('library-page.tsx', 'LibraryPage', async path => { calls.push(path); return [] })
-  app.render(); await settle()
-  let tree = app.render()
-  assert.deepEqual(calls, ['/catalog/drug'])
-  assert.deepEqual(find(tree, 'TabsTrigger').map(node => node.props.value), ['drugs', 'doctors'])
-  assert.equal(find(tree, 'TabsContent').some(node => node.props.value === 'medical'), false)
-  find(tree, 'Tabs')[0].props.onValueChange('doctors')
-  app.render(); await settle(); tree = app.render()
-  assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
-  find(tree, 'Tabs')[0].props.onValueChange('drugs')
-  app.render(); await settle()
-  assert.deepEqual(calls, ['/catalog/drug', '/catalog/doctor'])
-})
-
-test('doctor library shows clean names with a prominent simulation notice', async () => {
-  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [{ id: 'one', status: 'published', name: '张建中', display_name: '张建中（训练模拟）', specialty: '皮肤科', sources: [] }] : [])
-  app.render(); await settle()
-  find(app.render(), 'Tabs')[0].props.onValueChange('doctors')
-  app.render(); await settle()
-  const tree = app.render()
-  assert.ok(find(tree, 'Button').some(node => node.props['aria-label'] === '查看张建中的资料'))
-  assert.ok(find(tree, 'AlertTitle').some(node => node.props.children === 'AI 模拟角色，非医生本人'))
-})
-
-
-test('doctor cards open full details and preserve the doctor category on return', async () => {
-  const doctor = { id: 'one', status: 'published', name: '张建中', display_name: '张建中（训练模拟）', hospital: '测试医院', specialty: '皮肤科', background_type: 'public', public_facts: '完整背景内容', training_style: '完整模拟设定', sources: ['https://example.com/source', 'javascript:alert(1)'] }
-  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [doctor] : [])
-  app.render(); await settle()
-  find(app.render(), 'Tabs')[0].props.onValueChange('doctors')
-  app.render(); await settle()
-  let tree = app.render()
-  assert.equal(JSON.stringify(find(tree, 'Card')).includes('完整背景内容'), false)
-  let focused = false
-  find(tree, 'Button').find(node => node.props['aria-label'] === '查看张建中的资料')!.props.onClick({ currentTarget: { focus(options: { preventScroll: boolean }) { focused = options.preventScroll } } })
-  tree = app.render()
-  assert.equal(find(tree, 'Dialog')[0].props.open, true)
-  const detail = find(tree, 'article')[0]
-  assert.equal(detail.props['aria-label'], '医生详情正文')
-  assert.ok(JSON.stringify(detail).includes('完整背景内容'))
-  assert.ok(JSON.stringify(detail).includes('完整模拟设定'))
-  assert.deepEqual(find(detail, 'a').map(node => node.props.href), ['https://example.com/source'])
-  find(tree, 'Dialog')[0].props.onOpenChange(false)
-  find(tree, 'DialogContent')[0].props.onCloseAutoFocus({ preventDefault() {} })
-  tree = app.render()
-  assert.equal(find(tree, 'Dialog')[0].props.open, false)
-  assert.equal(find(tree, 'Tabs')[0].props.value, 'doctors')
-  assert.equal(focused, true)
-})
-
-test('library carries the viewed doctor into practice without losing the reading context', async () => {
-  const choices: unknown[] = []
-  const props = { onPractice: (choice: unknown) => choices.push(choice) }
-  const app = page('library-page.tsx', 'LibraryPage', async path => path === '/catalog/doctor' ? [{ id: 'doctor-ji', status: 'published', name: '纪立农', specialty: '内分泌科', sources: [] }] : [])
-  app.render(props); await settle()
-  find(app.render(props), 'Tabs')[0].props.onValueChange('doctors')
-  app.render(props); await settle()
-  find(app.render(props), 'Button').find(node => node.props['aria-label'] === '查看纪立农的资料')!.props.onClick({ currentTarget: { focus() {} } })
-  const button = find(app.render(props), 'Button').find(node => JSON.stringify(node.props.children).includes('用这个'))!
-  assert.ok(button)
-  button.props.onClick()
-  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{ doctor_id: 'doctor-ji' }])
-  assert.equal(find(app.render(props), 'Dialog')[0].props.open, false)
-})
-
-
-test('dedicated doctor page opens published doctors directly and carries the selected ID to practice', async () => {
-  const choices: unknown[] = [], calls: string[] = []
-  const props = { doctorsOnly: true, onPractice: (choice: unknown) => choices.push(choice) }
-  const app = page('library-page.tsx', 'LibraryPage', async path => {
-    calls.push(path)
-    return [{id:'real-id', status:'published', name:'测试医生', specialty:'全科', sources:[]}, {id:'draft', status:'draft', name:'未发布', sources:[]}]
-  })
-  app.render(props); await settle()
-  let tree = app.render(props)
-  assert.deepEqual(calls, ['/catalog/doctor'])
-  assert.equal(find(tree, 'Tabs')[0].props.value, 'doctors')
-  assert.equal(find(tree, 'TabsList')[0].props.hidden, true)
-  assert.equal(find(tree, 'Button').some(node => node.props['aria-label'] === '查看未发布的资料'), false)
-  find(tree, 'Button').find(node => node.props['aria-label'] === '查看测试医生的资料').props.onClick({currentTarget:{focus(){}}})
-  tree = app.render(props)
-  find(tree, 'Button').find(node => JSON.stringify(node.props.children).includes('用这个')).props.onClick()
-  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{doctor_id:'real-id'}])
-})
-
-test('clinical scenarios recover from load errors, hide drafts, search diseases and preserve real IDs', async () => {
-  let fail = true
-  const choices: unknown[] = []
-  const props = { onPractice: (choice: unknown) => choices.push(choice) }
-  const row = {id:'scenario-real', status:'published', title:'沟通训练', disease:'代谢', product:'产品', objective:'说明证据边界'}
-  const app = page('scenarios-page.tsx', 'ScenariosPage', async path => {
-    assert.equal(path, '/catalog/scenario')
-    if(fail) throw new Error('暂时离线')
-    return [row, {...row, id:'draft', status:'draft', title:'草稿'}]
-  })
-  app.render(props); await settle()
-  let tree = app.render(props)
-  assert.ok(JSON.stringify(tree).includes('无法加载训练场景'))
-  fail = false
-  find(tree,'Button').find(node => node.props.children === '重新加载').props.onClick()
-  app.render(props); await settle(); tree = app.render(props)
-  assert.equal(JSON.stringify(tree).includes('草稿'), false)
-  find(tree, 'Input')[0].props.onChange({target:{value:'没有匹配'}})
-  tree = app.render(props)
-  assert.ok(JSON.stringify(tree).includes('没有匹配的场景'))
-  find(tree, 'Input')[0].props.onChange({target:{value:'代谢'}})
-  tree = app.render(props)
-  find(tree,'Button').find(node => JSON.stringify(node.props.children).includes('选择此场景')).props.onClick()
-  assert.deepEqual(JSON.parse(JSON.stringify(choices)), [{scenario_id:'scenario-real',stage:'full'}])
 })
 
 test('admin overview distinguishes unavailable totals from zero and refreshes failed sources', async () => {

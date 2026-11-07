@@ -39,7 +39,7 @@ export async function privateWrite(path: string, data: string | Buffer) {
 }
 const visible = (kind: string, item: Doc) => {
   const user = identity.getStore(),
-    key = ({ case: 'created_by', remediation: 'owner_id', member_state: 'owner_id' } as Doc)[kind]
+    key = ({ case: 'created_by', remediation: 'owner_id', member_state: 'owner_id', learning_event: 'owner_id' } as Doc)[kind]
   return !user?.authenticated || !key || item[key] === user.id
 }
 export class Transaction {
@@ -424,6 +424,7 @@ export function activity(record: Doc): Doc {
       'analysis_status',
       'experience',
       'remediation_id',
+      'remediation_phase',
     ]),
     format: 2,
     valid: !!valid,

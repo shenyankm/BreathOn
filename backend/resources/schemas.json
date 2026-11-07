@@ -8205,6 +8205,14 @@
         "default": false,
         "title": "Private Audio",
         "type": "boolean"
+      },
+      "training_challenge": {
+        "type": "boolean",
+        "default": false
+      },
+      "request_id": {
+        "type": "string",
+        "format": "uuid"
       }
     },
     "required": [

@@ -1,0 +1,58 @@
+{
+  "created_at": "2026-11-07T06:01:18.958252+00:00",
+  "node": "v22.23.2",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "rounds": 20,
+  "retained": 12,
+  "reverted": 8,
+  "round_outputs_equal": true,
+  "overall_outputs_equal": true,
+  "source_rebuild_matches": true,
+  "backend": {
+    "passed": 69,
+    "failed": 0,
+    "skipped": 0,
+    "postgres": "fresh disposable PostgreSQL 17 container, removed after test"
+  },
+  "frontend": {
+    "passed": 183,
+    "failed": 0,
+    "skipped": 0
+  },
+  "focused_backend": {
+    "passed": 6,
+    "failed": 0
+  },
+  "training_browser": {
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "web_e2e": {
+    "passed": 22,
+    "failed": 0,
+    "skipped": 6,
+    "skip_reasons": [
+      "five paid-provider tests",
+      "one Android WebView without an attached device"
+    ]
+  },
+  "build": {
+    "backend": true,
+    "web": true,
+    "android_frontend": true
+  },
+  "lint": {
+    "errors": 0,
+    "existing_warnings": 2
+  },
+  "not_verified": [
+    "paid providers",
+    "Android APK build/install and physical devices",
+    "production traffic and deployment",
+    "peak RSS/heap and sustained concurrency"
+  ],
+  "media_tool_path": "/tmp/evispeak-ffprobe-20261107/bin",
+  "committed": false,
+  "deployed": false
+}

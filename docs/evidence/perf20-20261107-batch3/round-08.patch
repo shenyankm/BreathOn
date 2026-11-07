@@ -1,0 +1,21 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -253,9 +253,17 @@
+       visits: (await tx.list(user.workspace, 'visit')).filter(row => row.owner_id === user.id && row.training_challenge === true),
+       scenes: (await tx.list(user.workspace, 'scenario')).filter(row => row.status === 'published'),
+     }), false)
++    const scenesByCase = new Map<string, Doc[]>()
++    for (const scene of scenes) {
++      const id = scene.generation?.case?.id
++      if (!id) continue
++      const group = scenesByCase.get(id)
++      if (group) group.push(scene)
++      else scenesByCase.set(id, [scene])
++    }
+     return visits.map(visit => ({ id: visit.id, version: visit.version, status: visit.status, text: visit.redacted_text || visit.text || '',
+       visited_at: visit.visited_at, review: visit.review ? { decision: visit.review.decision, reason: visit.review.reason } : null,
+-      scenarios: scenes.filter(scene => scene.generation?.case?.id && scene.generation.case.id === visit.review?.case_id)
++      scenarios: (scenesByCase.get(visit.review?.case_id) ?? [])
+         .map(scene => ({ id: scene.id, title: scene.title })),
+     }))
+   })

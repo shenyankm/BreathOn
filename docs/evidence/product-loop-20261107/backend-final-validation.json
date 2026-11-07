@@ -1,0 +1,33 @@
+{
+  "checks": [
+    {
+      "name": "backend-final-tests",
+      "command": [
+        "npm",
+        "--prefix",
+        "backend",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 8.634,
+      "log": "backend-final-tests.txt"
+    },
+    {
+      "name": "backend-final-build",
+      "command": [
+        "npm",
+        "--prefix",
+        "backend",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.761,
+      "log": "backend-final-build.txt"
+    }
+  ],
+  "database": "disposable PostgreSQL 17-alpine container on loopback",
+  "paid_providers": false,
+  "physical_android": false,
+  "database_container_removed": true
+}

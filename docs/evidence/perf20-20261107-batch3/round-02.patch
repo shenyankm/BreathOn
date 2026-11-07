@@ -1,0 +1,19 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -395,10 +395,12 @@
+   const review = [...(record.coaching ?? [])].reverse().find((row: Doc) => row.final_report) ?? {},
+     assessment = review.assessment ?? {},
+     training = record.training ?? {}
+-  const trainee = (record.messages ?? []).filter(
+-      (m: Doc) => m.role === 'trainee' && m.text?.trim(),
+-    ),
+-    text = trainee.map((m: Doc) => m.text.trim()).join('\n')
++  const trainee: Doc[] = [], texts: string[] = []
++  for (const message of record.messages ?? []) {
++    const value = message.role === 'trainee' ? message.text?.trim() : ''
++    if (value) { trainee.push(message); texts.push(value) }
++  }
++  const text = texts.join('\n')
+   const valid =
+     record.status === 'completed' &&
+     record.capture_status === 'completed' &&

@@ -1,0 +1,11 @@
+--- a/backend/src/store.ts
++++ b/backend/src/store.ts
+@@ -392,7 +392,7 @@
+   return sha(canonical(captured))
+ }
+ export function activity(record: Doc): Doc {
+-  const review = [...(record.coaching ?? [])].reverse().find((row: Doc) => row.final_report) ?? {},
++  const review = (record.coaching ?? []).findLast((row: Doc) => row.final_report) ?? {},
+     assessment = review.assessment ?? {},
+     training = record.training ?? {}
+   const trainee = (record.messages ?? []).filter(

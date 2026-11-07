@@ -1,0 +1,16 @@
+--- a/backend/src/voice-protocol.ts
++++ b/backend/src/voice-protocol.ts
+@@ -23,11 +23,12 @@
+     super(message)
+   }
+ }
++const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/
+ export function decode64(value: unknown): Buffer {
+   assert(
+     typeof value === 'string' &&
+       value.length % 4 === 0 &&
+-      /^[A-Za-z0-9+/]*={0,2}$/.test(value),
++      base64Pattern.test(value),
+     422,
+     '无效音频编码。',
+   )

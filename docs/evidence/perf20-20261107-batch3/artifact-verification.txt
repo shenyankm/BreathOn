@@ -1,0 +1,2 @@
+Retained patches exactly rebuild all final source files: ['backend/src/training.ts', 'backend/src/medical.ts', 'backend/src/learning.ts', 'backend/src/agents.ts', 'backend/src/core.ts', 'frontend/src/lib/learning.ts']
+All 20 measurements, output hashes and retention gates verified.

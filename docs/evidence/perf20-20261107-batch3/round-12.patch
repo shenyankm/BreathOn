@@ -1,0 +1,20 @@
+--- a/backend/src/medical.ts
++++ b/backend/src/medical.ts
+@@ -599,6 +599,8 @@
+     502,
+     '医学逐句核验覆盖不完整。',
+   )
++  const chunks = new Map<string, Doc>()
++  for (const chunk of evidence) if (!chunks.has(chunk.id)) chunks.set(chunk.id, chunk)
+   return parts.map((sentence, index) => {
+     const row = raw.statements[index]
+     assert(
+@@ -616,7 +618,7 @@
+     let valid = true
+     const citations: Doc[] = []
+     for (const citation of row.citations) {
+-      const chunk = evidence.find((e) => e.id === citation?.chunk_id),
++      const chunk = chunks.get(citation?.chunk_id),
+         quote = citation?.quote,
+         quoteText = typeof quote === 'string' ? normalize(quote) : ''
+       if (

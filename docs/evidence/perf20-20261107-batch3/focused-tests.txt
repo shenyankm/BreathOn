@@ -1,0 +1,49 @@
+TAP version 13
+# (node:14335) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# (node:14335) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# Subtest: field projection keeps falsy values, missing fields and prototype-named own properties
+ok 1 - field projection keeps falsy values, missing fields and prototype-named own properties
+  ---
+  duration_ms: 0.592791
+  type: 'test'
+  ...
+# Subtest: review indexing preserves newest override priority, first duplicate dimension and immutable inputs
+ok 2 - review indexing preserves newest override priority, first duplicate dimension and immutable inputs
+  ---
+  duration_ms: 0.214041
+  type: 'test'
+  ...
+# Subtest: observed targets require current final trainee text and reject stale or invented quotes
+ok 3 - observed targets require current final trainee text and reject stale or invented quotes
+  ---
+  duration_ms: 0.373916
+  type: 'test'
+  ...
+# Subtest: skill routing keeps only the latest message per role when speaking and retains full-history mode
+ok 4 - skill routing keeps only the latest message per role when speaking and retains full-history mode
+  ---
+  duration_ms: 9.192167
+  type: 'test'
+  ...
+# Subtest: interaction summary uses the latest capture ending and counts only explicit interruption events
+ok 5 - interaction summary uses the latest capture ending and counts only explicit interruption events
+  ---
+  duration_ms: 0.147958
+  type: 'test'
+  ...
+# Subtest: summary quote caches are local and leave unused malformed text unnormalized
+ok 6 - summary quote caches are local and leave unused malformed text unnormalized
+  ---
+  duration_ms: 0.940917
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 249.105875

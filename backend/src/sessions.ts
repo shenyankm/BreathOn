@@ -3,13 +3,14 @@ import { readFile, readdir, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 import { type Doc, type User, assert, constants, pick, uuid, Semaphore, identity } from './core.ts'
-import { Store, newRecord, privateWrite, activity, trainingFingerprint } from './store.ts'
+import { Store, newRecord, privateWrite, activity } from './store.ts'
 import { Models } from './agents.ts'
 import { Medical, validateSummary } from './medical.ts'
 import { Dialogue } from './live.ts'
 import { prepareTraining, prepareFree, snapshot, doctorInstructions, opening } from './training.ts'
 import { prices } from './platform.ts'
 import { Authentication } from './auth.ts'
+import { finishLearning, prepareRemediation } from './learning.ts'
 import { route } from './http.ts'
 import {
   Socket,
@@ -226,7 +227,7 @@ export class Sessions {
       client.ws.close(1008)
       return
     }
-    const experience = query.experience ?? 'combat'
+    let experience = query.experience ?? 'combat'
     if (!['practice', 'combat'].includes(experience)) {
       client.ws.close(1008)
       return
@@ -243,22 +244,11 @@ export class Sessions {
         free = await prepareFree(this.store, user, query.drug_id, query.doctor_id, query.focus)
       }
       if (query.remediation_id) {
-        remediation = await this.store.transaction(
-          user.workspace,
-          (tx) => tx.require(user.workspace, 'remediation', query.remediation_id),
-          false,
-        )
-        assert(remediation.status === 'assigned', 403, '补练已关闭。')
-        const parent = await this.store.ownRecord(user, remediation.parent_record_id)
-        query.scenario_id = remediation.scenario_id
-        query.stage = remediation.stage
-        training = await prepareTraining(this.store, user, query.scenario_id, query.stage)
-        const fingerprint = trainingFingerprint(parent.training)
-        assert(
-          fingerprint && fingerprint === trainingFingerprint(snapshot(training)),
-          409,
-          '医生、场景或资料版本已变化，不能启动同条件重练。',
-        )
+        const prepared = await prepareRemediation(this.store, user, query.remediation_id, query.scenario_id)
+        remediation = { ...prepared.plan, phase: prepared.phase }
+        training = prepared.training
+        Object.assign(query, prepared.choice)
+        experience = prepared.choice.experience
       }
       if (query.scenario_id && !training)
         training = await prepareTraining(this.store, user, query.scenario_id, query.stage ?? 'full')
@@ -313,7 +303,10 @@ export class Sessions {
       record.free_context = free
       record.doctor = pick(free.doctor, ['id', 'version', 'display_name'])
     }
-    if (remediation) record.remediation_id = remediation.id
+    if (remediation) {
+      record.remediation_id = remediation.id
+      record.remediation_phase = remediation.phase
+    }
     const controller = new AbortController()
     const promise = Promise.resolve()
       .then(() => this.run(client, request, record, training, controller.signal))
@@ -374,6 +367,10 @@ export class Sessions {
         '请先发送有效的演练启动消息。',
       )
       record.mode = start.mode
+      if (record.remediation_id)
+        assert(start.mode === (request.query as Doc).mode, 422, '重练必须沿用准备好的演练方式。')
+      if (record.remediation_phase === 'verification')
+        assert(record.experience === 'combat' && start.mode === 'independent', 422, '迁移验证必须关闭实时辅助。')
       const asr = await Socket.connect(
         config.asrUrl ?? ASR_URL,
         {
@@ -737,23 +734,7 @@ export class Sessions {
     }
   }
   async finishRemediation(u: User, record: Doc) {
-    if (record.remediation_id && activity(record).valid)
-      await this.store.transaction(u.workspace, async (tx) => {
-        const item = await tx.require(u.workspace, 'remediation', record.remediation_id)
-        assert(
-          record.workspace === u.workspace && item.owner_id === record.owner_id && record.owner_id === u.id,
-          404,
-          '重练记录不属于当前账号。',
-        )
-        if (item.status !== 'assigned') return
-        await tx.update(
-          u.workspace,
-          'remediation',
-          item.id,
-          { ...item, status: 'completed', completed_record_id: record.id },
-          item.version,
-        )
-      })
+    await finishLearning(this.store, u, record)
   }
   async checkServices(): Promise<Doc> {
     const config = this.store.config,

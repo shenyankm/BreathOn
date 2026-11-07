@@ -1,0 +1,11 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -255,7 +255,7 @@
+   return ['medical-rep-academic-visit', ...matched]
+ }
+ export function interactionSummary(interactions: Doc[]): string {
+-  const ended = [...interactions].reverse().find((e) => e.type === 'capture_end')?.status,
++  const ended = interactions.findLast((e) => e.type === 'capture_end')?.status,
+     clicks = interactions.filter((e) => e.type === 'manual_interrupt').length
+   return (
+     `记录了${clicks}次点击打断按钮。` +

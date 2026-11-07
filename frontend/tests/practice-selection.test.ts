@@ -49,7 +49,6 @@ function component(file: string, name: string, api: Api) {
       if (module === '@/lib/doctor-label') return { doctorLabel }
       if (module === 'react') return react
       if (module === 'react/jsx-runtime') return { jsx, jsxs: jsx }
-      if (module === '@/lib/practice-images') return { drugImage: () => undefined, doctorIllustration: '/doctor-illustration.png' }
       if (module === '@/lib/platform-api') return { api }
       if (module === '@/lib/catalog-types') return { stages }
       if (module === '@/lib/training-setup') return { presetFor, recommendedScenario, trainingPresets }

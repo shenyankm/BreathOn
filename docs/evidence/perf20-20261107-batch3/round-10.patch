@@ -1,0 +1,13 @@
+--- a/frontend/src/lib/learning.ts
++++ b/frontend/src/lib/learning.ts
+@@ -11,7 +11,9 @@
+ export function nextAction(record: { coaching?: LiveCoach[]; messages: { id: string; role: string; text: string; final: boolean }[] }) {
+   const latest = record.coaching?.findLast(row => row.final_report)
+   const coach = latest?.superseded || latest?.degraded ? undefined : latest
+-  const dimension = coach?.assessment?.dimensions.filter(row => typeof row.score==='number' && Number.isInteger(row.score) && row.score>=0 && row.score<=4).sort((a, b) => a.score! - b.score!)[0]
++  const dimension = coach?.assessment?.dimensions.reduce<NonNullable<LiveCoach['assessment']>['dimensions'][number] | undefined>((best, row) =>
++    typeof row.score === 'number' && Number.isInteger(row.score) && row.score >= 0 && row.score <= 4 &&
++    (!best || row.score < best.score!) ? row : best, undefined)
+   const compact = (text: string) => text.replace(/\s+/gu, '')
+   const quote = dimension?.utterances.find(quote => compact(quote.quote).length>=6 && record.messages.some(message => message.id === quote.message_id &&
+     message.role === 'trainee' && message.final && compact(message.text).includes(compact(quote.quote))))

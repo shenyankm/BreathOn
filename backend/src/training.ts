@@ -176,6 +176,7 @@ export function snapshot(training: Doc): Doc {
   return {
     ...pick(training, ['scenario', 'doctor', 'rubric', 'stage', 'as_of']),
     focus_dimensions: training.focus_dimensions ?? [],
+    practice_instruction: training.practice_instruction ?? '',
     drugs: (training.drugs ?? []).map((d: Doc) => pick(d, ['id', 'version', 'name', 'brand'])),
     policies: (training.policies ?? []).map((d: Doc) =>
       pick(d, ['id', 'version', 'title', 'version_label']),
@@ -241,7 +242,7 @@ export function retrieve(documents: Doc[], query: string, limit = 10): Doc[] {
     for (const page of doc.pages)
       for (let offset = 0; offset < page.text.length; offset += 1100) {
         const text = page.text.slice(offset, offset + 1300),
-          lower = text.toLowerCase()
+          lower = terms.length ? text.toLowerCase() : ''
         let score = 0
         for (const term of terms) {
           let start = 0
@@ -290,6 +291,7 @@ export function trainingContext(training: Doc, messages: Doc[]): Doc {
   return {
     ...pick(training, ['scenario', 'doctor', 'rubric', 'stage', 'as_of']),
     focus_dimensions: training.focus_dimensions ?? [],
+    practice_instruction: training.practice_instruction ?? '',
     stage_label: (
       {
         full: '完整拜访',
@@ -345,7 +347,7 @@ export function doctorInstructions(training?: Doc, free?: Doc): string {
       (scenarioTemplates[training.scenario.situation ?? 'first_visit'] ?? scenarioTemplates.first_visit).doctor_rule +
       '\n' +
       constants.training.DIFFICULTY_RULES[training.scenario.difficulty]
-    configuration = pick(training, ['scenario', 'doctor', 'stage'])
+    configuration = pick(training, ['scenario', 'doctor', 'stage', 'focus_dimensions', 'practice_instruction'])
   } else {
     configuration = free!
     behavior =

@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
-import { type Doc, type User, assert, sha, now, uuid, Semaphore, unique } from './core.ts'
+import { type Doc, type User, assert, sha, canonical, now, uuid, Semaphore, unique } from './core.ts'
 import { Store, Transaction, privateWrite } from './store.ts'
 import { Tasks } from './tasks.ts'
 import { usable, publicURL } from './validation.ts'
@@ -460,6 +460,13 @@ export class Visits {
         try {
           return await this.store.transaction(u.workspace, async (tx) => {
             const data = { ...b }
+            delete data.request_id
+            const requestHash = sha(canonical(data)), id = b.request_id ?? uuid()
+            const existing = await tx.get(u.workspace, 'visit', id)
+            if (existing) {
+              assert(existing.owner_id === u.id && existing.submission_hash === requestHash, 409, '此提交已保存，请打开已有草稿继续编辑。')
+              return this.public(existing)
+            }
             if (privateText(b)) {
               const text = data.text
               delete data.text
@@ -477,7 +484,8 @@ export class Visits {
               audio_uploaded_at: null,
               confirmed_at: null,
               review: null,
-            })
+              submission_hash: requestHash,
+            }, id)
             await tx.audit(u, 'visit.create', 'visit', item.id)
             return this.public(item)
           })

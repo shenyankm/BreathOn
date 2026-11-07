@@ -1,0 +1,99 @@
+--- a/backend/benchmarks/performance-twenty.ts
++++ b/backend/benchmarks/performance-twenty.ts
+@@ -27,9 +27,94 @@
+   return store
+ }
+ try {
+-  if (name.startsWith('retrieve')) {
++  if (name.startsWith('learning_') || name === 'activity' || name === 'activity_messages') {
++    const learning = await load('learning')
++    const quote = '我先核对您的关注点，再确认下一步交流安排。'
++    const dimensions = Array.from({ length: 10 }, (_, i) => ({ key: `d${i}`, label: `维度${i}`, score: 3, weight: 10,
++      utterances: [{ message_id: 'u', quote }], anchors: ['0', '1', '2', '3', '4'] }))
++    const training = { scenario: { id: 's', version: 1 }, doctor: { id: 'd', version: 1 }, rubric: { id: 'r', dimensions }, documents: [], stage: 'full' }
++    const record = (i: number) => ({ id: `r${i}`, workspace: 'local', owner_id: `owner${i % 12}`, status: 'completed',
++      started_at: `2020-01-${String(i % 28 + 1).padStart(2, '0')}T00:00:00Z`, ended_at: '2020-02-01T00:00:00Z',
++      capture_status: 'completed', analysis_status: 'completed', experience: 'practice', mode: 'assisted', training,
++      remediation_id: `p${i}`, messages: [{ id: 'u', role: 'trainee', text: quote, final: true }],
++      coaching: [{ final_report: true, based_on: 'u', assessment: { dimensions, validation_errors: [] } }] })
++    if (name === 'activity' || name === 'activity_messages' || name === 'learning_observed') {
++      const row = record(0)
++      row.coaching = [...Array.from({ length: small ? 2 : name === 'activity' ? 1200 : 20 }, () => ({ final_report: false })), ...row.coaching] as any
++      if (name === 'activity_messages') row.messages = Array.from({ length: small ? 2 : 240 }, (_, i) =>
++        ({ id: i === (small ? 1 : 239) ? 'u' : `m${i}`, role: i % 2 ? 'trainee' : 'doctor', text: ('  ' + quote + '  ').repeat(small ? 1 : 40), final: true }))
++      work = () => name === 'learning_observed' ? learning.observedTarget(row, 'd0') : storage.activity(row)
++    } else if (name === 'learning_reviews') {
++      const row = record(0), reviews = Array.from({ length: small ? 1 : 160 }, (_, i) =>
++        ({ overrides: dimensions.map((d, j) => ({ key: d.key, score: (i + j) % 5, reason: `复核${i}` })) }))
++      work = () => learning.reviewedDimensions(row, reviews)
++      validation = () => ({ source_score_unchanged: row.coaching[0].assessment.dimensions[0].score === 3 })
++    } else {
++      const records = Array.from({ length: small ? 3 : 240 }, (_, i) => record(i))
++      if (name === 'learning_http') records.forEach((row, i) => { row.id = `${String(i).padStart(8, '0')}-0000-4000-8000-000000000001` })
++      const plans = records.map(row => ({ id: row.remediation_id, owner_id: row.owner_id, parent_record_id: row.id,
++        focus_key: 'd0', status: 'assigned', created_at: '2020-02-01T00:00:00Z' }))
++      const reviews = records.flatMap(row => Array.from({ length: small ? 1 : 8 }, (_, i) => ({ record_id: row.id,
++        overrides: [{ key: `d${i % 10}`, score: i % 5, reason: '合成复核' }] })))
++      const scenes = Array.from({ length: small ? 3 : 1200 }, (_, i) => ({ id: `s${i}`, title: `场景${i}`, status: 'published', generation: { case: { id: `case${i % 120}` } } }))
++      const visits = Array.from({ length: small ? 2 : 360 }, (_, i) => ({ id: `v${i}`, version: 1, owner_id: 'local', training_challenge: true,
++        status: 'confirmed', redacted_text: '合成脱敏难题', review: { case_id: `case${i % 120}`, decision: 'confirm', reason: '合成复核' } }))
++      const events = records.map(row => ({ record_id: row.id, owner_id: row.owner_id, created_at: '2020-01-01T00:00:00Z' }))
++      const rows: Record<string, any[]> = { remediation: plans, review: reviews, learning_event: events, scenario: scenes, visit: visits }
++      if (name === 'learning_http') {
++        const { createApp } = await load('app')
++        const runtime = await createApp({ ...core.settings({}), records: join(folder, 'sessions') }, async () => { throw new Error('Unexpected provider call') })
++        cleanup.push(() => runtime.app.close())
++        await runtime.app.ready()
++        for (const row of records) await runtime.store.saveRecord(row, 'completed')
++        await runtime.store.transaction('local', async (tx: any) => {
++          for (const kind of ['remediation', 'review', 'learning_event'])
++            for (let i = 0; i < rows[kind].length; i++) await tx.create('local', kind, rows[kind][i], `fixture-${kind}-${String(i).padStart(5, '0')}`)
++        })
++        work = async () => {
++          const response = await runtime.app.inject({ method: 'GET', url: '/api/training/outcomes' })
++          assert.equal(response.statusCode, 200)
++          return response.json()
++        }
++        validation = async () => { assert.equal((await work() as any).saved_attempts, records.length); return true }
++      } else {
++        const handlers = new Map<string, any>()
++        const store = { records: async () => records, transaction: async (_: string, callback: any) => callback({
++          all: async (kind: string) => rows[kind].map(item => ({ tenant: 'local', item })), list: async (_: string, kind: string) => rows[kind],
++        }) }
++        learning.registerLearning({ route: (options: any) => handlers.set(options.url, options.handler) }, store)
++        const handler = handlers.get(name === 'learning_challenges' ? '/api/training/challenges' : '/api/training/outcomes')
++        work = () => handler({ user, params: {}, query: {} }, { code() {} })
++      }
++    }
++  } else if (name === 'pick') {
++    const row = Object.fromEntries(Array.from({ length: small ? 3 : 40 }, (_, i) => [`k${i}`, i % 3 ? i : null]))
++    const keys = Object.keys(row)
++    work = () => core.pick(row, keys)
++    validation = () => { const result = core.pick(JSON.parse('{"__proto__":{"safe":true}}'), ['__proto__', 'absent']);
++      assert.equal(Object.getPrototypeOf(result), Object.prototype); assert.ok(Object.hasOwn(result, '__proto__')); assert.equal(result.absent, null); return true }
++  } else if (name === 'skills' || name === 'interactions') {
++    const agents = await load('agents')
++    const messages = Array.from({ length: small ? 3 : 1500 }, (_, i) => ({ role: i % 2 ? 'trainee' : 'doctor', text: '核对研究原文和合规边界。' }))
++    const interactions = Array.from({ length: small ? 3 : 5000 }, (_, i) => ({ type: i % 3 ? 'manual_interrupt' : 'capture_end', status: i % 2 ? 'completed' : 'interrupted' }))
++    work = () => name === 'skills' ? agents.skillNames(messages) : agents.interactionSummary(interactions)
++  } else if (name === 'frontend_next') {
++    const frontend = await import(pathToFileURL(join(root, '..', 'frontend', 'src', 'lib', 'learning.ts')).href)
++    const quote = '先核对您的关注点，再确认下一步交流安排。'.repeat(small ? 1 : 25)
++    const utterances = Array.from({ length: small ? 1 : 6 }, (_, i) => ({ message_id: `u${i}`, quote }))
++    const record = { coaching: [{ final_report: true, assessment: { dimensions: Array.from({ length: 10 }, (_, i) =>
++      ({ key: `d${i}`, label: `维度${i}`, score: i % 4, utterances })) }, points: ['先确认需求'] }],
++      messages: [{ id: `u${utterances.length - 1}`, role: 'trainee', text: quote, final: true }] }
++    work = () => frontend.nextAction(record)
++  } else if (name === 'summary_quotes') {
++    const quote = '我会先核对研究原文和适用人群。'
++    const messages = [{ id: 'u', role: 'trainee', final: true, text: (quote + ' \n').repeat(small ? 1 : 600) }]
++    const quotes = Array.from({ length: 4 }, () => ({ message_id: 'u', quote }))
++    const raw = { dimensions: ['compliance', 'communication'].map(key => ({ key, score: 80, reason: '合成观察', quotes })), edits: [] }
++    work = () => { const { created_at, ...result } = medicalModule.validateSummary(raw, { messages, capture_status: 'completed' }, 'synthetic', []); return result }
++  } else if (name.startsWith('retrieve')) {
+     const documents = Array.from({ length: small ? 2 : 24 }, (_, i) => ({ id: `doc-${String(i).padStart(3, '0')}`, version: 2, title: '合成资料', pages: pages(small ? 2 : 24, small ? 180 : 8000) }))
+-    const query = name === 'retrieve_terms' ? '研究适用人群需要核对安全边界'.repeat(small ? 1 : 250) : '原文依据 人群 安全 evidence study 2026'
++    const query = name === 'retrieve_blank' ? '' : name === 'retrieve_terms' ? '研究适用人群需要核对安全边界'.repeat(small ? 1 : 250) : '原文依据 人群 安全 evidence study 2026'
+     work = () => training.retrieve(documents, query, name === 'retrieve_zero' ? 0 : 10)
+   } else if (name === 'assessment') {
+     const quote = '请先核对研究原文与适用人群，再讨论后续安排。'

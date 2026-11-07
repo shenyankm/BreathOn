@@ -1,0 +1,18 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -23,9 +23,12 @@
+ export function observedTarget(record: Doc, key: string): boolean {
+   const dimension = finalCoach(record).assessment?.dimensions?.find((row: Doc) => row.key === key)
+   return activity(record).valid && Number.isInteger(dimension?.score) && dimension.score >= 3 && dimension.score <= 4 &&
+-    (dimension.utterances ?? []).some((quote: Doc) => typeof quote.quote === 'string' && normalize(quote.quote).length >= 6 &&
+-      record.messages.some((message: Doc) => message.id === quote.message_id && message.role === 'trainee' && message.final &&
+-        normalize(message.text).includes(normalize(quote.quote))))
++    (dimension.utterances ?? []).some((quote: Doc) => {
++      if (typeof quote.quote !== 'string') return false
++      const text = normalize(quote.quote)
++      return text.length >= 6 && record.messages.some((message: Doc) => message.id === quote.message_id &&
++        message.role === 'trainee' && message.final && normalize(message.text).includes(text))
++    })
+ }
+ 
+ export async function prepareRemediation(store: Store, user: User, id: string, requested?: string) {

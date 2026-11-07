@@ -1,0 +1,28 @@
+
+> @evispeak/frontend@0.0.0 test:training
+> playwright test --config playwright.training.config.ts --output=/tmp/evispeak-perf20-batch3-training
+
+[WebServer] (node:18873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:19001) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+(node:18811) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:19128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19128) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+  ✓   1 e2e/training-loop.spec.ts:56:1 › published scenario, free practice, focused retraining and child comparison stay connected (3.3s)
+  ✓   2 e2e/training-loop.spec.ts:91:1 › scene failures and empty catalogues recover without blocking free practice (3.2s)
+  ✓   3 e2e/training-loop.spec.ts:109:35 › training home and expanded feedback fit 390px (1.3s)
+  ✓   4 e2e/training-loop.spec.ts:109:35 › training home and expanded feedback fit 768px (1.3s)
+  ✓   5 e2e/training-loop.spec.ts:109:35 › training home and expanded feedback fit 1440px (1.3s)
+  ✓   6 e2e/training-loop.spec.ts:132:1 › review leads with one concrete action and prepares a grounded practice task (1.8s)
+  ✓   7 e2e/training-loop.spec.ts:145:1 › a stale pending task can restart against current content without mixing old scores (2.2s)
+  ✓   8 e2e/training-loop.spec.ts:163:1 › a field difficulty is submitted, reviewed and returned as a published practice entry (1.6s)
+  ✓   9 e2e/training-loop.spec.ts:186:1 › another scenario verification is prepared without live hints and with separate comparison semantics (2.0s)
+  ✓  10 e2e/training-loop.spec.ts:202:1 › trainer reviews an actual independent verification through the admin UI (2.7s)
+
+  10 passed (25.7s)

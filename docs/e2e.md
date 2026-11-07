@@ -30,7 +30,7 @@ E2E_DATABASE_URL=postgresql://postgres@127.0.0.1:TEST_PORT/breathon_e2e npm run 
 npm --prefix frontend run test:training
 ```
 
-此命令另启本机 `5197` 的 Android 前端开发预览和 `8197` 的隔离后端，使用临时 SQLite、虚构账号与合成场景/记录，退出时清理数据；不读取正常业务数据库，不调用真实模型或语音服务，也不改变生产 Web 路由。
+此命令另启本机 `5197` 的 Android 前端开发预览、`5198` 的 Web 管理端和 `8197` 的隔离后端，使用临时 SQLite、虚构账号与合成场景/记录，退出时清理数据；不读取正常业务数据库，不调用真实模型或语音服务，也不改变生产 Web 路由。
 
 该回归已接入 CI 的 frontend 作业，使用单独安装的 Chrome 运行。
 

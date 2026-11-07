@@ -4153,6 +4153,14 @@
             "type": "boolean",
             "title": "Private Audio",
             "default": false
+          },
+          "training_challenge": {
+            "type": "boolean",
+            "default": false
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false,

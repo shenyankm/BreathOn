@@ -19,8 +19,15 @@ export const normalize = (value: string) => value.replace(/\s+/gu, '')
 export const resource = (name: string) =>
   JSON.parse(readFileSync(new URL(`../resources/${name}.json`, import.meta.url), 'utf8')) as Doc
 export const constants = resource('constants')
-export const pick = (row: Doc, keys: string[]) =>
-  Object.fromEntries(keys.map((key) => [key, row[key] ?? null]))
+export const pick = (row: Doc, keys: string[]) => {
+  const result: Doc = {}
+  for (const key of keys) {
+    const value = row[key] ?? null
+    if (key === '__proto__') Object.defineProperty(result, key, { value, enumerable: true, writable: true, configurable: true })
+    else result[key] = value
+  }
+  return result
+}
 export const unique = <T>(values: T[]) => [...new Set(values)]
 export function assert(condition: unknown, status: number, detail: string): asserts condition {
   if (!condition) throw new HttpError(status, detail)

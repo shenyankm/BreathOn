@@ -1,0 +1,28 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -208,6 +208,7 @@
+       const group = byOwner.get(record.owner_id) ?? []
+       group.push(record); byOwner.set(record.owner_id, group)
+     }
++    const validRecords = records.filter(record => activity(record).valid)
+     const baselines = new Map(records.map(record => [record.id, record]))
+     const today = Math.floor(Date.now() / 86400000)
+     let firstValid = 0, eligible = 0, returned = 0, repeatedWeakness = 0, practiceAttempts = 0, transferAttempts = 0, transferObserved = 0
+@@ -220,7 +221,7 @@
+         if (group.some(record => { const day = Math.floor(Date.parse(record.started_at) / 86400000); return day >= firstDay + 7 && day < firstDay + 14 })) returned++
+       }
+     }
+-    for (const record of records.filter(record => activity(record).valid)) {
++    for (const record of validRecords) {
+       const plan = plans.get(record.remediation_id)
+       if (!plan) continue
+       const target = reviewedDimensions(record, reviewsByRecord.get(record.id) ?? []).find(row => row.key === plan.focus_key)
+@@ -238,7 +239,7 @@
+       practice_attempts: practiceAttempts, repeated_weakness: repeatedWeakness,
+       transfer_attempts: transferAttempts, transfer_observed: transferObserved,
+       return_eligible: eligible, returned_second_week: returned,
+-      saved_attempts: records.length, valid_attempts: records.filter(record => activity(record).valid).length,
++      saved_attempts: records.length, valid_attempts: validRecords.length,
+       reviewed_records: viewed.size, reviewed_then_retrained: new Set(data.plans.filter(plan => viewed.has(plan.parent_record_id) &&
+         plan.created_at >= viewed.get(plan.parent_record_id)).map(plan => plan.parent_record_id)).size,
+       needs_practice: data.plans.filter(plan => plan.status === 'assigned').length,

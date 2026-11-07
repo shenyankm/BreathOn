@@ -1,3 +1,5 @@
+import { LearningAction } from '@/components/learning-action'
+import { Accordion,AccordionContent,AccordionItem,AccordionTrigger } from '@/components/ui/accordion'
 import { CoachAnalysis } from '@/components/coach-analysis'
 import { MedicalCheckView } from '@/components/medical-check'
 import { RetrainingList } from '@/components/retraining-list'
@@ -47,11 +49,12 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
     if (!selected) return
     const controller = new AbortController()
     api<Record>(`/sessions/${encodeURIComponent(selected)}`, { signal: controller.signal, timeoutMs: 5000 })
-      .then(data => { if (!controller.signal.aborted) { setDetail(data); setDetailError('') } })
+      .then(data => { if (!controller.signal.aborted) { setDetail(data); setDetailError(''); void api('/training/review-opened',{method:'POST',body:JSON.stringify({record_id:data.id})}).catch(()=>{}) } })
       .catch(() => { if (!controller.signal.aborted) setDetailError('无法读取这条记录，请稍后重试。') })
     return () => controller.abort()
   }, [selected, detailRetry])
 
+  const finalCoach = detail?.coaching?.findLast(coach=>coach.final_report&&!coach.superseded) ?? detail?.coaching?.findLast(coach=>!coach.superseded)
   return <div className="space-y-6">
     <header className="flex flex-wrap items-center justify-between gap-3"><div className="space-y-1"><h1 className="text-xl font-semibold">练习记录</h1><p className="text-sm text-muted-foreground">最近 50 次演练</p></div><Button variant="outline" onClick={() => { setRecords(null); setError(''); setRefresh(value => value + 1) }}><RotateCcw />刷新</Button></header>
     <RetrainingList onStart={onStart} refresh={refresh}/>
@@ -68,9 +71,14 @@ export function RecordsPage({onStart}:{onStart:StartTraining}) {
           <TabsList variant="line" className="h-12 w-full justify-start"><TabsTrigger className="min-h-11 px-4" value="review">教练复盘</TabsTrigger><TabsTrigger className="min-h-11 px-4" value="transcript">对话原文{detail ? ` · ${detail.messages.length}` : ''}</TabsTrigger></TabsList>
           <TabsContent value="review" forceMount className="m-0 space-y-5 py-5 data-[state=inactive]:hidden">
                 {detailError ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{detailError}</p><Button variant="outline" onClick={() => { setDetailError(''); setDetailRetry(value => value + 1) }}>重新读取</Button></div> : !detail ? <p role="status" className="text-sm text-muted-foreground">正在加载复盘…</p> : <>
-                  {detail.coaching?.length ? <section className="space-y-5"><h2 className="text-base font-medium">{detail.experience === 'combat' ? 'AI 复盘' : '教练分析记录'}</h2>{detail.coaching.map((coach,index)=><CoachAnalysis key={index} coach={coach} review />)}</section> : <p className="text-sm leading-6 text-muted-foreground">{detail.analysis_status === 'no_speech' ? '没有可分析的学员发言。' : '本次未保存教练复盘。'}</p>}
-                  {!!detail.medical_checks?.length && <section className="space-y-4"><h2 className="text-base font-medium">逐句医学依据核验</h2>{detail.medical_checks.map((check,index)=><div key={index}><p className="text-sm leading-7">{check.text}</p><MedicalCheckView check={check}/></div>)}</section>}
-                  {detail.free_context && <Button size="lg" className="w-full min-h-11" onClick={() => onStart({ scenario_id: '', stage: 'full', drug_id: detail.free_context!.drug.id, doctor_id: detail.free_context!.doctor.id, experience: detail.experience === 'combat' ? 'combat' : 'practice', mode: detail.experience === 'combat' ? 'independent' : 'assisted' })}>按此组合再练<ArrowRight /></Button>}<ReviewPanel key={detail.id} record={detail} onStart={onStart} onRetrain={()=>setRefresh(value=>value+1)}/>
+                  <LearningAction key={`action-${detail.id}`} record={detail} onStart={onStart} onChanged={()=>setRefresh(value=>value+1)}/>
+                  <ReviewPanel key={detail.id} record={detail} onStart={onStart} externalRefresh={refresh} onRetrain={()=>setRefresh(value=>value+1)}/>
+                  {finalCoach ? <section className="space-y-5"><h2 className="text-base font-medium">本次完整复盘</h2><CoachAnalysis coach={finalCoach} review /></section> : <p className="text-sm leading-6 text-muted-foreground">{detail.analysis_status==='no_speech'?'没有可分析的学员发言。':'本次未保存教练复盘。'}</p>}
+                  <Accordion type="multiple">
+                    {!!detail.coaching?.filter(coach=>coach!==finalCoach).length&&<AccordionItem value="turns"><AccordionTrigger>展开逐轮教练记录</AccordionTrigger><AccordionContent className="space-y-5">{detail.coaching.filter(coach=>coach!==finalCoach).map((coach,index)=><CoachAnalysis key={index} coach={coach} review/>)}</AccordionContent></AccordionItem>}
+                    {!!detail.medical_checks?.length&&<AccordionItem value="medical"><AccordionTrigger>逐句医学依据核验 · {detail.medical_checks.length} 句</AccordionTrigger><AccordionContent className="space-y-4">{detail.medical_checks.map((check,index)=><div key={index}><p className="text-sm leading-7">{check.text}</p><MedicalCheckView check={check}/></div>)}</AccordionContent></AccordionItem>}
+                  </Accordion>
+                  {detail.free_context&&<Button size="lg" className="w-full min-h-11" onClick={()=>onStart({scenario_id:'',stage:'full',drug_id:detail.free_context!.drug.id,doctor_id:detail.free_context!.doctor.id,experience:detail.experience==='combat'?'combat':'practice',mode:detail.experience==='combat'?'independent':'assisted'})}>按此组合再练<ArrowRight/></Button>}
                 </>}
           </TabsContent>
           <TabsContent value="transcript" forceMount className="m-0 space-y-5 py-5 data-[state=inactive]:hidden">

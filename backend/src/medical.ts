@@ -680,13 +680,22 @@ export function validateSummary(raw: Doc, record: Doc, model: string, checks: Do
         .filter((m: Doc) => m.role === 'trainee' && m.final)
         .map((m: Doc) => [m.id, m.text]),
     ),
+    normalizedTrainees = new Map<string, string>(),
+    sourceText = (id: string) => {
+      let text = normalizedTrainees.get(id)
+      if (text === undefined) {
+        text = normalize(trainees.get(id)!)
+        normalizedTrainees.set(id, text)
+      }
+      return text
+    },
     validQuote = (row: Doc) =>
       row &&
       typeof row.quote === 'string' &&
       row.quote.length >= 1 &&
       row.quote.length <= 1200 &&
       trainees.has(row.message_id) &&
-      normalize(trainees.get(row.message_id)!).includes(normalize(row.quote)),
+      sourceText(row.message_id).includes(normalize(row.quote)),
     medical: Doc[] = [],
     edits: Doc[] = []
   let missing = false

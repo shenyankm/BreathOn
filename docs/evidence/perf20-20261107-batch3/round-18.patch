@@ -1,0 +1,11 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -256,7 +256,7 @@
+ }
+ export function interactionSummary(interactions: Doc[]): string {
+   const ended = interactions.findLast((e) => e.type === 'capture_end')?.status,
+-    clicks = interactions.filter((e) => e.type === 'manual_interrupt').length
++    clicks = interactions.reduce((sum, e) => sum + (e.type === 'manual_interrupt' ? 1 : 0), 0)
+   return (
+     `记录了${clicks}次点击打断按钮。` +
+     (ended === 'completed'

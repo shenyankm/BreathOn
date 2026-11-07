@@ -146,11 +146,16 @@ test('a concurrent import wins over orphan checkpoint recovery', async () => {
   } finally { await f.close() }
 })
 
-test('saved records reconcile retraining after a transient failure without changing a completed plan again', async () => {
+test('saved records reconcile grounded retraining after a transient failure without advancing it twice', async () => {
   const f = await fixture()
   try {
-    const plan = await f.store.transaction('local', tx => tx.create('local', 'remediation', { owner_id: 'local', status: 'assigned' }))
-    const record: Doc = { ...validRecord(), remediation_id: plan.id }
+    const { scenario } = await publishedTraining(f)
+    const training = snapshot(await prepareTraining(f.store, user, scenario.id))
+    const baseline: Doc = { ...validRecord(), training }
+    await f.store.saveRecord(baseline, 'completed')
+    const plan = await f.store.transaction('local', tx => tx.create('local', 'remediation', { owner_id: 'local', status: 'assigned', parent_record_id: baseline.id, scenario_id: scenario.id, stage: 'full', focus_key: 'communication' }))
+    const record: Doc = { ...validRecord(), training, remediation_id: plan.id }
+    record.coaching[0].assessment.dimensions = [{ key: 'communication', score: 3, utterances: [{ message_id: 'u', quote: record.messages[0].text }] }]
     await f.store.saveRecord(record, 'completed')
     const original = f.sessions.finishRemediation.bind(f.sessions)
     f.sessions.finishRemediation = async () => { throw new Error('Transient transaction failure') }
@@ -159,14 +164,14 @@ test('saved records reconcile retraining after a transient failure without chang
     f.sessions.finishRemediation = original
     await f.sessions.recover()
     const complete = await f.store.transaction('local', tx => tx.require('local', 'remediation', plan.id), false)
-    assert.equal(complete.status, 'completed')
-    assert.equal(complete.completed_record_id, record.id)
+    assert.equal(complete.status, 'awaiting_verification')
+    assert.equal(complete.practice_record_id, record.id)
     const retry = await f.call('POST', `/api/sessions/${record.id}/retry-save`)
     assert.equal(retry.statusCode, 200, retry.body)
     assert.equal((await f.store.transaction('local', tx => tx.require('local', 'remediation', plan.id), false)).version, complete.version)
     const later = { ...record, id: newRecord(user, 'practice', 'assisted').id }
     await f.sessions.finishRemediation(user, later)
-    assert.equal((await f.store.transaction('local', tx => tx.require('local', 'remediation', plan.id), false)).completed_record_id, record.id)
+    assert.equal((await f.store.transaction('local', tx => tx.require('local', 'remediation', plan.id), false)).practice_record_id, record.id)
   } finally { await f.close() }
 })
 
@@ -307,7 +312,7 @@ test('retraining uses the same material fingerprint in HTTP, WebSocket and progr
     const drug = await f.store.transaction('local', tx => tx.create('local', 'drug', { name: '合成药品', status: 'published', practice_departments: ['测试'] }))
     await f.store.transaction('local', tx => tx.update('local', 'scenario', scenario.id, { ...scenario, drug_id: drug.id }, scenario.version))
     const baseline: Doc = { ...validRecord(), training: snapshot(await prepareTraining(f.store, user, scenario.id)) }
-    baseline.coaching[0].assessment = { ...baseline.coaching[0].assessment, rubric_fingerprint: sha(canonical(rubric.dimensions)), model: f.config.model, evaluator_version: 'test' }
+    baseline.coaching[0].assessment = { ...baseline.coaching[0].assessment, dimensions:[{key:'communication',label:'沟通',score:2,weight:100}], rubric_fingerprint: sha(canonical(rubric.dimensions)), model: f.config.model, evaluator_version: 'test' }
     await f.store.saveRecord(baseline, 'completed')
     const planResponse = await f.call('POST', `/api/sessions/${baseline.id}/retrain`, {})
     assert.equal(planResponse.statusCode, 201, planResponse.body)

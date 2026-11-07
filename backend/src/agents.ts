@@ -242,22 +242,23 @@ const routes: [string, RegExp][] = [
   ],
 ]
 export function skillNames(messages: Doc[], speak = true): string[] {
-  const roles = new Set<string>(),
-    selected = speak
-      ? [...messages].reverse().filter((m) => {
-          if (roles.has(m.role)) return false
-          roles.add(m.role)
-          return true
-        })
-      : messages
+  const roles = new Set<string>()
+  let selected = messages
+  if (speak) {
+    selected = []
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]
+      if (!roles.has(message.role)) { roles.add(message.role); selected.push(message) }
+    }
+  }
   const text = selected.map((m) => m.text).join('\n')
   const matched = routes.filter(([, regex]) => regex.test(text)).map(([name]) => name)
   for (const name of matched.length ? matched : ['none']) count(`routing.${name}`)
   return ['medical-rep-academic-visit', ...matched]
 }
 export function interactionSummary(interactions: Doc[]): string {
-  const ended = [...interactions].reverse().find((e) => e.type === 'capture_end')?.status,
-    clicks = interactions.filter((e) => e.type === 'manual_interrupt').length
+  const ended = interactions.findLast((e) => e.type === 'capture_end')?.status,
+    clicks = interactions.reduce((sum, e) => sum + (e.type === 'manual_interrupt' ? 1 : 0), 0)
   return (
     `记录了${clicks}次点击打断按钮。` +
     (ended === 'completed'

@@ -1,0 +1,11 @@
+--- a/backend/src/training.ts
++++ b/backend/src/training.ts
+@@ -242,7 +242,7 @@
+     for (const page of doc.pages)
+       for (let offset = 0; offset < page.text.length; offset += 1100) {
+         const text = page.text.slice(offset, offset + 1300),
+-          lower = text.toLowerCase()
++          lower = terms.length ? text.toLowerCase() : ''
+         let score = 0
+         for (const term of terms) {
+           let start = 0

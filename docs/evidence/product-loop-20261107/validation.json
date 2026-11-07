@@ -1,0 +1,131 @@
+{
+  "checks": [
+    {
+      "name": "unit-tests",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 12.895,
+      "log": "unit-tests.txt"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 7.763,
+      "log": "build.txt"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.69,
+      "log": "lint.txt"
+    },
+    {
+      "name": "android-frontend-build",
+      "command": [
+        "npm",
+        "run",
+        "build:android"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.524,
+      "log": "android-frontend-build.txt"
+    },
+    {
+      "name": "training-browser",
+      "command": [
+        "npm",
+        "--prefix",
+        "frontend",
+        "run",
+        "test:training",
+        "--",
+        "--output=/tmp/evispeak-learning-accepted"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 23.16,
+      "log": "training-browser.txt"
+    },
+    {
+      "name": "web-e2e",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 43.237,
+      "log": "web-e2e.txt"
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.025,
+      "log": "diff-check.txt"
+    },
+    {
+      "name": "backend-final-tests",
+      "command": [
+        "npm",
+        "--prefix",
+        "backend",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 8.634,
+      "log": "backend-final-tests.txt"
+    },
+    {
+      "name": "backend-final-build",
+      "command": [
+        "npm",
+        "--prefix",
+        "backend",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.761,
+      "log": "backend-final-build.txt"
+    }
+  ],
+  "database": "disposable PostgreSQL 17-alpine container on loopback",
+  "paid_providers": false,
+  "physical_android": false,
+  "database_container_removed": true,
+  "summary": {
+    "backend_passed": 63,
+    "frontend_passed": 206,
+    "training_browser_passed": 10,
+    "web_e2e_passed": 22,
+    "web_e2e_skipped": 6,
+    "web_e2e_failed": 0,
+    "lint_errors": 0,
+    "lint_existing_warnings": 8
+  },
+  "final_frontend_followups": {
+    "web_build_log": "build-web-final.txt",
+    "android_build_log": "android-frontend-build.txt",
+    "frontend_tests_log": "frontend-final-tests.txt",
+    "training_browser_log": "training-browser.txt",
+    "reason": "render inspection: hide the collapsed form without discarding its values and display quoted trainer evidence"
+  },
+  "local_acceptance_passed": true
+}

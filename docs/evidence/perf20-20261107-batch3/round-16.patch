@@ -1,0 +1,26 @@
+--- a/backend/src/agents.ts
++++ b/backend/src/agents.ts
+@@ -242,14 +242,15 @@
+   ],
+ ]
+ export function skillNames(messages: Doc[], speak = true): string[] {
+-  const roles = new Set<string>(),
+-    selected = speak
+-      ? [...messages].reverse().filter((m) => {
+-          if (roles.has(m.role)) return false
+-          roles.add(m.role)
+-          return true
+-        })
+-      : messages
++  const roles = new Set<string>()
++  let selected = messages
++  if (speak) {
++    selected = []
++    for (let i = messages.length - 1; i >= 0; i--) {
++      const message = messages[i]
++      if (!roles.has(message.role)) { roles.add(message.role); selected.push(message) }
++    }
++  }
+   const text = selected.map((m) => m.text).join('\n')
+   const matched = routes.filter(([, regex]) => regex.test(text)).map(([name]) => name)
+   for (const name of matched.length ? matched : ['none']) count(`routing.${name}`)

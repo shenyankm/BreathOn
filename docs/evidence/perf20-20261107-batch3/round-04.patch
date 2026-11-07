@@ -1,0 +1,14 @@
+--- a/backend/src/learning.ts
++++ b/backend/src/learning.ts
+@@ -12,8 +12,10 @@
+   training.scenario?.background ?? '', training.scenario?.objections ?? [], training.scenario?.difficulty ?? ''])
+ export function reviewedDimensions(record: Doc, reviews: Doc[]) {
+   const dimensions: Doc[] = (finalCoach(record).assessment?.dimensions ?? []).map((dimension: Doc) => ({ ...dimension }))
++  const byKey = new Map<string, Doc>()
++  for (const dimension of dimensions) if (!byKey.has(dimension.key)) byKey.set(dimension.key, dimension)
+   for (const review of [...reviews].reverse()) for (const change of review.overrides ?? []) {
+-    const dimension = dimensions.find(row => row.key === change.key)
++    const dimension = byKey.get(change.key)
+     if (dimension) { dimension.score = change.score; dimension.reason = change.reason }
+   }
+   return dimensions
